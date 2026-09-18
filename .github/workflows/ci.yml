@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Build-time-only placeholders — Prisma Client validates that
+      # DATABASE_URL is *present* at construction time even though no
+      # query runs during `next build`; a live database is never actually
+      # contacted here. Real values come from each environment's own
+      # secrets at deploy time (see Deployment.md).
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/ci_placeholder"
+      AUTH_SECRET: "ci-placeholder-secret-not-used-at-runtime"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

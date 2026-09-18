@@ -1,0 +1,16 @@
+# Runs the exact production image locally against a real cloud database —
+# see Deployment.md, "Running the production image locally". This project
+# is cloud-only, so there is deliberately no Postgres service defined
+# here: set DATABASE_URL in .env to any cloud Postgres instance (a
+# dev-tier Neon/Railway/Supabase database works well for this).
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
