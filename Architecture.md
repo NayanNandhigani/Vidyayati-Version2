@@ -118,19 +118,25 @@ before they can log in (`mustChangePassword` gates this).
 
 This project ships with **no seed data** (see `memory.md`). A brand-new
 database has zero rows, including zero users — so a fresh deployment needs
-exactly one manual step to become usable: `npm run bootstrap-admin`
-(`scripts/bootstrap-admin.ts`). It:
+a first Super Admin from somewhere. `scripts/bootstrap-admin.ts`
+(`npm run bootstrap-admin`) handles it, and `scripts/migrate.sh` (the
+pre-deploy step every deploy already runs, see "Database") calls it
+automatically whenever `BOOTSTRAP_ADMIN_USERNAME` is set — set that one
+variable and a fresh deploy is usable with no separate manual step. It can
+also be run by hand at any time (e.g. a provider without a pre-deploy hook,
+per `Deployment.md`). It:
 
 1. Checks whether a `SUPER_ADMIN` user already exists — if so, does nothing
-   (safe to re-run).
+   (safe to re-run, and runs on *every* deploy via `migrate.sh`, not just
+   the first — this is what makes that safe).
 2. Otherwise reads `BOOTSTRAP_ADMIN_USERNAME` (required) and
    `BOOTSTRAP_ADMIN_NAME` / `BOOTSTRAP_ADMIN_EMAIL` (optional) from the
    environment and creates that Super Admin through the exact same
    `createPendingAccount()` path every other account uses.
 3. Prints the one-time `/setup-account?token=...` link to the console.
 
-Run once, right after the first `prisma migrate deploy` on a new
-environment — see `Deployment.md`.
+The link only ever prints once — read it from the deploy logs after the
+first deploy (or the logs of a manual run) — see `Deployment.md`.
 
 ## Activity logging
 

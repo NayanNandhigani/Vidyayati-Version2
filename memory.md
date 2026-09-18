@@ -71,7 +71,53 @@ created; this rebuild develops on branch
 multi-tenancy, permissions, all ~25 screens carried over from the working
 prior version; storage layer rebuilt against S3; seed data and local-DB
 tooling removed; bootstrap-admin flow added; all five docs plus Dockerfile
-in the repo). Not yet done: dependency install/build verification in this
-environment, CI workflow, docker-compose for local testing against a cloud
-DB, first push to GitHub. See the next entry for what happens after those
-land.
+in the repo). `npx prisma validate`, `npm run lint`, `npm run typecheck`,
+and `npm run build` all verified clean before the first commit
+(`805bb22`), pushed to `claude/vidyayati-2-saas-rebuild-peufo9`.
+
+---
+
+## 2026-09-18 — First live deployment, on Railway Postgres
+
+Stood up a real, working environment to smoke-test the rebuild end to end,
+per your choice of Railway for the database:
+
+- **Railway project:** `dazzling-benevolence` (an existing empty project —
+  the account's free-tier project limit was already at capacity, so this
+  one was reused rather than creating a new one).
+- **Postgres service**, `postgres:16-alpine`, with a persistent volume
+  (`postgres-data`, mounted at `/var/lib/postgresql/data`) so data survives
+  restarts/redeploys.
+- **App service** (`vidyayati-app`), deployed straight from
+  `NayanNandhigani/Vidyayati-Version2` on
+  `claude/vidyayati-2-saas-rebuild-peufo9`, with a generated
+  `*.up.railway.app` domain.
+- `DATABASE_URL` wired via Railway's private-network reference
+  (`${{Postgres.DATABASE_URL}}`) — no credentials duplicated between
+  services. `AWS_S3_BUCKET`/`AWS_*` were **not** set (no AWS credentials
+  provided yet) — file-upload features (photos, certificates, documents,
+  ID cards) will error until they are; everything else works.
+- First deploy applied all 67 migrations cleanly (`prisma migrate deploy`
+  via `scripts/migrate.sh`, Railway's pre-deploy step) and the app came up
+  healthy.
+
+**Change made as a direct result of this deploy:** `scripts/migrate.sh` now
+also runs `npm run bootstrap-admin` automatically (guarded — only when
+`BOOTSTRAP_ADMIN_USERNAME` is set, never fails the deploy) instead of that
+being a documented-but-separate manual step. Reasoning: attempting to
+override the pre-deploy command per-service via the Railway API for a
+one-off run proved unreliable (the running container kept using the
+previous command even after the service config visibly updated) —
+folding it into the committed script sidesteps that entirely and is a
+strictly better default for every provider in `Deployment.md`, not just
+Railway. `Architecture.md` and `Deployment.md` updated to match: bootstrap
+is now automatic-when-configured, with the manual `npm run bootstrap-admin`
+path kept for hosts without a pre-deploy hook.
+
+**Known gap carried over from the prior version, not yet fixed:** the
+Docker image logs `prisma:warn Prisma failed to detect the libssl/openssl
+version to use... Defaulting to "openssl-1.1.x"` on every startup
+(`node:20-slim` ships OpenSSL 3.x). The app started and migrations ran
+regardless, so this hasn't been confirmed to break anything yet, but it's
+worth a real functional test (login, a few CRUD screens) before calling it
+resolved — see the next entry.

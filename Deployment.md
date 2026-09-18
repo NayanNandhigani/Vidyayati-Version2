@@ -136,18 +136,14 @@ the way the others do, so it needs a workaround:
 
 ## 6. Bootstrap the first Super Admin account
 
-There is no seed data — a freshly migrated database has zero users. Run
-once, from anywhere that has `DATABASE_URL` (and the
-`BOOTSTRAP_ADMIN_*` variables) set — a one-off command on your host
-(Railway: `railway run npm run bootstrap-admin`; Fly: `fly ssh console` +
-run it; Render: the shell tab; Vercel: run it from your own machine
-against the same `DATABASE_URL`, since Vercel has no shell):
-
-```bash
-npm run bootstrap-admin
-```
-
-It prints a one-time link:
+There is no seed data — a freshly migrated database has zero users. If
+`BOOTSTRAP_ADMIN_USERNAME` was set in step 3, this is already handled:
+`scripts/migrate.sh` (the pre-deploy step every option in step 4 already
+runs) calls `npm run bootstrap-admin` automatically after migrations, on
+every deploy — it no-ops once a Super Admin exists, so it's safe to leave
+the variable set permanently. Read the one-time setup link from that
+deploy's logs (Railway: the deploy logs tab; Fly:
+`fly logs`; Render: the deploy's log tab):
 
 ```
 Created the first Super Admin account.
@@ -158,11 +154,20 @@ Created the first Super Admin account.
 
 Visit `https://<your-domain>/setup-account?token=<...>` once to set a real
 password. The link cannot be regenerated — if it expires (7 days) or is
-lost before use, re-run `npm run bootstrap-admin`... except it's
-idempotent and will refuse once a Super Admin exists. In that case, use an
-existing Super Admin account to create a new one from inside the app
-instead (Super Admin → Staff), which issues its own one-time link the same
-way.
+lost before use, an existing Super Admin can create a new one from inside
+the app instead (Super Admin → Staff), which issues its own one-time link
+the same way.
+
+If your host doesn't support a pre-deploy step (or you'd rather not rely
+on it), run it by hand once instead, from anywhere with `DATABASE_URL`
+and the `BOOTSTRAP_ADMIN_*` variables set (Railway: `railway run npm run
+bootstrap-admin`; Fly: `fly ssh console` + run it; Render: the shell tab;
+Vercel: run it from your own machine against the same `DATABASE_URL`,
+since Vercel has no shell):
+
+```bash
+npm run bootstrap-admin
+```
 
 Every other account (School Admins, Staff, Parents) is created the same
 way, from inside the app by a Super Admin or School Admin — never seeded.
