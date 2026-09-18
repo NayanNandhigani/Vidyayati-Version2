@@ -138,3 +138,50 @@ removed by you directly, after the Railway MCP tool call to remove it
 timed out repeatedly on this end. AWS S3 setup is intentionally deferred
 until the project is otherwise confirmed live — file uploads remain the
 one known gap until then.
+
+---
+
+## 2026-09-18 — `/signin` infinite redirect loop in production
+
+You reported `https://vidyayati-app-production-8892.up.railway.app/signin`
+failing with `ERR_TOO_MANY_REDIRECTS` in a fresh incognito window.
+
+**Diagnosis.** Railway's HTTP logs confirmed every `GET /signin` returned
+`307` (not `308`, ruling out `next.config.js`'s only `redirects()` rule,
+which is `permanent: true`). Deploy logs showed the page's own debug
+`console.log` firing on every single request — the component genuinely
+renders — yet the response was still a redirect back to the same URL.
+Middleware's debug log never fired (its `matcher` correctly excludes
+`/signin`), and a full re-read of every file in the render path
+(`app/layout.tsx`, `app/signin/page.tsx`, `app/signin/LoginForm.tsx`,
+`app/signin/actions.ts`) turned up no `redirect()` call that could fire on
+a plain `GET`.
+
+This turned out to be a **known, previously-unresolved issue already
+documented in the source project's own git history** (fetched from
+`NayanNandhigani/Vidyayati` for context — not part of this repo's
+history). Commits `e95cd67`, `b18cfe6`, and `e9a9722` show the original
+team hit the exact same self-redirect symptom twice before (on `/login`,
+fixed by renaming to `/signin`; on `/` , fixed by forcing
+`dynamic = "force-dynamic"`), then hit it a third time on `/signin`
+itself and left it unresolved — mid-investigation, with temporary debug
+logging still in place (which is why our copy of the code had it too) and
+a `Cache-Control: no-store` `headers()` block removed "to isolate the
+cause," never restored.
+
+**Fix applied:** set `AUTH_URL` to the app's exact public HTTPS domain.
+This is Auth.js's own documented recommendation for self-hosted/non-Vercel
+deployments — `trustHost: true` (already set) is necessary but not always
+sufficient behind a reverse proxy; without `AUTH_URL`, NextAuth can
+misconstruct absolute URLs it generates internally. Restored the
+`Cache-Control: no-store` `headers()` block the prior team had pulled out
+as a second line of defense against any caching layer. Documented `AUTH_URL`
+as a required production variable in `Architecture.md`, `Deployment.md`,
+and `.env.example` (it wasn't captured anywhere before — a real gap in the
+original brief this project builds on, not something introduced by
+cloud-only-izing it).
+
+Left the temporary `[page-debug]`/`[middleware-debug]` console.log
+statements in place for this one deploy, specifically to confirm the fix
+before removing them — the next entry should confirm success and clean
+those up.

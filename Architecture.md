@@ -102,6 +102,12 @@ A session's `user` object carries `role` (`SCHOOL_ADMIN` / `STAFF` /
 `PARENT` / `SUPER_ADMIN` / `PLATFORM_STAFF`), `schoolId` (`null` for the two
 platform roles), and `username`.
 
+**`AUTH_URL` is required in production**, set to the app's exact public
+HTTPS URL. `trustHost: true` alone is not sufficient behind every reverse
+proxy — without `AUTH_URL`, NextAuth can misconstruct absolute URLs it
+generates internally, which surfaced in production as `/signin` returning
+an infinite self-redirect (HTTP 307) on Railway. Not needed for local dev.
+
 **Account creation, always through the same one-time setup flow, no
 exceptions:** every account — the first Super Admin included — is created
 via `lib/account-setup.ts`'s `createPendingAccount()`. No password is ever

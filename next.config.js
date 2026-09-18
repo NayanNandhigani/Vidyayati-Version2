@@ -6,11 +6,14 @@ const nextConfig = {
     // keep old bookmarks/links working.
     return [{ source: "/login", destination: "/signin", permanent: true }];
   },
-  // TEMP DEBUG: headers() removed to isolate whether it's interacting
-  // badly with redirects() — /signin is looping on itself with zero
-  // React render evidence (not even the root layout fires), meaning
-  // something resolves the redirect before component rendering starts.
-  // Restore once the actual cause is confirmed.
+  async headers() {
+    // Belt-and-suspenders against any caching layer (browser, CDN, or a
+    // hosting provider's edge) serving a stale response for an app this
+    // session-driven — every response should be revalidated. Restored
+    // alongside setting AUTH_URL (see memory.md) while chasing a
+    // /signin redirect loop in production.
+    return [{ source: "/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] }];
+  },
 };
 
 module.exports = nextConfig;

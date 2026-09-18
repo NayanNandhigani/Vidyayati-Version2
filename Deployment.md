@@ -68,10 +68,18 @@ a local `.env` copied from `.env.example`):
 |---|---|
 | `DATABASE_URL` | Step 1 |
 | `AUTH_SECRET` | `openssl rand -base64 32` |
+| `AUTH_URL` | The app's exact public HTTPS URL (e.g. the domain from step 4) — **required**, not optional; see below |
 | `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Step 2 |
 | `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL` | Your choice — used once, in step 6 |
 
 Never commit `.env`.
+
+**On `AUTH_URL`:** you won't know the app's domain until step 4/5 provisions
+one, so it's normal to deploy once, generate the domain, then come back
+and set `AUTH_URL` to that exact URL and redeploy. Skipping this step is
+the single most likely cause of a production sign-in page that redirects
+to itself in a loop — `trustHost: true` (already set in `auth.config.ts`)
+is not a full substitute for it behind every reverse proxy.
 
 ## 4. Choose app hosting
 
