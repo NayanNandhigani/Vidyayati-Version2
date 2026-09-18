@@ -121,3 +121,20 @@ version to use... Defaulting to "openssl-1.1.x"` on every startup
 regardless, so this hasn't been confirmed to break anything yet, but it's
 worth a real functional test (login, a few CRUD screens) before calling it
 resolved — see the next entry.
+
+**Verified working, same day:** pushed the `migrate.sh` change
+(`980a1af`), Railway auto-deployed it, and the pre-deploy step's
+`bootstrap-admin` run succeeded — it created the first Super Admin
+(`vidyayati-admin`) and printed a working one-time `/setup-account`
+link. That write went through Prisma → Postgres with no error, which
+confirms the OpenSSL warning above is cosmetic, not fatal: real queries
+work. Both services (`vidyayati-app`, `Postgres`) show `online`, 1/1
+replica, zero issues.
+
+The temporary public TCP proxy opened on the Postgres service (to attempt
+running the bootstrap step from outside Railway's network, before
+discovering the sandbox environment blocks raw outbound TCP entirely) was
+removed by you directly, after the Railway MCP tool call to remove it
+timed out repeatedly on this end. AWS S3 setup is intentionally deferred
+until the project is otherwise confirmed live — file uploads remain the
+one known gap until then.
