@@ -1,8 +1,24 @@
 import type { Metadata } from "next";
-// TEMP DIAGNOSTIC: next/font/google swapped out for plain CSS variables to
-// test whether Google Fonts loading is related to the production
-// redirect-loop investigation (see memory.md). Revert once resolved.
+import { Fraunces, Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-fraunces",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-jakarta",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-plex-mono",
+});
 
 export const metadata: Metadata = {
   title: "Vidya Yati",
@@ -12,16 +28,8 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  console.log("[layout-debug] rendering root layout");
   return (
-    <html
-      lang="en"
-      style={{
-        "--font-fraunces": "Georgia, serif",
-        "--font-jakarta": "system-ui, sans-serif",
-        "--font-plex-mono": "monospace",
-      } as React.CSSProperties}
-    >
+    <html lang="en" className={`${fraunces.variable} ${jakarta.variable} ${plexMono.variable}`}>
       <body>{children}</body>
     </html>
   );
