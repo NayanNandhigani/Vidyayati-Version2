@@ -238,3 +238,36 @@ approved design system per `claude.md`). `AUTH_URL` and the restored
 `Cache-Control: no-store` header stay in the codebase either way — both
 are correct, documented NextAuth/self-hosting practice regardless of
 which platform ends up running this.
+
+**Revised same day: target changed again, to Vercel + Neon.** Asked for
+other Railway alternatives; recommended Vercel as the platform built by
+the Next.js team (removes the whole category of "generic reverse proxy
+mishandles App Router streaming" risk this project hit on Railway) —
+you agreed. You also asked to close the Railway project entirely; the
+`delete-service` MCP tool timed out repeatedly (same pattern as the
+TCP-proxy removal on 2026-09-18) so this is left for you to do from the
+Railway dashboard directly (Settings → Delete Project).
+
+Confirmed neither Render's nor Vercel's/Neon's APIs are reachable from
+this sandbox either (same `403` policy denial as Railway's own domain),
+and no MCP tool exists for any of them — every step from here needs you
+to act in their dashboards and relay back what happens, the same as the
+final Railway browser checks.
+
+**Prep done for Vercel:** added a `vercel-build` script to
+`package.json` (`npx prisma generate && bash scripts/migrate.sh && next
+build`) — Vercel runs this in place of a plain `next build` automatically
+when present, so migrations and the bootstrap-admin step happen during
+every build, the same role `scripts/migrate.sh` already plays as a
+pre-deploy step on every other host. Verified locally as far as possible
+without a real database (generate succeeds, migrate.sh correctly attempts
+the connection, `next build` alone already builds clean — the full chain
+already proved itself against a real Postgres on Railway). Rewrote
+`Deployment.md` with Vercel as the recommended option and an honest
+account of what happened on Railway instead of presenting it as
+zero-setup.
+
+**Not yet done:** you haven't created the Neon database or Vercel project
+yet — next step is you working through both dashboards with the values
+in `Deployment.md` §4 Option A, then sharing the resulting `.vercel.app`
+URL and any errors.
