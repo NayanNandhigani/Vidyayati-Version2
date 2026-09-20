@@ -14,7 +14,7 @@ regardless of which you pick.
 The app only needs a standard `DATABASE_URL` connection string — pick
 whichever of these is most convenient:
 
-### Option A — Neon (recommended: free tier, instant per-branch databases)
+### Option A — Neon (recommended: free tier, instant per-branch databases, pairs with Vercel below)
 
 1. Create an account at neon.tech, create a project.
 2. Copy the connection string it gives you (starts `postgresql://`) —
@@ -83,55 +83,69 @@ is not a full substitute for it behind every reverse proxy.
 
 ## 4. Choose app hosting
 
-The app ships as a standard multi-stage `Dockerfile` — any host that runs
-a Docker image and lets you run one pre-deploy command (for migrations)
-works.
+### Option A — Vercel (recommended: built by the Next.js team, no App-Router edge-case risk)
 
-### Option A — Railway (recommended: least setup, matches `railway.json`)
+Vercel doesn't run the `Dockerfile` — it builds directly from the repo
+using its own Next.js-aware build system, which is the safest choice for
+this app specifically: every generic Docker host puts a reverse proxy of
+its own in front of the container, and Next.js App Router's streamed
+page responses (RSC payloads) are a well-known source of proxy-specific
+edge cases on hosts not built around Next.js (see `memory.md`'s
+2026-09-20 entry — this project hit exactly that on Railway, across two
+independent services, never resolved). Vercel has none of that risk.
 
-1. New project → deploy from the GitHub repo. Railway reads
-   `railway.json` automatically: it builds via the `Dockerfile`, runs
-   `scripts/migrate.sh` (`prisma migrate deploy`) as a pre-deploy step
-   before every release, and health-checks `/api/health`.
-2. Add the environment variables from step 3 to the service.
-3. Generate a domain (Railway → Settings → Networking → Generate Domain),
-   or attach a custom one.
+1. **New Project** → import the GitHub repo, branch
+   `claude/vidyayati-2-saas-rebuild-peufo9` (or `main` once merged).
+   Framework preset: Next.js (auto-detected).
+2. Add the environment variables from step 3 in **Project Settings →
+   Environment Variables** (Production, and Preview too if you want PR
+   previews).
+3. Migrations run automatically as part of the build: `package.json`'s
+   `vercel-build` script (`npx prisma generate && bash scripts/migrate.sh
+   && next build`) is what Vercel runs instead of a plain `next build` —
+   it applies every pending migration, then (if
+   `BOOTSTRAP_ADMIN_USERNAME` is set) bootstraps the first Super Admin,
+   before the app itself builds. Read the one-time setup link from the
+   **build** logs (not deploy/runtime logs) in the Vercel dashboard.
+4. Deploy. Vercel gives you a `*.vercel.app` domain immediately — set
+   `AUTH_URL` to it and redeploy (**Deployments → ⋯ → Redeploy**), per
+   the `AUTH_URL` note in step 3 above.
+5. `/api/health` still exists and works the same way, but Vercel doesn't
+   use it as a deploy gate (no configurable healthcheck path — a failed
+   build simply doesn't promote).
 
-### Option B — Render
+### Option B — Railway
+
+The app ships a standard multi-stage `Dockerfile` and a `railway.json`
+that wires up `scripts/migrate.sh` as a pre-deploy step and
+`/api/health` as the healthcheck — in principle this is the least setup
+of any option. In practice, this project's own deploy to Railway hit an
+unresolved production-only issue (every page, not just this app's,
+self-redirected in a loop — confirmed across two unrelated services on
+the same account; see `memory.md`, 2026-09-18/20 entries) that four
+different fixes didn't resolve. Try it if you like, but Vercel is the
+better-tested path for this specific app.
+
+### Option C — Render
 
 1. New → Web Service → connect the repo → Environment: **Docker**.
-2. Render doesn't have a native "pre-deploy command" the way Railway
-   does — either (a) add `RUN` of the migrate step isn't safe (it would
-   run at build time, before secrets are available), so instead add a
-   Render "Job" (or a `postStart` hook) that runs
-   `npx prisma migrate deploy` once per deploy before traffic shifts, or
-   (b) run it manually via Render's shell after each deploy that changes
-   the schema.
+2. **Advanced → Pre-Deploy Command**: `bash scripts/migrate.sh` — Render
+   runs this before each deploy takes traffic, same idea as Railway's
+   `preDeployCommand`. (If your plan doesn't expose that field, run
+   `npx prisma migrate deploy` — and `npm run bootstrap-admin` the first
+   time — from Render's **Shell** tab instead, once per schema change.)
 3. Add the environment variables from step 3.
+4. Render's free Postgres (if you provision one instead of Neon/Supabase)
+   **auto-deletes after 30 days** — fine for testing, not for anything
+   you want to keep without upgrading to a paid plan first.
 
-### Option C — Fly.io
+### Option D — Fly.io
 
 1. `fly launch` (detects the `Dockerfile`) → `fly deploy`.
-2. Add a `release_command = "npx prisma migrate deploy"` under `[deploy]`
+2. Add a `release_command = "bash scripts/migrate.sh"` under `[deploy]`
    in `fly.toml` — Fly runs this automatically before each new version
    takes traffic, equivalent to Railway's `preDeployCommand`.
 3. `fly secrets set` for every variable in step 3.
-
-### Option D — Vercel
-
-Vercel doesn't run arbitrary Docker images or pre-deploy shell commands
-the way the others do, so it needs a workaround:
-1. Deploy the Next.js app to Vercel normally (it builds directly from the
-   repo, ignoring the `Dockerfile`).
-2. Run `prisma migrate deploy` from CI (see step 7) *before* the Vercel
-   deploy is promoted, since Vercel itself has no migration hook — e.g. a
-   GitHub Actions step that runs migrations against `DATABASE_URL`, then
-   triggers or waits for the Vercel deploy.
-3. Add the environment variables from step 3 in the Vercel project
-   settings.
-4. Only use this option if you specifically want Vercel's edge network for
-   the Next.js app — Railway/Render/Fly are simpler for this project since
-   the Dockerfile already does the right thing.
 
 ## 5. First deploy
 
@@ -146,12 +160,14 @@ the way the others do, so it needs a workaround:
 
 There is no seed data — a freshly migrated database has zero users. If
 `BOOTSTRAP_ADMIN_USERNAME` was set in step 3, this is already handled:
-`scripts/migrate.sh` (the pre-deploy step every option in step 4 already
-runs) calls `npm run bootstrap-admin` automatically after migrations, on
-every deploy — it no-ops once a Super Admin exists, so it's safe to leave
-the variable set permanently. Read the one-time setup link from that
-deploy's logs (Railway: the deploy logs tab; Fly:
-`fly logs`; Render: the deploy's log tab):
+`scripts/migrate.sh` calls `npm run bootstrap-admin` automatically after
+migrations — it no-ops once a Super Admin exists, so it's safe to leave
+the variable set permanently. Every option in step 4 runs this script one
+way or another (Vercel: inside the `vercel-build` build step; the others:
+as an explicit pre-deploy command). Read the one-time setup link from
+wherever that host puts those logs (Vercel: the **build** logs, not
+deploy/runtime; Railway: the deploy logs tab; Fly: `fly logs`; Render:
+the deploy's log tab):
 
 ```
 Created the first Super Admin account.
@@ -166,12 +182,11 @@ lost before use, an existing Super Admin can create a new one from inside
 the app instead (Super Admin → Staff), which issues its own one-time link
 the same way.
 
-If your host doesn't support a pre-deploy step (or you'd rather not rely
-on it), run it by hand once instead, from anywhere with `DATABASE_URL`
-and the `BOOTSTRAP_ADMIN_*` variables set (Railway: `railway run npm run
-bootstrap-admin`; Fly: `fly ssh console` + run it; Render: the shell tab;
-Vercel: run it from your own machine against the same `DATABASE_URL`,
-since Vercel has no shell):
+If you're not on Vercel and your host doesn't support a pre-deploy step
+(or you'd rather not rely on it), run it by hand once instead, from
+anywhere with `DATABASE_URL` and the `BOOTSTRAP_ADMIN_*` variables set
+(Railway: `railway run npm run bootstrap-admin`; Fly: `fly ssh console` +
+run it; Render: the shell tab):
 
 ```bash
 npm run bootstrap-admin
