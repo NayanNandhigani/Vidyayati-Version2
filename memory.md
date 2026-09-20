@@ -185,3 +185,56 @@ Left the temporary `[page-debug]`/`[middleware-debug]` console.log
 statements in place for this one deploy, specifically to confirm the fix
 before removing them — the next entry should confirm success and clean
 those up.
+
+---
+
+## 2026-09-20 — Railway redirect loop: unresolved after four fix attempts; moving to Render
+
+Continued the `/signin` investigation. In order, all deployed and
+retested against the live URL:
+
+1. **`AUTH_URL` set to the exact public domain** — no change.
+2. **Restored `next.config.js`'s `Cache-Control: no-store` `headers()`**
+   (had been pulled by the original team while debugging the same issue on
+   the source project) — no change.
+3. **Forced the Railway service off its default Railpack builder onto the
+   project's actual `Dockerfile`** (`get-service-config` had shown
+   `build.builder: RAILPACK` despite `railway.json` specifying
+   `DOCKERFILE` — Railway's own service config silently overrides the
+   repo file). Confirmed via build logs this genuinely built through
+   BuildKit from the Dockerfile this time. No change.
+4. **Changed the service's region** (dashboard, `sfo` → a different
+   region) — no change; a `/diag` page that had briefly worked on one
+   Railway deploy started looping too on the next.
+
+**Decisive evidence this isn't application code:** checked
+`vidyayati-app-fresh`, a completely unrelated Railway service in a
+different project on the same account (from the *original* Vidyayati
+repo, deployed a day earlier, never touched by anything in this session)
+— it shows the identical `/signin` → 307-self-redirect pattern. Two
+services, two projects, two domains, both on `sfo`: this is a Railway
+account/region-level issue, not a bug in this codebase. (A fifth test —
+whether `next/font/google` in the root layout was implicated — was queued
+but never got real traffic before the decision below was made; the
+change was reverted untested, see the cleanup entry below.)
+
+Also confirmed directly: this sandbox's network egress policy blocks
+`*.up.railway.app` and `api.render.com` entirely (`403` at the proxy),
+for every tool including a real headless Chromium via Playwright — so
+none of this could be verified by fetching the URL directly from here;
+every test relied on Railway's own logs plus you reloading the page.
+
+**Decision (yours): move off Railway entirely.** Postgres stays
+provisioned on Railway for now but the app won't be re-deployed there.
+Fresh deployment target: **Render**, both the app and a new Render
+Postgres (free tier — you were told and acknowledged it auto-deletes
+after 30 days; revisit before then).
+
+**Cleanup done same day:** removed the `[page-debug]` /
+`[middleware-debug]` / `[layout-debug]` console.log statements, deleted
+the temporary `/diag` page, and reverted the untested `next/font/google`
+removal (restored Fraunces/Plus Jakarta Sans/IBM Plex Mono — the
+approved design system per `claude.md`). `AUTH_URL` and the restored
+`Cache-Control: no-store` header stay in the codebase either way — both
+are correct, documented NextAuth/self-hosting practice regardless of
+which platform ends up running this.
