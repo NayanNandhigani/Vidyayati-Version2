@@ -13,6 +13,9 @@
 .env*.local
 
 
+# temporary local dev database (embedded-postgres, not part of this project's design)
+.local-dev/
+
 # misc
 .DS_Store
 *.pem
