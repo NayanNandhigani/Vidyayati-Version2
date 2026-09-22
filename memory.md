@@ -267,7 +267,23 @@ already proved itself against a real Postgres on Railway). Rewrote
 account of what happened on Railway instead of presenting it as
 zero-setup.
 
-**Not yet done:** you haven't created the Neon database or Vercel project
-yet — next step is you working through both dashboards with the values
-in `Deployment.md` §4 Option A, then sharing the resulting `.vercel.app`
-URL and any errors.
+**Live.** You provisioned Neon (project "Vidyayati", `production` branch,
+pooled connection string, `ap-southeast-2`) and a Vercel project from the
+GitHub repo, set `DATABASE_URL`/`AUTH_SECRET`/`BOOTSTRAP_ADMIN_USERNAME`/
+`BOOTSTRAP_ADMIN_NAME`/`BOOTSTRAP_ADMIN_EMAIL` (AWS S3 vars left blank —
+still deferred), deployed, then added `AUTH_URL` and redeployed once the
+domain was known. Both builds succeeded: the first applied all 67
+migrations and bootstrapped the Super Admin (`vidyayati-admin`) via
+`vercel-build`, exactly as designed; the `channel_binding=require` Neon
+connection-string parameter some Prisma versions choke on was not an
+issue here. Live at **https://vidyayati-version2.vercel.app**. This
+sandbox still can't reach `*.vercel.app` to verify directly (same egress
+policy as Railway/Render), so this is taken on your build-log report,
+which showed no errors.
+
+**Open items:** AWS S3 (file uploads — photos, certificates, documents,
+ID cards — will error until `AWS_S3_BUCKET`/`AWS_REGION`/
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` are set); the one-time
+`/setup-account` link for `vidyayati-admin` still needs to be visited to
+set a real password. `Deployment.md` §4 Option A (Vercel) reflects the
+process that was actually used, end to end.
