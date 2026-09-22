@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { setSchoolLoginBlock, updateSchoolAdminAccount, type ManageFormState } from "../actions";
+import { setSchoolLoginBlock, updateSchoolAdminAccount, resetSchoolAdminPassword, type ManageFormState } from "../actions";
 
 const initialState: ManageFormState = {};
 
@@ -17,10 +17,16 @@ export default function AccessControlPanel({
   const [blockPending, startBlockTransition] = useTransition();
   const [editingAccount, setEditingAccount] = useState(false);
   const [state, formAction, pending] = useActionState(updateSchoolAdminAccount, initialState);
+  const [resetState, resetAction, resetPending] = useActionState(resetSchoolAdminPassword, initialState);
+  const [resetDone, setResetDone] = useState(false);
 
   useEffect(() => {
     if (state.success) setEditingAccount(false);
   }, [state.success]);
+
+  useEffect(() => {
+    if (resetState.success) setResetDone(true);
+  }, [resetState.success]);
 
   function toggleBlock() {
     startBlockTransition(async () => {
@@ -73,13 +79,41 @@ export default function AccessControlPanel({
         {!admin ? (
           <div style={{ fontSize: 12.5, color: "var(--faint)" }}>No School Admin account found for this school.</div>
         ) : !editingAccount ? (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
-            <div>
-              <span style={{ color: "var(--muted)" }}>School Admin:</span> {admin.name} · <span className="mono">{admin.username}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
+              <div>
+                <span style={{ color: "var(--muted)" }}>School Admin:</span> {admin.name} · <span className="mono">{admin.username}</span>
+              </div>
+              <div style={{ display: "flex", gap: 14 }}>
+                <span
+                  onClick={() => {
+                    if (resetPending) return;
+                    if (!confirm(`Reset ${admin.name}'s password to "123456"? They'll be required to set a new password the next time they sign in.`)) return;
+                    setResetDone(false);
+                    const fd = new FormData();
+                    fd.set("userId", admin.id);
+                    fd.set("schoolId", schoolId);
+                    resetAction(fd);
+                  }}
+                  style={{ cursor: resetPending ? "default" : "pointer", color: "var(--critical)", fontSize: 12, fontWeight: 600, opacity: resetPending ? 0.6 : 1 }}
+                >
+                  {resetPending ? "Resetting…" : "Reset password"}
+                </span>
+                <span onClick={() => setEditingAccount(true)} style={{ cursor: "pointer", color: "var(--marigold-deep)", fontSize: 12, fontWeight: 600 }}>
+                  Change
+                </span>
+              </div>
             </div>
-            <span onClick={() => setEditingAccount(true)} style={{ cursor: "pointer", color: "var(--marigold-deep)", fontSize: 12, fontWeight: 600 }}>
-              Change
-            </span>
+            {resetDone && (
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--good)", background: "var(--good-tint)", border: "1px solid var(--good)", borderRadius: 8, padding: "7px 10px" }}>
+                Password reset to <span className="mono">123456</span>. They&apos;ll be asked to set a new one the next time they sign in.
+              </p>
+            )}
+            {resetState.error && (
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--critical)", background: "var(--critical-tint)", border: "1px solid var(--critical-border)", borderRadius: 8, padding: "7px 10px" }}>
+                {resetState.error}
+              </p>
+            )}
           </div>
         ) : (
           <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
