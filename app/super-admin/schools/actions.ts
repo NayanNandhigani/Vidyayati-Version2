@@ -21,7 +21,7 @@ import { createPendingAccount } from "@/lib/account-setup";
 // this safe: middleware.ts traps every session with that flag on the
 // change-password route until a real password is set, so 123456 only ever
 // works for the single login immediately after a reset.
-export const RESET_PASSWORD_DEFAULT = "123456";
+const RESET_PASSWORD_DEFAULT = "123456";
 
 const AADHAR_PATTERN = /^\d{12}$/;
 
