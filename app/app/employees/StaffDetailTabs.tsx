@@ -129,7 +129,14 @@ export default function StaffDetailTabs({
     });
   }
 
+  const [confirmingStructuredRun, setConfirmingStructuredRun] = useState(false);
+
   function runStructured() {
+    if (existingRunForMonth && !confirmingStructuredRun) {
+      setConfirmingStructuredRun(true);
+      return;
+    }
+    setConfirmingStructuredRun(false);
     startTransition(async () => {
       const res = await runStructuredPayroll(staff.id, currentMonth);
       setStructuredResult(res);
@@ -174,9 +181,17 @@ export default function StaffDetailTabs({
     });
   }
 
+  const existingRunForMonth = payrollRuns.find((p) => p.month === currentMonth);
+  const [confirmingPay, setConfirmingPay] = useState(false);
+
   function pay() {
     const amount = Number(payAmount);
     if (!amount || amount <= 0) return;
+    if (existingRunForMonth && !confirmingPay) {
+      setConfirmingPay(true);
+      return;
+    }
+    setConfirmingPay(false);
     startTransition(async () => {
       await runPayroll(staff.id, currentMonth, amount);
       setPayAmount("");
@@ -373,11 +388,35 @@ export default function StaffDetailTabs({
           <>
             <SectionTitle>Run payroll — {currentMonth}</SectionTitle>
             {isAdmin && (
-              <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-                <input className="in mono" type="number" placeholder="Amount" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} style={{ flex: 1 }} />
-                <button onClick={pay} disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "0 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                  Pay
-                </button>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="in mono"
+                    type="number"
+                    placeholder="Amount"
+                    value={payAmount}
+                    onChange={(e) => {
+                      setPayAmount(e.target.value);
+                      setConfirmingPay(false);
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <button onClick={pay} disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "0 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                    {existingRunForMonth ? "Update payslip" : "Pay"}
+                  </button>
+                </div>
+                {confirmingPay && existingRunForMonth && (
+                  <div style={{ marginTop: 8, background: "var(--warn-tint)", border: "1px solid var(--warn)", borderRadius: 8, padding: "10px 12px", fontSize: 12.5 }}>
+                    This replaces the {currentMonth} payslip (currently ₹{existingRunForMonth.amount.toLocaleString("en-IN")}) and its linked Accounts entry with ₹{(Number(payAmount) || 0).toLocaleString("en-IN")}.{" "}
+                    <span onClick={pay} style={{ fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
+                      Confirm update
+                    </span>{" "}
+                    ·{" "}
+                    <span onClick={() => setConfirmingPay(false)} style={{ fontWeight: 700, cursor: "pointer" }}>
+                      Cancel
+                    </span>
+                  </div>
+                )}
               </div>
             )}
             {latestPay && (
@@ -424,13 +463,27 @@ export default function StaffDetailTabs({
                   </div>
                 )}
                 {isAdmin && salaryComponents.length > 0 && (
-                  <button
-                    onClick={runStructured}
-                    disabled={pending}
-                    style={{ background: "var(--teal)", color: "#fff", border: "none", borderRadius: 8, padding: 10, textAlign: "center", fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%", marginBottom: 14 }}
-                  >
-                    Run structured payroll — {currentMonth}
-                  </button>
+                  <>
+                    <button
+                      onClick={runStructured}
+                      disabled={pending}
+                      style={{ background: "var(--teal)", color: "#fff", border: "none", borderRadius: 8, padding: 10, textAlign: "center", fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%", marginBottom: confirmingStructuredRun ? 8 : 14 }}
+                    >
+                      {existingRunForMonth ? `Update structured payslip — ${currentMonth}` : `Run structured payroll — ${currentMonth}`}
+                    </button>
+                    {confirmingStructuredRun && (
+                      <div style={{ marginBottom: 14, background: "var(--warn-tint)", border: "1px solid var(--warn)", borderRadius: 8, padding: "10px 12px", fontSize: 12.5 }}>
+                        This replaces the {currentMonth} payslip and its linked Accounts entry.{" "}
+                        <span onClick={runStructured} style={{ fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
+                          Confirm update
+                        </span>{" "}
+                        ·{" "}
+                        <span onClick={() => setConfirmingStructuredRun(false)} style={{ fontWeight: 700, cursor: "pointer" }}>
+                          Cancel
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
                 {structuredResult && (
                   <div style={{ background: "var(--paper)", borderRadius: 8, padding: 12, marginBottom: 18, fontSize: 12 }}>

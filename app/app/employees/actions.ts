@@ -121,23 +121,33 @@ export async function runPayroll(staffId: string, month: string, amount: number)
 
   const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, include: { user: true } });
 
-  const [run] = await sdb.$transaction([
-    sdb.payrollRun.upsert({
+  // One payroll run per staff/month (enforced by the staffId_month unique
+  // constraint) — a re-run for the same month EDITS this same run and its
+  // linked Accounts row (matched by payrollRunId, also unique) instead of
+  // creating a second ledger entry. Interactive transaction because the
+  // Accounts upsert needs the run's id, which only exists after the first
+  // write.
+  const run = await sdb.$transaction(async (tx) => {
+    const run = await tx.payrollRun.upsert({
       where: { staffId_month: { staffId, month } },
       update: { amount, status: "PAID", paidOn: new Date() },
       create: scopedCreateData<Prisma.PayrollRunUncheckedCreateInput>({ staffId, month, amount, status: "PAID", paidOn: new Date() }),
-    }),
-    sdb.accountsTransaction.create({
-      data: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
+    });
+    await tx.accountsTransaction.upsert({
+      where: { payrollRunId: run.id },
+      update: { date: new Date(), description: `Staff salary — ${staff.user.name} (${month})`, amount },
+      create: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
         date: new Date(),
         description: `Staff salary — ${staff.user.name} (${month})`,
         category: "Payroll",
         source: "AUTO_PAYROLL",
         type: "EXPENSE",
         amount,
+        payrollRunId: run.id,
       }),
-    }),
-  ]);
+    });
+    return run;
+  });
 
   revalidatePath(`/app/employees/${staffId}`);
   revalidatePath("/app/accounts");

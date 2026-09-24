@@ -69,8 +69,12 @@ export async function runStructuredPayroll(staffId: string, month: string) {
 
   const net = Math.max(0, gross - pf - esi - tds - pt - lop);
 
-  await sdb.$transaction([
-    sdb.payrollRun.upsert({
+  // See employees/actions.ts's runPayroll for why this is an interactive
+  // transaction keyed by payrollRunId rather than two independent creates —
+  // a same-month re-run must edit the one linked Accounts row, not add a
+  // second one.
+  await sdb.$transaction(async (tx) => {
+    const run = await tx.payrollRun.upsert({
       where: { staffId_month: { staffId, month } },
       update: { amount: net, status: "PAID", paidOn: new Date(), grossAmount: gross, pfAmount: pf, esiAmount: esi, tdsAmount: tds, ptAmount: pt, lopAmount: lop || null },
       create: scopedCreateData<Prisma.PayrollRunUncheckedCreateInput>({
@@ -86,18 +90,21 @@ export async function runStructuredPayroll(staffId: string, month: string) {
         ptAmount: pt,
         lopAmount: lop || null,
       }),
-    }),
-    sdb.accountsTransaction.create({
-      data: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
+    });
+    await tx.accountsTransaction.upsert({
+      where: { payrollRunId: run.id },
+      update: { date: new Date(), description: `Staff salary — ${staff.user.name} (${month})`, amount: net },
+      create: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
         date: new Date(),
         description: `Staff salary — ${staff.user.name} (${month})`,
         category: "Payroll",
         source: "AUTO_PAYROLL",
         type: "EXPENSE",
         amount: net,
+        payrollRunId: run.id,
       }),
-    }),
-  ]);
+    });
+  });
 
   revalidatePath(`/app/employees/${staffId}`);
   revalidatePath("/app/accounts");

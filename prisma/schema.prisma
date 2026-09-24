@@ -1910,6 +1910,13 @@ model AccountsTransaction {
   amount         Decimal           @db.Decimal(12, 2)
   accountHeadId  String?           @map("account_head_id") // optional structured tagging on top of the free-text `category` above — category stays as-is
   accountHead    SchoolAccountHead? @relation(fields: [accountHeadId], references: [id])
+
+  // The payroll run this row was auto-posted from, when source is
+  // AUTO_PAYROLL — unique so a re-run of the same staff/month upserts this
+  // same row (by payrollRunId) instead of creating a second one. Null for
+  // every other source, including manual rows and other AUTO_* sources.
+  payrollRunId   String?           @unique @map("payroll_run_id")
+  payrollRun     PayrollRun?       @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
   approvalStatus TxnApprovalStatus @default(NONE) @map("approval_status") // PENDING rows are excluded from every balance/report computation until approved — see requireFeature("accounts.approvals")
 
   @@index([schoolId])
@@ -1965,6 +1972,8 @@ model PayrollRun {
   tdsAmount   Decimal? @map("tds_amount") @db.Decimal(12, 2)
   ptAmount    Decimal? @map("pt_amount") @db.Decimal(12, 2)
   lopAmount   Decimal? @map("lop_amount") @db.Decimal(12, 2) // loss-of-pay deduction — populated once Batch 11's staff leave balances exist to compute it from
+
+  accountsTransaction AccountsTransaction?
 
   @@unique([staffId, month])
   @@index([schoolId])

@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
+    "dedupe-payroll-accounts": "tsx scripts/dedupe-payroll-accounts.ts",
     "vercel-build": "npx prisma generate && bash scripts/migrate.sh && next build"
   },
   "dependencies": {
