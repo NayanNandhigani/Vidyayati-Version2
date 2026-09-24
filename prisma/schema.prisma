@@ -2031,6 +2031,10 @@ model AdmissionEnquiry {
   // optional — this is a form to fill progressively, not a hard gate.
   parentName             String? @map("parent_name") // Enquiry-stage "Parent name" quick-capture, before the fuller father/mother/guardian breakdown below
   address                String? @map("address") @db.Text // Enquiry-stage quick-capture address, before the fuller permanent/current split below
+  enquirySource          String? @map("enquiry_source") // e.g. "Walk-in", "Referral", "Website", "Phone" — free text, school-defined
+  followUpDate           DateTime? @map("follow_up_date")
+  notes                  String? @map("notes") @db.Text
+  rejectionReason        String? @map("rejection_reason")
 
   photoPath              String?   @map("photo_path")
   dob                    DateTime?

@@ -6,7 +6,7 @@ import { createEnquiry, type EnquiryFormState } from "../actions";
 
 const initialState: EnquiryFormState = {};
 
-export default function NewEnquiryForm() {
+export default function NewEnquiryForm({ grades }: { grades: string[] }) {
   const [state, formAction, pending] = useActionState(createEnquiry, initialState);
 
   return (
@@ -16,12 +16,29 @@ export default function NewEnquiryForm() {
         <input className="in" name="applicantName" required placeholder="Priya Nair" />
       </label>
       <label className="field">
+        Date of birth
+        <input className="in mono" name="dob" type="date" />
+      </label>
+      <label className="field">
+        Gender
+        <select className="in" name="gender" defaultValue="">
+          <option value="">—</option>
+          <option value="MALE">Male</option>
+          <option value="FEMALE">Female</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </label>
+      <label className="field">
         Parent name
         <input className="in" name="parentName" placeholder="Ravi Nair" />
       </label>
       <label className="field">
         Contact number
-        <input className="in mono" name="parentContact" required placeholder="+91 98XXX XXXXX" />
+        <input className="in mono" name="parentContact" required placeholder="+91 98XXXXXXXX" />
+      </label>
+      <label className="field">
+        Email <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
+        <input className="in" name="email" type="email" placeholder="parent@example.com" />
       </label>
       <label className="field">
         Address
@@ -29,7 +46,35 @@ export default function NewEnquiryForm() {
       </label>
       <label className="field">
         Class applying for
-        <input className="in" name="classApplied" required placeholder="Class 2" />
+        <select className="in" name="classApplied" required defaultValue="">
+          <option value="" disabled>
+            Select a class
+          </option>
+          {grades.map((g) => (
+            <option key={g} value={g}>
+              Class {g}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        Enquiry source <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
+        <select className="in" name="enquirySource" defaultValue="">
+          <option value="">—</option>
+          <option>Walk-in</option>
+          <option>Referral</option>
+          <option>Website</option>
+          <option>Phone</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label className="field">
+        Follow-up date <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
+        <input className="in mono" name="followUpDate" type="date" />
+      </label>
+      <label className="field">
+        Notes <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
+        <textarea className="in" name="notes" rows={2} />
       </label>
 
       {state.error && (

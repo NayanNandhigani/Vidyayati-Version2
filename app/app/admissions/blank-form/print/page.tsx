@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { requireFeature } from "@/lib/feature-flags";
 import PrintButton from "../../[id]/print/PrintButton";
 
 function Field({ label }: { label: string }) {
@@ -29,7 +28,6 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 export default async function BlankAdmissionFormPrintPage() {
   await requireModuleAccess("Admissions", "VIEW");
   const session = await auth();
-  await requireFeature(session!.user.schoolId, "admissions.detailedForm");
 
   const sdb = await getScopedDb();
   const school = await sdb.school.findUniqueOrThrow({ where: { id: session!.user.schoolId! }, select: { name: true, addressLine: true, city: true, state: true } });

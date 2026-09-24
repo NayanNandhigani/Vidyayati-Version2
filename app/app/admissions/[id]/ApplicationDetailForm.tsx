@@ -72,7 +72,15 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
   });
   const [saved, setSaved] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [classId, setClassId] = useState(classes[0]?.id ?? "");
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [admitResult, setAdmitResult] = useState<{ studentId: string; guardianSetupToken: string | null; guardianName: string | null } | null>(null);
+
+  // Pre-select the section matching what was applied for (e.g. "Class 6"
+  // or "6") — falls back to the first class if nothing matches, same as
+  // before this fix.
+  const matchingClass = classes.find((c) => enquiry.classApplied.replace(/[^0-9]/g, "") === c.grade.replace(/[^0-9]/g, ""));
+  const [classId, setClassId] = useState(matchingClass?.id ?? classes[0]?.id ?? "");
   const [feeDesc, setFeeDesc] = useState("Admission fee");
   const [feeAmount, setFeeAmount] = useState("");
   const [chargedFee, setChargedFee] = useState("");
@@ -96,18 +104,31 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
   function submit() {
     startTransition(() => submitForAdmitApproval(enquiry.id));
   }
+  const [feeError, setFeeError] = useState<string | null>(null);
+
   function approve() {
     if (!classId) return;
     if (chargedFee !== "" && actualFee != null && Number(chargedFee) > actualFee) {
-      alert("Charged fee can't be more than the actual fee.");
+      setFeeError("Charged fee can't be more than the actual fee.");
       return;
     }
+    setFeeError(null);
     startTransition(async () => {
-      await approveAdmissionWithFee(enquiry.id, classId, feeDesc, feeAmount ? Number(feeAmount) : null, chargedFee ? Number(chargedFee) : null);
+      const result = await approveAdmissionWithFee(enquiry.id, classId, feeDesc, feeAmount ? Number(feeAmount) : null, chargedFee ? Number(chargedFee) : null);
+      setAdmitResult(result);
     });
   }
   function reject() {
-    startTransition(() => rejectAdmission(enquiry.id));
+    if (!rejecting) {
+      setRejecting(true);
+      return;
+    }
+    if (!rejectReason.trim()) return;
+    startTransition(async () => {
+      await rejectAdmission(enquiry.id, rejectReason);
+      setRejecting(false);
+      setRejectReason("");
+    });
   }
 
   const disabled = !canEdit || enquiry.stage === "ADMITTED";
@@ -340,6 +361,7 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
               <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
                 Scholarship: <span className="mono" style={{ fontWeight: 700, color: scholarship ? "var(--good)" : "var(--faint)" }}>{scholarship !== null ? `₹${scholarship.toLocaleString("en-IN")}` : "—"}</span>
               </div>
+              {feeError && <div style={{ fontSize: 12, color: "var(--critical)" }}>{feeError}</div>}
               <div style={{ display: "flex", gap: 8 }}>
                 <button type="button" onClick={approve} disabled={pending} style={{ background: "var(--good)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: pending ? "default" : "pointer" }}>
                   {pending ? "Approving…" : "Approve & create student"}
@@ -348,7 +370,39 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
                   Reject
                 </button>
               </div>
+              {rejecting && (
+                <div style={{ background: "var(--critical-tint)", border: "1px solid var(--critical-border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label className="field">
+                    Reason for rejection
+                    <textarea className="in" rows={2} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="e.g. Seats full for this grade" />
+                  </label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" onClick={reject} disabled={pending || !rejectReason.trim()} style={{ background: "var(--critical)", color: "#fff", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: pending ? "default" : "pointer" }}>
+                      Confirm reject
+                    </button>
+                    <button type="button" onClick={() => setRejecting(false)} style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, padding: "7px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
+        </div>
+      )}
+
+      {admitResult && (
+        <div style={{ background: "var(--good-tint)", border: "1px solid var(--good)", borderRadius: 8, padding: 14 }}>
+          <div style={{ fontWeight: 700, color: "var(--good)", marginBottom: 6 }}>Student admitted.</div>
+          {admitResult.guardianSetupToken ? (
+            <div style={{ fontSize: 12.5 }}>
+              A new login was created for {admitResult.guardianName}. Share this one-time setup link now — it won't be shown again:
+              <div className="mono" style={{ marginTop: 6, padding: "8px 10px", background: "var(--card)", borderRadius: 6, wordBreak: "break-all", fontSize: 11.5 }}>
+                {typeof window !== "undefined" ? window.location.origin : ""}/setup-account?token={admitResult.guardianSetupToken}
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12.5, color: "var(--muted)" }}>The guardian's login already existed (or none was captured) — nothing new to share.</div>
           )}
         </div>
       )}

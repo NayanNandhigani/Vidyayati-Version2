@@ -5,14 +5,9 @@ import { Prisma, Gender } from "@prisma/client";
 import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { requireFeature } from "@/lib/feature-flags";
 import { enrollStudent } from "@/lib/domain/enrollment";
 import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
-
-async function schoolId() {
-  const session = await auth();
-  return session!.user.schoolId!;
-}
+import { createGuardianAccountForEnquiry } from "./guardian";
 
 export type ApplicationFields = {
   photoPath: string | null;
@@ -46,7 +41,6 @@ export type ApplicationFields = {
 
 export async function updateApplicationDetails(enquiryId: string, fields: ApplicationFields) {
   await requireModuleAccess("Admissions", "EDIT");
-  await requireFeature(await schoolId(), "admissions.detailedForm");
   const sdb = await getScopedDb();
   await sdb.admissionEnquiry.update({
     where: { id: enquiryId },
@@ -59,7 +53,6 @@ export async function updateApplicationDetails(enquiryId: string, fields: Applic
 /** The "Admit" button on a filled-in Application — flags it to the School Admin instead of creating the student immediately. */
 export async function submitForAdmitApproval(enquiryId: string) {
   await requireModuleAccess("Admissions", "EDIT");
-  await requireFeature(await schoolId(), "admissions.detailedForm");
   const sdb = await getScopedDb();
   await sdb.admissionEnquiry.update({
     where: { id: enquiryId },
@@ -74,8 +67,8 @@ export async function submitForAdmitApproval(enquiryId: string) {
  * only ever held a free-text classApplied) and, optionally, an opening
  * fee for the new student (reuses FeeAdjustment, same mechanism as the
  * Fees module's own "additional charge", rather than inventing a second
- * one). Creates the Student exactly as the existing, untouched
- * admitEnquiry does for schools without this feature.
+ * one). Creates the Student, generates their fee instalments, and
+ * creates/links the Guardian(s) captured on the application.
  */
 export async function approveAdmissionWithFee(
   enquiryId: string,
@@ -85,7 +78,6 @@ export async function approveAdmissionWithFee(
   chargedFee: number | null
 ) {
   await requireModuleAccess("Admissions", "EDIT");
-  await requireFeature(await schoolId(), "admissions.detailedForm");
   const session = await auth();
   if (session!.user.role !== "SCHOOL_ADMIN") throw new Error("Only a School Admin can approve an admission.");
   const sdb = await getScopedDb();
@@ -142,22 +134,23 @@ export async function approveAdmissionWithFee(
   });
 
   await generateInstalmentsForStudent(sdb, student.id, classId, targetClass.yearId);
+  const guardian = await createGuardianAccountForEnquiry(sdb, enquiry, student.id);
 
   revalidatePath("/app/admissions");
   revalidatePath("/app/students");
   revalidatePath("/app/fees");
-  return { studentId: student.id };
+  return { studentId: student.id, guardianSetupToken: guardian?.setupToken ?? null, guardianName: guardian?.guardianName ?? null };
 }
 
-export async function rejectAdmission(enquiryId: string) {
+export async function rejectAdmission(enquiryId: string, reason: string) {
   await requireModuleAccess("Admissions", "EDIT");
-  await requireFeature(await schoolId(), "admissions.detailedForm");
   const session = await auth();
   if (session!.user.role !== "SCHOOL_ADMIN") throw new Error("Only a School Admin can reject an admission.");
+  if (!reason.trim()) throw new Error("A rejection reason is required.");
   const sdb = await getScopedDb();
   await sdb.admissionEnquiry.update({
     where: { id: enquiryId },
-    data: { approvalStatus: "REJECTED", approvalActionAt: new Date() },
+    data: { approvalStatus: "REJECTED", approvalActionAt: new Date(), rejectionReason: reason.trim() },
   });
   revalidatePath("/app/admissions");
   revalidatePath(`/app/admissions/${enquiryId}`);

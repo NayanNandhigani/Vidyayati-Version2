@@ -167,11 +167,6 @@ export const FEATURE_REGISTRY = {
     label: "Multi-branch group rollup",
     description: "Tag this school as part of a group so Super Admin can view cross-branch rollup reports.",
   },
-  "admissions.detailedForm": {
-    module: "Admissions",
-    label: "Detailed application form & admit approval",
-    description: "Full student/parent/address/health/academic-reference application form, a printable admission form, and an admit-approval workflow before a student is created.",
-  },
 } as const;
 
 export type FeatureKey = keyof typeof FEATURE_REGISTRY;

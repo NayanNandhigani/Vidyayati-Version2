@@ -2,7 +2,6 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { hasFeature } from "@/lib/feature-flags";
 import AdmissionsBoard from "./AdmissionsBoard";
 
 export default async function AdmissionsPage() {
@@ -11,10 +10,9 @@ export default async function AdmissionsPage() {
   const session = await auth();
   const sdb = await getScopedDb();
 
-  const [enquiries, classes, showDetailedForm] = await Promise.all([
+  const [enquiries, classes] = await Promise.all([
     sdb.admissionEnquiry.findMany({ orderBy: { createdAt: "desc" } }),
     sdb.class.findMany({ orderBy: [{ grade: "asc" }, { section: "asc" }] }),
-    hasFeature(session!.user.schoolId, "admissions.detailedForm"),
   ]);
 
   return (
@@ -24,15 +22,13 @@ export default async function AdmissionsPage() {
           Admissions pipeline
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          {showDetailedForm && (
-            <Link
-              href="/app/admissions/blank-form/print"
-              target="_blank"
-              style={{ background: "var(--card)", border: "1px solid var(--line)", color: "var(--ink)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}
-            >
-              View Admission Form
-            </Link>
-          )}
+          <Link
+            href="/app/admissions/blank-form/print"
+            target="_blank"
+            style={{ background: "var(--card)", border: "1px solid var(--line)", color: "var(--ink)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}
+          >
+            View Admission Form
+          </Link>
           {canEdit && (
             <Link href="/app/admissions/new" style={{ background: "var(--marigold)", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
               + New Enquiry
@@ -42,10 +38,28 @@ export default async function AdmissionsPage() {
       </div>
 
       <AdmissionsBoard
-        enquiries={enquiries.map((e) => ({ id: e.id, applicantName: e.applicantName, parentContact: e.parentContact, classApplied: e.classApplied, stage: e.stage, approvalStatus: e.approvalStatus }))}
-        classes={classes}
+        enquiries={enquiries.map((e) => ({
+          id: e.id,
+          applicantName: e.applicantName,
+          dob: e.dob?.toISOString().slice(0, 10) ?? null,
+          gender: e.gender,
+          parentContact: e.parentContact,
+          email: e.email,
+          classApplied: e.classApplied,
+          stage: e.stage,
+          approvalStatus: e.approvalStatus,
+          convertedStudentId: e.convertedStudentId,
+          rejectionReason: e.rejectionReason,
+          parentName: e.parentName,
+          address: e.address,
+          enquirySource: e.enquirySource,
+          followUpDate: e.followUpDate?.toISOString().slice(0, 10) ?? null,
+          notes: e.notes,
+          createdAt: e.createdAt.toISOString(),
+        }))}
+        classes={classes.map((c) => ({ id: c.id, grade: c.grade, section: c.section }))}
         canEdit={canEdit}
-        showDetailedForm={showDetailedForm}
+        isAdmin={session!.user.role === "SCHOOL_ADMIN"}
       />
     </div>
   );

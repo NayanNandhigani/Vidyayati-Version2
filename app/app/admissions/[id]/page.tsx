@@ -3,14 +3,12 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { requireFeature } from "@/lib/feature-flags";
 import ApplicationDetailForm from "./ApplicationDetailForm";
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const accessLevel = await requireModuleAccess("Admissions", "VIEW");
   const canEdit = accessLevel === "EDIT";
   const session = await auth();
-  await requireFeature(session!.user.schoolId, "admissions.detailedForm");
 
   const { id } = await params;
   const sdb = await getScopedDb();
