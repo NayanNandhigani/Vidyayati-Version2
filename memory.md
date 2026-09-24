@@ -339,6 +339,26 @@ will apply the same way every other migration here does — via
 fix's "how to verify" steps (in the QA prompt, §1.1) against a real
 deploy before trusting it fully.
 
-Remaining: 1.2 (payroll double-posts to Accounts on a same-month re-run),
-1.3 (admissions loses enquiry data, no real application stage), 1.4
-(students/employees can't be edited after saving), then Priorities 2–5.
+**1.2 — Payroll: a same-month re-run overwrote the payslip but duplicated
+the Accounts entry.** Root cause: both `runPayroll` and
+`runStructuredPayroll` correctly upserted `PayrollRun` (unique on
+staffId+month) but always `create`d a new `AccountsTransaction` — a
+second run for the same month left the payslip correct but the ledger
+holding both the old and new amounts, permanently disagreeing.
+
+Fix (commit `6f0a647`): `AccountsTransaction` gained a unique
+`payrollRunId`; both payroll actions now run an interactive transaction
+that upserts the Accounts row keyed by the run's id, so a re-run edits
+the one linked ledger row instead of adding a second. `StaffDetailTabs`
+shows an inline confirmation (old amount → new amount, no
+`window.confirm`) before overwriting an existing month's payslip. The
+migration links each existing AUTO_PAYROLL row to its `PayrollRun` by
+matching description, leaving true duplicates (like the QA test tenant's
+"QA Maths Teacher" September double-pay) unlinked rather than deleting
+them; `scripts/dedupe-payroll-accounts.ts` (dry-run by default, `--apply`
+to delete) is the one-off cleanup for those, meant to be run once after
+this migration deploys.
+
+Remaining: 1.3 (admissions loses enquiry data, no real application
+stage), 1.4 (students/employees can't be edited after saving), then
+Priorities 2–5.
