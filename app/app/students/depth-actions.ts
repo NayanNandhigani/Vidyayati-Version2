@@ -6,6 +6,9 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature, hasFeature } from "@/lib/feature-flags";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
+import { findOrLinkGuardian } from "@/lib/guardian";
+import { validatePhone, validateOptionalEmail } from "@/lib/validation";
+import type { ParentRelation } from "@prisma/client";
 
 async function schoolId() {
   const session = await auth();
@@ -75,6 +78,36 @@ export async function updateGuardianContactPreference(parentId: string, preferre
   await requireModuleAccess("Students", "EDIT");
   await sdb.parent.update({ where: { id: parentId }, data: { preferredContactMethod: preferredContactMethod || null } });
   revalidatePath(`/app/students`);
+}
+
+/** Adds a guardian to a student — reuses an existing Parent by phone (e.g. a sibling's guardian) or creates a new one + login, same as the admissions admit flow. Returns a one-time setup link when a new login was created. */
+export async function addGuardianToStudent(
+  studentId: string,
+  fields: { name: string; relation: ParentRelation; phone: string; email: string }
+): Promise<{ error?: string; setupToken?: string }> {
+  const sdb = await getScopedDb();
+  const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId } });
+  await requireModuleAccess("Students", "EDIT", student.classId);
+
+  if (!fields.name.trim()) return { error: "Guardian name is required." };
+  const phoneErr = validatePhone(fields.phone, "Phone number");
+  if (phoneErr) return { error: phoneErr };
+  const emailErr = validateOptionalEmail(fields.email);
+  if (emailErr) return { error: emailErr };
+
+  const result = await findOrLinkGuardian(sdb, studentId, { name: fields.name, phone: fields.phone, email: fields.email || null, relation: fields.relation });
+  revalidatePath(`/app/students/${studentId}`);
+  return { setupToken: result?.setupToken };
+}
+
+/** Unlinks a guardian from this student — doesn't delete the Parent/User account itself (they may be linked to other students, or the school may want to keep the account for re-linking later). */
+export async function unlinkGuardian(studentId: string, linkId: string) {
+  const sdb = await getScopedDb();
+  const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId } });
+  await requireModuleAccess("Students", "EDIT", student.classId);
+
+  await sdb.studentParentLink.delete({ where: { id: linkId } });
+  revalidatePath(`/app/students/${studentId}`);
 }
 
 export async function addStudentDocument(studentId: string, category: string, formData: FormData) {

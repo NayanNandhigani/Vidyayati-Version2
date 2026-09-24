@@ -761,6 +761,7 @@ model StaffProfile {
   staffCategory    StaffCategory    @default(TEACHING) @map("staff_category") // drives the Teaching/Non-teaching attendance split on the Dashboard
   dateJoined       DateTime?        @map("date_joined")
   employmentStatus EmploymentStatus @default(ACTIVE) @map("employment_status")
+  deletedAt        DateTime?        @map("deleted_at") // soft delete — distinct from User.status (which just blocks login, e.g. a temporary deactivation); a deleted staff member is hidden from Employees listings but keeps their history (payroll, attendance, permissions)
   photoPath        String?          @map("photo_path") // set from the ID Card Templates preview screen — no dedicated upload UI elsewhere yet
   qualifications   String?          @db.Text
   specialization   String? // e.g. "Mathematics, Grades 6-10"
@@ -1131,6 +1132,8 @@ model ClassSubjectTeacher {
 enum StudentStatus {
   ACTIVE
   ALUMNI
+  TRANSFERRED
+  INACTIVE
 }
 
 enum Gender {
@@ -1163,6 +1166,12 @@ model Student {
   // immediately for every student in that grade. Scholarship is never
   // stored either: it's always that grade's actual fee minus this field.
   chargedFee Decimal? @map("charged_fee") @db.Decimal(12, 2)
+
+  // Set when status moves to TRANSFERRED — the transfer certificate date.
+  // Not reused for anything else; previousTcDate/previousTcNo above are
+  // about the school this student came FROM, this is about leaving THIS
+  // school.
+  transferOutDate DateTime? @map("transfer_out_date")
 
   // --- "SIS depth" fields — all optional/additive, gated behind the
   // students.medicalInfo / students.priorSchool feature flags in the UI;

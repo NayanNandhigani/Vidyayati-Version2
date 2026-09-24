@@ -6,6 +6,7 @@ import { requireModuleAccess } from "@/lib/permissions";
 import { hasFeature } from "@/lib/feature-flags";
 import { getStaffLeaveSummary } from "../hr-depth-actions";
 import StaffDetailTabs from "../StaffDetailTabs";
+import StaffActionsPanel from "../StaffActionsPanel";
 import Avatar from "@/components/Avatar";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import SetupLinkBanner from "@/components/SetupLinkBanner";
@@ -69,6 +70,21 @@ export default async function StaffProfilePage({ params, searchParams }: { param
       </div>
 
       {setupToken && <SetupLinkBanner token={setupToken} />}
+
+      {isAdmin && !staff.isSelf && (
+        <StaffActionsPanel
+          staffId={selected.id}
+          fields={{
+            name: selected.user.name,
+            phone: selected.user.phone ?? "",
+            designation: selected.designation ?? "",
+            department: selected.department ?? "",
+            staffCategory: selected.staffCategory,
+            dateJoined: selected.dateJoined?.toISOString().slice(0, 10) ?? "",
+          }}
+          userStatus={selected.user.status}
+        />
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ position: "relative" }}>

@@ -8,6 +8,7 @@ import RecordsPanel from "./RecordsPanel";
 import PersonDocumentsPanel, { type PersonDocumentRow } from "@/components/PersonDocumentsPanel";
 import { addStudentDocument } from "../depth-actions";
 import GuardianRow from "./GuardianRow";
+import AddGuardianForm from "./AddGuardianForm";
 import StudentFeeAllocationPanel from "./StudentFeeAllocationPanel";
 
 type StudentDetail = {
@@ -178,6 +179,7 @@ export default function ProfileTabs({
                   ))}
                 </div>
               )}
+              {isAdmin && <AddGuardianForm studentId={student.id} />}
             </div>
           </div>
         )}

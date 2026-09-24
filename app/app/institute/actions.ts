@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
+import { promoteStudent } from "@/lib/domain/enrollment";
 
 async function requireAdmin() {
   const session = await auth();
@@ -281,4 +282,58 @@ export async function setClassSubjectTeacher(classId: string, subjectId: string,
   }
 
   revalidatePath("/app/institute");
+}
+
+export async function getClassesForYear(yearId: string) {
+  await requireAdmin();
+  const sdb = await getScopedDb();
+  const classes = await sdb.class.findMany({ where: { yearId }, orderBy: [{ grade: "asc" }, { section: "asc" }] });
+  return classes.map((c) => ({ id: c.id, grade: c.grade, section: c.section }));
+}
+
+export async function getActiveStudentsInClass(classId: string) {
+  await requireAdmin();
+  const sdb = await getScopedDb();
+  const students = await sdb.student.findMany({ where: { classId, status: "ACTIVE" }, orderBy: [{ firstName: "asc" }, { surname: "asc" }] });
+  return students.map((s) => ({ id: s.id, name: `${s.firstName} ${s.surname}`.trim() }));
+}
+
+/**
+ * Promotes every ACTIVE student in a class to the next grade for a target
+ * academic year in one go, except any in `heldBackStudentIds` — those go
+ * to `holdBackClassId` instead (typically the same grade, next year, i.e.
+ * repeating it). Updates Student.classId directly (promoteStudent's own
+ * Enrollment bookkeeping doesn't touch it — see its doc comment) and
+ * leaves fee history exactly where it is: unpaid FeeInstalment rows stay
+ * tied to the student, not the class, so pending fees are carried forward
+ * as arrears automatically, with no separate "arrears" concept needed.
+ */
+export async function bulkPromoteClass(
+  sourceClassId: string,
+  promoteToClassId: string,
+  holdBackClassId: string,
+  heldBackStudentIds: string[]
+): Promise<{ promoted: number; heldBack: number }> {
+  await requireAdmin();
+  const sdb = await getScopedDb();
+
+  const students = await sdb.student.findMany({ where: { classId: sourceClassId, status: "ACTIVE" }, select: { id: true } });
+  const heldBack = new Set(heldBackStudentIds);
+
+  let promotedCount = 0;
+  let heldBackCount = 0;
+  for (const student of students) {
+    const destination = heldBack.has(student.id) ? holdBackClassId : promoteToClassId;
+    await sdb.$transaction(async (tx) => {
+      await promoteStudent(student.id, destination, "PROMOTED", tx);
+      await tx.student.update({ where: { id: student.id }, data: { classId: destination } });
+    });
+    if (heldBack.has(student.id)) heldBackCount += 1;
+    else promotedCount += 1;
+  }
+
+  revalidatePath("/app/institute");
+  revalidatePath("/app/students");
+  revalidatePath("/app/fees");
+  return { promoted: promotedCount, heldBack: heldBackCount };
 }

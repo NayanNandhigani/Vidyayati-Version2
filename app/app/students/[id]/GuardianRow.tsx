@@ -1,16 +1,25 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setPrimaryGuardian, updateGuardianContactPreference } from "../depth-actions";
+import { setPrimaryGuardian, updateGuardianContactPreference, unlinkGuardian } from "../depth-actions";
 
 type Link = { id: string; relation: string; isPrimary: boolean; parent: { id: string; name: string; phone: string | null; preferredContactMethod: string | null } };
 
 export default function GuardianRow({ studentId, link }: { studentId: string; link: Link }) {
   const [, startTransition] = useTransition();
   const [pref, setPref] = useState(link.parent.preferredContactMethod ?? "");
+  const [confirmingUnlink, setConfirmingUnlink] = useState(false);
+
+  function doUnlink() {
+    if (!confirmingUnlink) {
+      setConfirmingUnlink(true);
+      return;
+    }
+    startTransition(() => unlinkGuardian(studentId, link.id));
+  }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--paper)", borderRadius: 8 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto auto", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--paper)", borderRadius: 8 }}>
       <span className="pill" style={{ background: "var(--paper)", border: "1px solid var(--line)", fontSize: 10.5 }}>
         {link.relation[0] + link.relation.slice(1).toLowerCase()}
       </span>
@@ -33,6 +42,9 @@ export default function GuardianRow({ studentId, link }: { studentId: string; li
           Set primary
         </span>
       )}
+      <span onClick={doUnlink} style={{ fontSize: 11, fontWeight: 700, color: "var(--critical)", cursor: "pointer" }}>
+        {confirmingUnlink ? "Confirm unlink?" : "Unlink"}
+      </span>
     </div>
   );
 }

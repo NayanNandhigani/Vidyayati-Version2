@@ -28,13 +28,13 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   );
 
   const staffList = await sdb.staffProfile.findMany({
-    where: params.q ? { user: { name: { contains: params.q, mode: "insensitive" } } } : undefined,
+    where: { deletedAt: null, ...(params.q ? { user: { name: { contains: params.q, mode: "insensitive" } } } : {}) },
     include: { user: true },
     orderBy,
   });
 
   const totalStaff = staffList.length;
-  const teachingStaff = staffList.filter((s) => (s.designation ?? "").toLowerCase().includes("teacher")).length;
+  const teachingStaff = staffList.filter((s) => s.staffCategory === "TEACHING").length;
   const onLeaveToday = staffList.filter((s) => s.employmentStatus === "ON_LEAVE").length;
 
   const showStructuredPayroll = await hasFeature(session!.user.schoolId, "payroll.structuredSalary");

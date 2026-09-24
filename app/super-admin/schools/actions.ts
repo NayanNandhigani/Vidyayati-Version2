@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
 import type { SchoolStatus, SchoolDocumentCategory } from "@prisma/client";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
@@ -11,17 +10,7 @@ import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 import { readAddress, readContactAddress } from "@/lib/address";
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/feature-flags";
 import { createPendingAccount } from "@/lib/account-setup";
-
-// Super Admin's one-click reset for a school's admin account. Deliberately
-// not a random/one-time-link reset (contrast lib/account-setup.ts, which
-// exists specifically to avoid fixed default passwords on account
-// *creation*) — this is the "school called and is locked out" escape
-// hatch, so the temp password needs to be something Super Admin can read
-// out over the phone. The `mustChangePassword: true` flag is what keeps
-// this safe: middleware.ts traps every session with that flag on the
-// change-password route until a real password is set, so 123456 only ever
-// works for the single login immediately after a reset.
-const RESET_PASSWORD_DEFAULT = "123456";
+import { resetPasswordToDefault } from "@/lib/account-reset";
 
 const AADHAR_PATTERN = /^\d{12}$/;
 
@@ -300,12 +289,7 @@ export async function resetSchoolAdminPassword(_prevState: ManageFormState, form
   const schoolId = formData.get("schoolId");
   if (typeof userId !== "string" || !userId || typeof schoolId !== "string" || !schoolId) return { error: "Missing account." };
 
-  const passwordHash = await bcrypt.hash(RESET_PASSWORD_DEFAULT, 10);
-  await db.user.update({
-    where: { id: userId },
-    // Clear any dangling setup token too — a reset supersedes it.
-    data: { passwordHash, mustChangePassword: true, setupTokenHash: null, setupTokenExpiresAt: null },
-  });
+  await resetPasswordToDefault(userId);
 
   revalidatePath(`/super-admin/schools/${schoolId}`);
   return { success: true };

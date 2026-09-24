@@ -8,6 +8,7 @@ import { feeStatusFor, FEE_STATUS_STYLE, gradeFor, gradeForScale } from "@/lib/a
 import { getSchoolFeatures } from "@/lib/feature-flags";
 import { getSiblings } from "../depth-actions";
 import ProfileTabs from "./ProfileTabs";
+import StudentActionsPanel from "./StudentActionsPanel";
 import Avatar from "@/components/Avatar";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import { setStudentPhoto } from "../../settings/id-card-actions";
@@ -47,6 +48,10 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const siblings = schoolFeatures["students.siblings"] ? await getSiblings(student.id) : [];
 
   const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true }, include: { gradeScale: { include: { bands: true } } } });
+  const [enrollment, classes] = await Promise.all([
+    currentYear ? sdb.enrollment.findUnique({ where: { studentId_academicYearId: { studentId: student.id, academicYearId: currentYear.id } }, select: { rollNumber: true } }) : null,
+    sdb.class.findMany({ orderBy: [{ grade: "asc" }, { section: "asc" }] }),
+  ]);
   const gradeBands = currentYear?.gradeScale?.bands.map((b) => ({ label: b.label, minPercent: Number(b.minPercent), maxPercent: Number(b.maxPercent) })) ?? [];
   const gradeForPct = (pct: number) => gradeForScale(pct, gradeBands) ?? gradeFor(pct);
 
@@ -103,6 +108,26 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
           </div>
         </div>
       </div>
+
+      {session!.user.role === "SCHOOL_ADMIN" && (
+        <StudentActionsPanel
+          studentId={student.id}
+          fields={{
+            firstName: student.firstName,
+            surname: student.surname,
+            dob: student.dob?.toISOString().slice(0, 10) ?? null,
+            gender: student.gender,
+            address: student.address,
+            bloodGroup: student.bloodGroup,
+            medicalNotes: student.medicalNotes,
+            rollNumber: enrollment?.rollNumber ?? null,
+          }}
+          status={student.status}
+          transferOutDate={student.transferOutDate?.toISOString().slice(0, 10) ?? null}
+          currentClassId={student.classId}
+          classes={classes.map((c) => ({ id: c.id, grade: c.grade, section: c.section }))}
+        />
+      )}
 
       {/* Quick info band — basic details, attendance, academic performance at a glance */}
       <div className="card" style={{ padding: 20 }}>

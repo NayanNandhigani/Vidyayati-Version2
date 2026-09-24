@@ -6,11 +6,13 @@ import { hasFeature } from "@/lib/feature-flags";
 import InstituteClassesPanel from "./InstituteClassesPanel";
 import InstituteSubjectsPanel from "./InstituteSubjectsPanel";
 import FeeStructurePanel from "./FeeStructurePanel";
+import PromoteStudentsPanel from "./PromoteStudentsPanel";
 
 const PANELS = [
   { key: "classes", label: "Classes & Sections" },
   { key: "subjects", label: "Subjects" },
   { key: "fees", label: "Fee Structure" },
+  { key: "promote", label: "Promote Students" },
 ];
 
 export default async function InstitutePage({ searchParams }: { searchParams: Promise<{ panel?: string }> }) {
@@ -75,9 +77,13 @@ export default async function InstitutePage({ searchParams }: { searchParams: Pr
           <div className="card" style={{ flex: 1, padding: 26, overflowY: "auto" }}>
             <SubjectsPanelData sdb={sdb} yearId={currentYear.id} showCapacity={showCapacity} />
           </div>
-        ) : (
+        ) : panel === "fees" ? (
           <div className="card" style={{ flex: 1, padding: 26, overflowY: "auto" }}>
             <FeeStructurePanelData sdb={sdb} yearId={currentYear.id} />
+          </div>
+        ) : (
+          <div className="card" style={{ flex: 1, padding: 26, overflowY: "auto" }}>
+            <PromoteStudentsPanelData sdb={sdb} currentYearId={currentYear.id} />
           </div>
         )}
       </div>
@@ -155,6 +161,21 @@ async function FeeStructurePanelData({ sdb, yearId }: { sdb: Awaited<ReturnType<
         actualFee: feeByGrade.get(grade) ?? null,
         plan: plansByGrade.get(grade) ?? [],
       }))}
+    />
+  );
+}
+
+async function PromoteStudentsPanelData({ sdb, currentYearId }: { sdb: Awaited<ReturnType<typeof getScopedDb>>; currentYearId: string }) {
+  const [years, currentClasses] = await Promise.all([
+    sdb.academicYear.findMany({ orderBy: { startDate: "desc" } }),
+    sdb.class.findMany({ where: { yearId: currentYearId }, orderBy: [{ grade: "asc" }, { section: "asc" }] }),
+  ]);
+
+  return (
+    <PromoteStudentsPanel
+      years={years.map((y) => ({ id: y.id, label: y.label }))}
+      currentYearId={currentYearId}
+      currentClasses={currentClasses.map((c) => ({ id: c.id, grade: c.grade, section: c.section }))}
     />
   );
 }

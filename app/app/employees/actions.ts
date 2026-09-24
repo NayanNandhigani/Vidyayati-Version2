@@ -2,12 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Prisma, AccessLevel } from "@prisma/client";
+import { Prisma, AccessLevel, type StaffCategory } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { auth } from "@/auth";
 import { createPendingAccount } from "@/lib/account-setup";
+import { resetPasswordToDefault } from "@/lib/account-reset";
+import { validatePhone } from "@/lib/validation";
 
 export type StaffFormState = { error?: string };
 
@@ -153,4 +155,91 @@ export async function runPayroll(staffId: string, month: string, amount: number)
   revalidatePath("/app/accounts");
   revalidatePath("/app/dashboard");
   return { runId: run.id };
+}
+
+export type StaffCoreFields = {
+  name: string;
+  phone: string;
+  designation: string;
+  department: string;
+  staffCategory: StaffCategory;
+  dateJoined: string; // yyyy-mm-dd, or ""
+};
+
+/** Edits the basics the QA pass found had no edit path at all — name, phone, designation, department, staff category (Teaching/Non-teaching), date of joining. Salary lives entirely in SalaryComponent rows, which already have their own CRUD. */
+export async function updateStaffCore(staffId: string, fields: StaffCoreFields): Promise<{ error?: string }> {
+  await requireModuleAccess("Employees", "EDIT");
+  if (!fields.name.trim()) return { error: "Name is required." };
+  const phoneErr = validatePhone(fields.phone, "Phone number");
+  if (phoneErr) return { error: phoneErr };
+
+  const sdb = await getScopedDb();
+  const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
+
+  await sdb.$transaction([
+    sdb.user.update({ where: { id: staff.userId }, data: { name: fields.name.trim(), phone: fields.phone.trim() } }),
+    sdb.staffProfile.update({
+      where: { id: staffId },
+      data: {
+        designation: fields.designation.trim() || null,
+        department: fields.department.trim() || null,
+        staffCategory: fields.staffCategory,
+        dateJoined: fields.dateJoined ? new Date(fields.dateJoined) : null,
+      },
+    }),
+  ]);
+
+  revalidatePath(`/app/employees/${staffId}`);
+  revalidatePath("/app/employees");
+  return {};
+}
+
+/** Blocks login (User.status = INACTIVE — auth.ts already refuses sign-in for anything but ACTIVE) without touching the staff record itself, so payroll/attendance/permission history stays intact and reactivating just flips it back. */
+export async function deactivateStaff(staffId: string) {
+  await requireModuleAccess("Employees", "EDIT");
+  const sdb = await getScopedDb();
+  const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
+  await sdb.user.update({ where: { id: staff.userId }, data: { status: "INACTIVE" } });
+  revalidatePath(`/app/employees/${staffId}`);
+}
+
+export async function reactivateStaff(staffId: string) {
+  await requireModuleAccess("Employees", "EDIT");
+  const sdb = await getScopedDb();
+  const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
+  await sdb.user.update({ where: { id: staff.userId }, data: { status: "ACTIVE" } });
+  revalidatePath(`/app/employees/${staffId}`);
+}
+
+/** Support escape hatch for a locked-out staff member — same mechanism as Super Admin's school-admin reset. */
+export async function resetStaffPassword(staffId: string) {
+  const session = await auth();
+  if (session!.user.role !== "SCHOOL_ADMIN") throw new Error("Only a School Admin can reset a staff member's password.");
+  const sdb = await getScopedDb();
+  const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
+  await resetPasswordToDefault(staff.userId);
+  revalidatePath(`/app/employees/${staffId}`);
+}
+
+/** Issues a fresh one-time setup link (invalidating any old one) — the alternative to a temporary password when the staffer would rather set their own. Returns the token for the admin to hand over inline, never in a URL. */
+export async function regenerateStaffSetupLink(staffId: string): Promise<{ setupToken: string }> {
+  await requireModuleAccess("Employees", "EDIT");
+  const sdb = await getScopedDb();
+  const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
+  const { token, setupTokenHash, setupTokenExpiresAt } = await createPendingAccount();
+  await sdb.user.update({ where: { id: staff.userId }, data: { setupTokenHash, setupTokenExpiresAt, mustChangePassword: true } });
+  revalidatePath(`/app/employees/${staffId}`);
+  return { setupToken: token };
+}
+
+/** Soft delete — StaffProfile.deletedAt, distinct from deactivation: hides the staffer from Employees listings entirely rather than just blocking their login, but keeps every history table (payroll, attendance, permissions) intact. Also deactivates the login, since a deleted staffer shouldn't still be able to sign in. */
+export async function deleteStaff(staffId: string) {
+  await requireModuleAccess("Employees", "EDIT");
+  const sdb = await getScopedDb();
+  const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
+  await sdb.$transaction([
+    sdb.staffProfile.update({ where: { id: staffId }, data: { deletedAt: new Date() } }),
+    sdb.user.update({ where: { id: staff.userId }, data: { status: "INACTIVE" } }),
+  ]);
+  revalidatePath("/app/employees");
 }
