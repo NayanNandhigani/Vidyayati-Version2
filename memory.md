@@ -359,6 +359,42 @@ them; `scripts/dedupe-payroll-accounts.ts` (dry-run by default, `--apply`
 to delete) is the one-off cleanup for those, meant to be run once after
 this migration deploys.
 
-Remaining: 1.3 (admissions loses enquiry data, no real application
-stage), 1.4 (students/employees can't be edited after saving), then
+**1.3 — Admissions: application stage missing, enquiry data lost.**
+Investigation found this codebase already had almost everything the QA
+pass expected — a full application-form data model on `AdmissionEnquiry`,
+an admit-approval workflow, edit/reject actions — sitting behind a
+feature flag, `admissions.detailedForm`, that defaults to **off** for
+every school. The QA pass hit the other, bare-bones `admitEnquiry` path.
+Asked you how to resolve the two-flows situation; you chose to retire the
+simple path entirely and make the detailed flow the only one.
+
+Fix (commit `00e58f2`): removed `admissions.detailedForm` gating
+everywhere and deleted `admitEnquiry`/the board's simple-flow branch.
+Enquiry form gained DOB, gender, validated email, enquiry source,
+follow-up date, notes, and a real class dropdown (`lib/validation.ts` —
+phone/email validators, reused from this fix, alongside its pre-existing
+`newPasswordSchema`). Enquiry cards are now clickable (inline
+Edit/Reject-with-reason/Delete-with-confirm); Application-stage cards use
+the existing full form, now always reachable. Admit now pre-selects the
+matching section. The one real gap in the existing approve flow — it
+created the Student but never a Guardian/Parent — is fixed:
+`approveAdmissionWithFee` now creates or reuses (by phone, so a sibling's
+second enquiry links the same parent login) a Parent + User account via
+the same setup-link mechanism Staff use, shown inline rather than in a
+URL. Board gained Admitted/Rejected columns. `AdmissionEnquiry` and
+`Parent` added to `AUDITED_MODELS`.
+
+Deferred (noted in the commit, not silently dropped): document uploads at
+the application stage, splitting applicant name into first/last, and a
+dedicated per-enquiry "activity" feed (audit rows are captured, just not
+yet surfaced inline).
+
+**Process note:** while writing this fix, `lib/validation.ts` was
+overwritten with `Write` without reading it first, destroying its
+existing `newPasswordSchema` export. Caught immediately by `tsc` and
+restored in the same commit — no functional change to that export, but
+worth remembering: always Read before Write, even for a file that looks
+like it should be new.
+
+Remaining: 1.4 (students/employees can't be edited after saving), then
 Priorities 2–5.
