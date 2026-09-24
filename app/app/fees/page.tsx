@@ -20,13 +20,16 @@ export default async function FeesPage() {
   const canEdit = accessLevel === "EDIT";
 
   const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
-  const structures = currentYear ? await sdb.feeStructure.findMany({ where: { yearId: currentYear.id } }) : [];
-  const structuresByClass = new Map<string, typeof structures>();
-  for (const fs of structures) structuresByClass.set(fs.classId, [...(structuresByClass.get(fs.classId) ?? []), fs]);
 
   const students = await sdb.student.findMany({
     where: { status: "ACTIVE" },
-    include: { class: true, feePayments: { orderBy: { paidOn: "desc" } }, feeDiscounts: true, feeAdjustments: { orderBy: { addedOn: "desc" } } },
+    include: {
+      class: true,
+      feeInstalments: { include: { feeStructure: true, payments: true } },
+      feePayments: { orderBy: { paidOn: "desc" }, include: { feeInstalment: { include: { feeStructure: true } } } },
+      feeDiscounts: true,
+      feeAdjustments: { orderBy: { addedOn: "desc" } },
+    },
     orderBy: [{ firstName: "asc" }, { surname: "asc" }],
   });
 
@@ -37,8 +40,8 @@ export default async function FeesPage() {
   ]);
 
   const rows = students.map((s) => {
-    const classStructures = structuresByClass.get(s.classId) ?? [];
-    const total = classStructures.reduce((sum, fs) => sum + Number(fs.amount), 0);
+    const instalments = s.feeInstalments;
+    const total = instalments.reduce((sum, fi) => sum + Number(fi.amount), 0);
     const paid = s.feePayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
     const discountAmount = showDiscounts
@@ -46,7 +49,7 @@ export default async function FeesPage() {
       : 0;
     const lateFine = showDiscounts
       ? computeLateFine(
-          classStructures.map((fs) => ({ amount: Number(fs.amount), dueDate: fs.dueDate, paid: s.feePayments.filter((p) => p.feeStructureId === fs.id).reduce((sm, p) => sm + Number(p.amount), 0) })),
+          instalments.map((fi) => ({ amount: Number(fi.amount), dueDate: fi.feeStructure.dueDate, paid: fi.payments.reduce((sm, p) => sm + Number(p.amount), 0) })),
           school?.feeLateFinePerDay ? Number(school.feeLateFinePerDay) : null,
           school?.feeLateFineGraceDays ?? null
         )
@@ -55,7 +58,7 @@ export default async function FeesPage() {
     const adjustmentAmount = s.feeAdjustments.reduce((sum, a) => sum + Number(a.amount), 0);
     const netTotal = Math.max(0, total - discountAmount + lateFine + adjustmentAmount);
     const pending = Math.max(0, netTotal - paid);
-    const hasOverdue = classStructures.some((fs) => fs.dueDate < new Date()) && paid < netTotal;
+    const hasOverdue = instalments.some((fi) => fi.feeStructure.dueDate < new Date() && fi.payments.reduce((sm, p) => sm + Number(p.amount), 0) < Number(fi.amount));
     return {
       id: s.id,
       name: studentName(s),
@@ -129,14 +132,19 @@ async function ParentFeesView() {
     include: {
       studentLinks: {
         include: {
-          student: { include: { class: true, feePayments: { orderBy: { paidOn: "desc" } } } },
+          student: {
+            include: {
+              class: true,
+              feePayments: { orderBy: { paidOn: "desc" } },
+              feeInstalments: { include: { feeStructure: true, payments: true }, orderBy: { feeStructure: { dueDate: "asc" } } },
+            },
+          },
         },
       },
     },
   });
 
   const students = parent?.studentLinks.map((l) => l.student) ?? [];
-  const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
   const [showDiscounts, school] = await Promise.all([
     hasFeature(session!.user.schoolId, "fees.discountsAndFines"),
     sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { feeLateFinePerDay: true, feeLateFineGraceDays: true } }),
@@ -144,10 +152,16 @@ async function ParentFeesView() {
 
   const studentFeeData = await Promise.all(
     students.map(async (s) => {
-      const structures = currentYear ? await sdb.feeStructure.findMany({ where: { classId: s.classId, yearId: currentYear.id }, orderBy: { dueDate: "asc" } }) : [];
+      const structures = s.feeInstalments.map((fi) => ({
+        id: fi.id,
+        term: fi.feeStructure.term,
+        amount: fi.amount,
+        dueDate: fi.feeStructure.dueDate,
+        paid: fi.payments.reduce((sm, p) => sm + Number(p.amount), 0) >= Number(fi.amount),
+      }));
       const total = structures.reduce((sum, fs) => sum + Number(fs.amount), 0);
       const paid = s.feePayments.reduce((sum, p) => sum + Number(p.amount), 0);
-      const paidTerms = new Set(s.feePayments.map((p) => p.feeStructureId));
+      const paidTerms = new Set(structures.filter((fs) => fs.paid).map((fs) => fs.id));
 
       let discountAmount = 0;
       let lateFine = 0;
@@ -155,7 +169,7 @@ async function ParentFeesView() {
         const discounts = await sdb.feeDiscount.findMany({ where: { studentId: s.id } });
         discountAmount = computeDiscountAmount(total, discounts.map((d) => ({ valueType: d.valueType, value: Number(d.value) })));
         lateFine = computeLateFine(
-          structures.map((fs) => ({ amount: Number(fs.amount), dueDate: fs.dueDate, paid: s.feePayments.filter((p) => p.feeStructureId === fs.id).reduce((sm, p) => sm + Number(p.amount), 0) })),
+          s.feeInstalments.map((fi) => ({ amount: Number(fi.amount), dueDate: fi.feeStructure.dueDate, paid: fi.payments.reduce((sm, p) => sm + Number(p.amount), 0) })),
           school?.feeLateFinePerDay ? Number(school.feeLateFinePerDay) : null,
           school?.feeLateFineGraceDays ?? null
         );
@@ -190,7 +204,7 @@ async function ParentFeesView() {
               </div>
             </div>
             {structures.length === 0 ? (
-              <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No fee structure set for this class yet.</div>
+              <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No fee instalments generated yet for this student.</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {structures.map((fs) => {

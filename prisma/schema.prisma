@@ -138,6 +138,7 @@ model School {
   timetableSlots       TimetableSlot[]
   feeStructures        FeeStructure[]
   classFeeDefaults     ClassFeeDefault[]
+  feeInstalments       FeeInstalment[]
   feePayments          FeePayment[]
   payrollRuns          PayrollRun[]
   transportRoutes      TransportRoute[]
@@ -1178,6 +1179,7 @@ model Student {
   attendance          Attendance[]
   marks               Mark[]
   homeworkSubmissions HomeworkSubmission[]
+  feeInstalments      FeeInstalment[]
   feePayments         FeePayment[]
   transportAssignment StudentTransportAssignment?
   transportAttendance TransportAttendance[]
@@ -1712,6 +1714,13 @@ model ClassFeeDefault {
   @@map("class_fee_defaults")
 }
 
+// One row per (class, academic year, fee head, term) — the class-wide plan
+// an admin defines on Academic Management → Fee Structure. `amount` here is
+// the plan's reference amount for this term, used only as the weight basis
+// for splitting each student's own total (chargedFee, or classFeeDefault's
+// actualFee when unset) across terms — it is NOT what any individual
+// student owes. Per-student obligations live on FeeInstalment, generated
+// from this plan by lib/fee-instalments.ts.
 model FeeStructure {
   id       String       @id @default(cuid())
   schoolId String       @map("school_id")
@@ -1720,15 +1729,43 @@ model FeeStructure {
   class    Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
   yearId   String       @map("year_id")
   year     AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  head     String       @default("Tuition") // e.g. "Tuition", "Transport", "Hostel", "Admission", "Exam"
   term     String // e.g. "Term 2"
   amount   Decimal      @db.Decimal(12, 2)
   dueDate  DateTime     @map("due_date")
 
-  payments FeePayment[]
+  instalments FeeInstalment[]
 
+  @@unique([classId, yearId, head, term])
   @@index([schoolId])
   @@index([classId])
   @@map("fee_structures")
+}
+
+// A single student's obligation for one FeeStructure (class/year/head/term)
+// row — `amount` is that student's proportional share (their chargedFee, or
+// the grade's actualFee when no charged fee is set, split across that
+// head's terms in proportion to each FeeStructure row's own `amount`).
+// Snapshotted at generation time so a later Fee Structure edit doesn't
+// silently rewrite an instalment that already has payments against it —
+// see lib/fee-instalments.ts, which refuses to touch those.
+model FeeInstalment {
+  id             String       @id @default(cuid())
+  schoolId       String       @map("school_id")
+  school         School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId      String       @map("student_id")
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructureId String       @map("fee_structure_id")
+  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  amount         Decimal      @db.Decimal(12, 2)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  payments FeePayment[]
+
+  @@unique([studentId, feeStructureId])
+  @@index([schoolId])
+  @@index([studentId])
+  @@map("fee_instalments")
 }
 
 enum FeePaymentStatus {
@@ -1737,21 +1774,22 @@ enum FeePaymentStatus {
 }
 
 model FeePayment {
-  id             String           @id @default(cuid())
-  schoolId       String           @map("school_id")
-  school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  studentId      String           @map("student_id")
-  student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  feeStructureId String           @map("fee_structure_id")
-  feeStructure   FeeStructure     @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
-  amount         Decimal          @db.Decimal(12, 2)
-  method         String
-  referenceNo    String?          @map("reference_no")
-  paidOn         DateTime         @map("paid_on")
-  status         FeePaymentStatus @default(PAID)
+  id              String           @id @default(cuid())
+  schoolId        String           @map("school_id")
+  school          School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId       String           @map("student_id")
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeInstalmentId String           @map("fee_instalment_id")
+  feeInstalment   FeeInstalment    @relation(fields: [feeInstalmentId], references: [id], onDelete: Cascade)
+  amount          Decimal          @db.Decimal(12, 2)
+  method          String
+  referenceNo     String?          @map("reference_no")
+  paidOn          DateTime         @map("paid_on")
+  status          FeePaymentStatus @default(PAID)
 
   @@index([schoolId])
   @@index([studentId])
+  @@index([feeInstalmentId])
   @@map("fee_payments")
 }
 

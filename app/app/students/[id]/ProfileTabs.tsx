@@ -22,7 +22,7 @@ type StudentDetail = {
     stop: { stopName: string; pickupTime: Date | null };
   } | null;
   attendance: { date: Date; status: AttendanceStatus }[];
-  feePayments: { amount: unknown; paidOn: Date; feeStructure: { term: string } }[];
+  feePayments: { amount: unknown; paidOn: Date; feeInstalment: { id: string; feeStructure: { term: string } } }[];
 };
 
 type ExamResult = { examName: string; date: Date; obtained: number; max: number };
@@ -34,7 +34,7 @@ type Props = {
   examResults: ExamResult[];
   latestExamGrade: string | null;
   latestExamPct: number | null;
-  feeStructures: { id: string; term: string; amount: unknown; dueDate: Date }[];
+  feeInstalments: { id: string; term: string; amount: unknown; dueDate: Date }[];
   features: { medicalInfo: boolean; priorSchool: boolean; siblings: boolean; documents: boolean };
   medical: { address: string | null; bloodGroup: string | null; medicalNotes: string | null };
   emergencyContacts: { id: string; name: string; relation: string; phone: string; priority: number }[];
@@ -97,7 +97,7 @@ export default function ProfileTabs({
   examResults,
   latestExamGrade,
   latestExamPct,
-  feeStructures,
+  feeInstalments,
   features,
   medical,
   emergencyContacts,
@@ -118,10 +118,10 @@ export default function ProfileTabs({
   ];
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("Profile");
 
-  const totalDue = feeStructures.reduce((s, f) => s + Number(f.amount), 0);
+  const totalDue = feeInstalments.reduce((s, f) => s + Number(f.amount), 0);
   const totalPaid = student.feePayments.reduce((s, p) => s + Number(p.amount), 0);
   const totalDueRemaining = Math.max(0, totalDue - totalPaid);
-  const paidStructureTerms = new Set(student.feePayments.map((p) => p.feeStructure.term));
+  const paidInstalmentIds = new Set(student.feePayments.map((p) => p.feeInstalment.id));
 
   return (
     <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column" }}>
@@ -268,12 +268,12 @@ export default function ProfileTabs({
               <StatBox label="Due" value={`₹${totalDueRemaining.toLocaleString("en-IN")}`} color="var(--warn)" />
             </div>
             <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 9 }}>Installments</div>
-            {feeStructures.length === 0 ? (
-              <div style={{ color: "var(--muted)", fontSize: 13, padding: "16px 0" }}>No fee structure set for this class yet.</div>
+            {feeInstalments.length === 0 ? (
+              <div style={{ color: "var(--muted)", fontSize: 13, padding: "16px 0" }}>No fee instalments generated yet — set an instalment plan in Academic Management → Fee Structure.</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {feeStructures.map((fs) => {
-                  const paid = paidStructureTerms.has(fs.term);
+                {feeInstalments.map((fs) => {
+                  const paid = paidInstalmentIds.has(fs.id);
                   const overdue = !paid && fs.dueDate < new Date();
                   const status = paid ? "PAID" : overdue ? "OVERDUE" : "PENDING";
                   const style = FEE_STATUS_STYLE[status];

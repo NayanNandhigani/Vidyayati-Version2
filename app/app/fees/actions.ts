@@ -28,16 +28,18 @@ export async function recordPayment(_prevState: PaymentFormState, formData: Form
   const paidOn = typeof paidOnRaw === "string" && paidOnRaw ? new Date(paidOnRaw) : new Date();
 
   const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId }, include: { class: true } });
-  const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
-  if (!currentYear) return { error: "No current academic year is set." };
 
-  const structures = await sdb.feeStructure.findMany({
-    where: { classId: student.classId, yearId: currentYear.id },
-    include: { payments: { where: { studentId } } },
-    orderBy: { dueDate: "asc" },
+  const instalments = await sdb.feeInstalment.findMany({
+    where: { studentId },
+    include: { payments: true, feeStructure: true },
+    orderBy: { feeStructure: { dueDate: "asc" } },
   });
 
-  const target = structures.find((fs) => fs.payments.reduce((s, p) => s + Number(p.amount), 0) < Number(fs.amount));
+  if (instalments.length === 0) {
+    return { error: "This student has no fee instalments yet — generate them from Academic Management → Fee Structure first." };
+  }
+
+  const target = instalments.find((fi) => fi.payments.reduce((s, p) => s + Number(p.amount), 0) < Number(fi.amount));
   if (!target) {
     return { error: "This student has no outstanding fee installments to apply a payment to." };
   }
@@ -53,7 +55,7 @@ export async function recordPayment(_prevState: PaymentFormState, formData: Form
     sdb.feePayment.create({
       data: scopedCreateData<Prisma.FeePaymentUncheckedCreateInput>({
         studentId,
-        feeStructureId: target.id,
+        feeInstalmentId: target.id,
         amount,
         method,
         referenceNo: typeof referenceNo === "string" && referenceNo ? referenceNo : null,

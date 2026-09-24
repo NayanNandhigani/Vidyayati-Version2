@@ -7,6 +7,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
 import { enrollStudent } from "@/lib/domain/enrollment";
+import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
 
 async function schoolId() {
   const session = await auth();
@@ -139,6 +140,8 @@ export async function approveAdmissionWithFee(
 
     return student;
   });
+
+  await generateInstalmentsForStudent(sdb, student.id, classId, targetClass.yearId);
 
   revalidatePath("/app/admissions");
   revalidatePath("/app/students");

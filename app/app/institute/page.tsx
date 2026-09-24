@@ -125,9 +125,27 @@ async function FeeStructurePanelData({ sdb, yearId }: { sdb: Awaited<ReturnType<
 
   const feeByGrade = new Map(feeDefaults.map((f) => [f.grade, Number(f.actualFee)]));
   const sectionCountByGrade = new Map<string, number>();
-  for (const c of classes) sectionCountByGrade.set(c.grade, (sectionCountByGrade.get(c.grade) ?? 0) + 1);
+  const representativeClassIdByGrade = new Map<string, string>();
+  for (const c of classes) {
+    sectionCountByGrade.set(c.grade, (sectionCountByGrade.get(c.grade) ?? 0) + 1);
+    if (!representativeClassIdByGrade.has(c.grade)) representativeClassIdByGrade.set(c.grade, c.id);
+  }
 
   const grades = [...sectionCountByGrade.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const structures = await sdb.feeStructure.findMany({
+    where: { classId: { in: [...representativeClassIdByGrade.values()] } },
+    orderBy: { dueDate: "asc" },
+  });
+  const classIdToGrade = new Map([...representativeClassIdByGrade.entries()].map(([grade, classId]) => [classId, grade]));
+  const plansByGrade = new Map<string, { head: string; term: string; amount: number; dueDate: string }[]>();
+  for (const s of structures) {
+    const grade = classIdToGrade.get(s.classId);
+    if (!grade) continue;
+    const list = plansByGrade.get(grade) ?? [];
+    list.push({ head: s.head, term: s.term, amount: Number(s.amount), dueDate: s.dueDate.toISOString().slice(0, 10) });
+    plansByGrade.set(grade, list);
+  }
 
   return (
     <FeeStructurePanel
@@ -135,6 +153,7 @@ async function FeeStructurePanelData({ sdb, yearId }: { sdb: Awaited<ReturnType<
         grade,
         sectionCount: sectionCountByGrade.get(grade) ?? 0,
         actualFee: feeByGrade.get(grade) ?? null,
+        plan: plansByGrade.get(grade) ?? [],
       }))}
     />
   );

@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { enrollStudent } from "@/lib/domain/enrollment";
+import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
 
 export type EnquiryFormState = { error?: string };
 
@@ -77,7 +78,11 @@ export async function admitEnquiry(enquiryId: string, classId: string) {
     return student;
   });
 
+  const cls = await sdb.class.findUniqueOrThrow({ where: { id: classId }, select: { yearId: true } });
+  await generateInstalmentsForStudent(sdb, student.id, classId, cls.yearId);
+
   revalidatePath("/app/admissions");
   revalidatePath("/app/students");
+  revalidatePath("/app/fees");
   return { studentId: student.id };
 }

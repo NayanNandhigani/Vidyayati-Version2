@@ -8,6 +8,7 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { enrollStudent } from "@/lib/domain/enrollment";
+import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
 
 export type StudentFormState = { error?: string };
 
@@ -85,5 +86,7 @@ export async function updateStudentChargedFee(studentId: string, chargedFee: num
   }
 
   await sdb.student.update({ where: { id: studentId }, data: { chargedFee } });
+  await generateInstalmentsForStudent(sdb, studentId, student.classId, cls.yearId);
   revalidatePath(`/app/students/${studentId}`);
+  revalidatePath("/app/fees");
 }

@@ -29,7 +29,8 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
       parentLinks: { include: { parent: true } },
       transportAssignment: { include: { route: { include: { vehicle: true } }, stop: true } },
       attendance: { orderBy: { date: "desc" }, take: 15 },
-      feePayments: { include: { feeStructure: true }, orderBy: { paidOn: "desc" } },
+      feePayments: { include: { feeInstalment: { include: { feeStructure: true } } }, orderBy: { paidOn: "desc" } },
+      feeInstalments: { include: { feeStructure: true, payments: true }, orderBy: { feeStructure: { dueDate: "asc" } } },
       marks: {
         include: { examSubject: { include: { exam: true, subject: true } } },
         orderBy: { examSubject: { exam: { startDate: "desc" } } },
@@ -49,7 +50,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const gradeBands = currentYear?.gradeScale?.bands.map((b) => ({ label: b.label, minPercent: Number(b.minPercent), maxPercent: Number(b.maxPercent) })) ?? [];
   const gradeForPct = (pct: number) => gradeForScale(pct, gradeBands) ?? gradeFor(pct);
 
-  const feeStructures = currentYear ? await sdb.feeStructure.findMany({ where: { yearId: currentYear.id, classId: student.classId } }) : [];
+  const feeInstalments = student.feeInstalments.map((fi) => ({ id: fi.id, term: fi.feeStructure.term, amount: fi.amount, dueDate: fi.feeStructure.dueDate }));
   const classFeeDefault = currentYear
     ? await sdb.classFeeDefault.findUnique({ where: { yearId_grade: { yearId: currentYear.id, grade: student.class.grade } } })
     : null;
@@ -75,9 +76,9 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const latestExamPct = examResults[0] ? Math.round((examResults[0].obtained / examResults[0].max) * 100) : null;
   const latestExamGrade = latestExamPct !== null ? gradeForPct(latestExamPct) : null;
 
-  const totalFeeDue = feeStructures.reduce((s, f) => s + Number(f.amount), 0);
+  const totalFeeDue = feeInstalments.reduce((s, f) => s + Number(f.amount), 0);
   const totalFeePaid = student.feePayments.reduce((s, p) => s + Number(p.amount), 0);
-  const feeStatus = feeStatusFor(totalFeeDue, totalFeePaid, feeStructures.some((f) => f.dueDate < new Date()) && totalFeePaid < totalFeeDue);
+  const feeStatus = feeStatusFor(totalFeeDue, totalFeePaid, feeInstalments.some((f) => f.dueDate < new Date()) && totalFeePaid < totalFeeDue);
   const feeStyle = FEE_STATUS_STYLE[feeStatus];
 
   return (
@@ -125,7 +126,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
         examResults={examResults}
         latestExamGrade={latestExamGrade}
         latestExamPct={latestExamPct}
-        feeStructures={feeStructures}
+        feeInstalments={feeInstalments}
         features={{
           medicalInfo: schoolFeatures["students.medicalInfo"],
           priorSchool: schoolFeatures["students.priorSchool"],

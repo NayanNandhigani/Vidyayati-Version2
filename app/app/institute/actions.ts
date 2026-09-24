@@ -171,8 +171,15 @@ export async function deleteSubject(subjectId: string): Promise<{ error?: string
   return {};
 }
 
+function assertWholeNonNegative(amount: number, label: string) {
+  if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(amount)) {
+    throw new Error(`${label} must be a whole number ≥ 0.`);
+  }
+}
+
 export async function setClassFeeDefault(grade: string, actualFee: number) {
   await requireAdmin();
+  assertWholeNonNegative(actualFee, "Actual fee");
   const sdb = await getScopedDb();
   const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
   if (!currentYear) throw new Error("Set an active academic year in Settings first.");
@@ -184,6 +191,70 @@ export async function setClassFeeDefault(grade: string, actualFee: number) {
   revalidatePath("/app/institute");
   revalidatePath("/app/admissions");
   revalidatePath("/app/students");
+}
+
+export type FeeInstalmentPlanTerm = { term: string; amount: number; dueDate: string };
+
+// Saves a grade's instalment plan (applied to every section/class in that
+// grade for the current year, since FeeStructure is keyed by classId but
+// the admin thinks in terms of a grade) and immediately regenerates every
+// active student's FeeInstalment rows from it. Never overwrites an
+// instalment that already has a payment — see lib/fee-instalments.ts.
+export async function saveFeeInstalmentPlan(grade: string, head: string, terms: FeeInstalmentPlanTerm[]) {
+  await requireAdmin();
+  const trimmedHead = head.trim() || "Tuition";
+  if (terms.length === 0) throw new Error("Add at least one instalment term.");
+  for (const t of terms) {
+    if (!t.term.trim()) throw new Error("Every instalment needs a term name.");
+    assertWholeNonNegative(t.amount, `${t.term} amount`);
+    if (!t.dueDate || Number.isNaN(Date.parse(t.dueDate))) throw new Error(`${t.term} needs a valid due date.`);
+  }
+
+  const sdb = await getScopedDb();
+  const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
+  if (!currentYear) throw new Error("Set an active academic year in Settings first.");
+
+  const classes = await sdb.class.findMany({ where: { yearId: currentYear.id, grade }, select: { id: true } });
+  if (classes.length === 0) throw new Error(`No sections exist for Class ${grade} yet.`);
+
+  for (const cls of classes) {
+    for (const t of terms) {
+      await sdb.feeStructure.upsert({
+        where: { classId_yearId_head_term: { classId: cls.id, yearId: currentYear.id, head: trimmedHead, term: t.term.trim() } },
+        update: { amount: t.amount, dueDate: new Date(t.dueDate) },
+        create: scopedCreateData<Prisma.FeeStructureUncheckedCreateInput>({
+          classId: cls.id,
+          yearId: currentYear.id,
+          head: trimmedHead,
+          term: t.term.trim(),
+          amount: t.amount,
+          dueDate: new Date(t.dueDate),
+        }),
+      });
+    }
+  }
+
+  const { generateInstalmentsForClass } = await import("@/lib/fee-instalments");
+  let studentsConsidered = 0;
+  let instalmentsCreated = 0;
+  let instalmentsUpdated = 0;
+  const flagged: { studentId: string; studentName: string }[] = [];
+  for (const cls of classes) {
+    const r = await generateInstalmentsForClass(sdb, cls.id, currentYear.id);
+    studentsConsidered += r.studentsConsidered;
+    instalmentsCreated += r.instalmentsCreated;
+    instalmentsUpdated += r.instalmentsUpdated;
+    flagged.push(...r.flagged);
+  }
+
+  revalidatePath("/app/institute");
+  revalidatePath("/app/fees");
+  revalidatePath("/app/students");
+  revalidatePath("/app/admissions");
+  revalidatePath("/app/dashboard");
+  revalidatePath("/app/reports");
+
+  return { studentsConsidered, instalmentsCreated, instalmentsUpdated, flagged };
 }
 
 export async function setClassSubjectTeacher(classId: string, subjectId: string, staffId: string | null) {

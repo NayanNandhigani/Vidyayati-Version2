@@ -21,6 +21,8 @@ const TENANT_SCOPED_MODELS = new Set(
 export const AUDITED_MODELS = new Set([
   "Mark",
   "Student",
+  "FeeStructure",
+  "FeeInstalment",
   "FeePayment",
   "FeeDiscount",
   "FeeAdjustment",
@@ -35,6 +37,8 @@ export const AUDITED_MODELS = new Set([
 export const AUDITED_MODEL_LABEL: Record<string, string> = {
   Mark: "Mark",
   Student: "Student",
+  FeeStructure: "Fee Structure",
+  FeeInstalment: "Fee Instalment",
   FeePayment: "Fee Payment",
   FeeDiscount: "Fee Discount",
   FeeAdjustment: "Fee Adjustment",

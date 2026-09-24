@@ -165,11 +165,11 @@ export async function canViewExamResults(examId: string, studentId: string): Pro
   }
 
   if (school.resultsLockUntilFeesCleared) {
-    const [structures, payments] = await Promise.all([
-      sdb.feeStructure.findMany({ where: { class: { students: { some: { id: studentId } } } } }),
+    const [instalments, payments] = await Promise.all([
+      sdb.feeInstalment.findMany({ where: { studentId } }),
       sdb.feePayment.findMany({ where: { studentId } }),
     ]);
-    const totalDue = structures.reduce((s, f) => s + Number(f.amount), 0);
+    const totalDue = instalments.reduce((s, f) => s + Number(f.amount), 0);
     const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
     if (totalPaid < totalDue) {
       return { visible: false, reason: "Clear pending fee dues to view exam results." };

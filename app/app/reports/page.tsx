@@ -17,18 +17,17 @@ export default async function ReportsPage() {
   const eightWeeksAgo = new Date(now);
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
 
-  const [attendance, currentYear, exams, staffAttendance, routes, enquiries] = await Promise.all([
+  const [attendance, exams, staffAttendance, routes, enquiries] = await Promise.all([
     sdb.attendance.findMany({ where: { date: { gte: eightWeeksAgo } }, select: { date: true, status: true } }),
-    sdb.academicYear.findFirst({ where: { isCurrent: true } }),
     sdb.exam.findMany({ include: { examSubjects: { include: { marks: true } } }, orderBy: { startDate: "desc" }, take: 5 }),
     sdb.staffAttendance.findMany({ where: { date: { gte: eightWeeksAgo } }, select: { status: true } }),
     sdb.transportRoute.findMany({ include: { assignments: true, vehicle: true } }),
     sdb.admissionEnquiry.findMany({ select: { stage: true, createdAt: true } }),
   ]);
 
-  const feeStructures = currentYear ? await sdb.feeStructure.findMany({ where: { yearId: currentYear.id } }) : [];
+  const feeInstalments = await sdb.feeInstalment.findMany({ select: { amount: true } });
   const feePayments = await sdb.feePayment.findMany({ select: { amount: true, paidOn: true } });
-  const billed = feeStructures.reduce((s, f) => s + Number(f.amount), 0);
+  const billed = feeInstalments.reduce((s, f) => s + Number(f.amount), 0);
   const collected = feePayments.reduce((s, p) => s + Number(p.amount), 0);
 
   const overallAttendancePct = attendance.length ? Math.round((attendance.filter((a) => a.status === "PRESENT").length / attendance.length) * 100) : 0;

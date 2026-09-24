@@ -35,12 +35,12 @@ async function getAttendanceReportData(sdb: ScopedDb): Promise<ReportData> {
 
 async function getFeesReportData(sdb: ScopedDb): Promise<ReportData> {
   const rows = await sdb.feePayment.findMany({
-    include: { student: { include: { class: true } }, feeStructure: true },
+    include: { student: { include: { class: true } }, feeInstalment: { include: { feeStructure: true } } },
     orderBy: { paidOn: "desc" },
   });
   return {
     columns: ["Student", "Class", "Term", "Amount", "Paid On"],
-    rows: rows.map((r) => [studentName(r.student), `${r.student.class.grade}-${r.student.class.section}`, r.feeStructure.term, formatINR(Number(r.amount)), formatDate(r.paidOn)]),
+    rows: rows.map((r) => [studentName(r.student), `${r.student.class.grade}-${r.student.class.section}`, r.feeInstalment.feeStructure.term, formatINR(Number(r.amount)), formatDate(r.paidOn)]),
   };
 }
 

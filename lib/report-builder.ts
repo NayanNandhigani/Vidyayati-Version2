@@ -137,14 +137,14 @@ async function runAttendance(sdb: ScopedDb, columns: string[], filters: BuilderF
 async function runFeePayments(sdb: ScopedDb, columns: string[], filters: BuilderFilters): Promise<ReportData> {
   const rows = await sdb.feePayment.findMany({
     where: { ...(filters.classId ? { student: { classId: filters.classId } } : {}), ...(dateRangeWhere(filters) ? { paidOn: dateRangeWhere(filters) } : {}) },
-    include: { student: { include: { class: true } }, feeStructure: true },
+    include: { student: { include: { class: true } }, feeInstalment: { include: { feeStructure: true } } },
     orderBy: { paidOn: "desc" },
     take: 2000,
   });
   const cell: Record<string, (r: (typeof rows)[number]) => string | number> = {
     student: (r) => studentName(r.student),
     class: (r) => `${r.student.class.grade}-${r.student.class.section}`,
-    term: (r) => r.feeStructure.term,
+    term: (r) => r.feeInstalment.feeStructure.term,
     amount: (r) => formatINR(Number(r.amount)),
     method: (r) => r.method,
     paidOn: (r) => formatDate(r.paidOn),
