@@ -287,3 +287,58 @@ ID cards — will error until `AWS_S3_BUCKET`/`AWS_REGION`/
 `/setup-account` link for `vidyayati-admin` still needs to be visited to
 set a real password. `Deployment.md` §4 Option A (Vercel) reflects the
 process that was actually used, end to end.
+
+---
+
+## 2026-09-24 — QA fix pass begins: fee instalments (blocker 1.1)
+
+A full QA pass was run against the live app as School Admin on a test
+tenant ("Nayan international"), producing a ~50-item fix list grouped into
+9 priorities (blockers, data-correctness bugs, validation, safety/UX,
+missing modules, security, audit log, plus test-data cleanup and a
+definition of done). Working through it in the given priority order, one
+issue group per commit, starting with the first blocker.
+
+**1.1 — Fees: no instalments were ever created, so fees couldn't be
+collected.** Root cause: Academic Management → Fee Structure only ever
+wrote `ClassFeeDefault.actualFee` (the display total); `FeeStructure`, the
+model `recordPayment` actually reads from, was never populated by
+anything in the app — every student showed Due ₹0 regardless of what was
+set. `FeeStructure.amount` was also class-wide, so it would have ignored
+each student's own chargedFee/scholarship even once populated.
+
+Fix (commit `9d84b8e`): added a `FeeInstalment` model — one row per
+student per term, generated from a class's `FeeStructure` plan and that
+student's chargedFee (falling back to the grade's actualFee), split
+proportionally across each head's terms. `FeePayment` now links to
+`FeeInstalment` instead of the class-wide `FeeStructure`; a hand-written
+migration backfills an instalment for any pre-existing `FeePayment` so no
+payment history is lost. `FeeStructure` gained a `head` field (default
+"Tuition") so Transport/Hostel fees can be added as their own head, billed
+flatly to students with a matching assignment. The Fee Structure screen
+now lets the admin define an instalment plan (term/amount/due date) per
+grade, applied across every section in that grade, with a "Save & generate
+instalments" action that reports how many instalments were created/updated
+and flags students skipped because they already have payments against a
+changed amount — it never overwrites a paid instalment. Admitting a
+student (either admit path) and editing a student's charged fee now
+generate/refresh that student's instalments immediately. Reports' Fee
+Collection % and the fee/report-builder CSV exports were repointed at
+`FeeInstalment`/`FeePayment` instead of the old class-wide amount. Both
+`FeeStructure` and `FeeInstalment` were added to the audit log's
+`AUDITED_MODELS`.
+
+**Verification done:** `npx prisma validate`, `npx tsc --noEmit`,
+`npx next lint`, and `npx next build` all pass. **Not verified against a
+real database** — this sandbox's `.env` has an empty `DATABASE_URL` (no
+DB reachable from here at all, cloud-only per this project's own design),
+so the migration SQL was hand-written to match this project's existing
+migration conventions rather than generated via `prisma migrate dev`, and
+will apply the same way every other migration here does — via
+`scripts/migrate.sh` on the next deploy. You should run through this
+fix's "how to verify" steps (in the QA prompt, §1.1) against a real
+deploy before trusting it fully.
+
+Remaining: 1.2 (payroll double-posts to Accounts on a same-month re-run),
+1.3 (admissions loses enquiry data, no real application stage), 1.4
+(students/employees can't be edited after saving), then Priorities 2–5.
