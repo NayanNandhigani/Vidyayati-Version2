@@ -120,6 +120,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
 
         {selected ? (
           <EventDetail
+            key={selected.id}
             event={{
               id: selected.id,
               title: selected.title,

@@ -42,14 +42,47 @@ export async function createEvent(_prevState: FormState, formData: FormData): Pr
   redirect(`/app/events?event=${event.id}`);
 }
 
+export type EventFields = { title: string; type: string; date: string; venue: string; expectedAttendance: string; budgetEstimate: string };
+
+export async function updateEvent(eventId: string, fields: EventFields): Promise<{ error?: string }> {
+  await requireModuleAccess("Events", "EDIT");
+  if (!fields.title.trim() || !fields.date) return { error: "Title and date are required." };
+  const budgetValue = fields.budgetEstimate ? Number(fields.budgetEstimate) : null;
+  if (budgetValue != null && (!Number.isFinite(budgetValue) || budgetValue < 0)) return { error: "Estimated cost must be ≥ 0." };
+  const attendanceValue = fields.expectedAttendance ? Number(fields.expectedAttendance) : null;
+
+  const sdb = await getScopedDb();
+  await sdb.event.update({
+    where: { id: eventId },
+    data: {
+      title: fields.title.trim(),
+      type: fields.type || null,
+      date: new Date(fields.date),
+      venue: fields.venue || null,
+      expectedAttendance: attendanceValue,
+      budgetEstimate: budgetValue,
+    },
+  });
+  revalidatePath("/app/events");
+  return {};
+}
+
+export async function deleteEvent(eventId: string) {
+  await requireModuleAccess("Events", "EDIT");
+  const sdb = await getScopedDb();
+  await sdb.event.delete({ where: { id: eventId } });
+  revalidatePath("/app/events");
+}
+
 export async function addChecklistItem(eventId: string, task: string) {
   await requireModuleAccess("Events", "EDIT");
   const sdb = await getScopedDb();
   await sdb.event.findUniqueOrThrow({ where: { id: eventId }, select: { id: true } });
-  await sdb.eventChecklistItem.create({
+  const item = await sdb.eventChecklistItem.create({
     data: scopedCreateData<Prisma.EventChecklistItemUncheckedCreateInput>({ eventId, task }),
   });
   revalidatePath("/app/events");
+  return { id: item.id, task: item.task, status: item.status };
 }
 
 export async function toggleChecklistItem(itemId: string) {

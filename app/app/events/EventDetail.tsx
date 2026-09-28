@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { formatINR } from "@/lib/format";
-import { addChecklistItem, toggleChecklistItem, sendEventReminder } from "./actions";
+import { addChecklistItem, toggleChecklistItem, sendEventReminder, updateEvent, deleteEvent, type EventFields } from "./actions";
 
 type ChecklistItem = { id: string; task: string; status: "PENDING" | "DONE" };
 type EventData = {
@@ -21,6 +21,36 @@ export default function EventDetail({ event, canEdit }: { event: EventData; canE
   const [newTask, setNewTask] = useState("");
   const [pending, startTransition] = useTransition();
   const [reminded, setReminded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [fields, setFields] = useState<EventFields>({
+    title: event.title,
+    type: event.type ?? "",
+    date: event.date.slice(0, 10),
+    venue: event.venue ?? "",
+    expectedAttendance: event.expectedAttendance != null ? String(event.expectedAttendance) : "",
+    budgetEstimate: event.budgetEstimate != null ? String(event.budgetEstimate) : "",
+  });
+
+  function saveEvent() {
+    startTransition(async () => {
+      const res = await updateEvent(event.id, fields);
+      if (res.error) setEditError(res.error);
+      else {
+        setEditError(null);
+        setEditing(false);
+      }
+    });
+  }
+
+  function removeEvent() {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    startTransition(() => deleteEvent(event.id));
+  }
 
   const done = items.filter((i) => i.status === "DONE").length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
@@ -37,7 +67,8 @@ export default function EventDetail({ event, canEdit }: { event: EventData; canE
     const task = newTask.trim();
     setNewTask("");
     startTransition(async () => {
-      await addChecklistItem(event.id, task);
+      const created = await addChecklistItem(event.id, task);
+      setItems((prev) => [...prev, { id: created.id, task: created.task, status: created.status }]);
     });
   }
 
@@ -55,27 +86,61 @@ export default function EventDetail({ event, canEdit }: { event: EventData; canE
           <div className="disp" style={{ fontSize: 17 }}>
             {event.title}
           </div>
-          {event.type && (
-            <span className="pill" style={{ background: "var(--teal)", color: "#fff" }}>
-              {event.type}
-            </span>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {event.type && (
+              <span className="pill" style={{ background: "var(--teal)", color: "#fff" }}>
+                {event.type}
+              </span>
+            )}
+            {canEdit && (
+              <>
+                <span onClick={() => setEditing((v) => !v)} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
+                  Edit
+                </span>
+                <span onClick={removeEvent} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--critical)", cursor: "pointer" }}>
+                  {confirmingDelete ? "Confirm delete?" : "Delete"}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16, flex: 1, overflowY: "auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 12.5 }}>
-          <div>{new Date(event.date).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</div>
-          {event.venue && <div style={{ color: "var(--muted)" }}>{event.venue}</div>}
-          {event.expectedAttendance !== null && (
-            <div style={{ color: "var(--muted)" }}>
-              <span className="mono" style={{ fontWeight: 700 }}>
-                {event.expectedAttendance}
-              </span>{" "}
-              expected
+        {editing ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <input className="in" value={fields.title} onChange={(e) => setFields((f) => ({ ...f, title: e.target.value }))} placeholder="Title" style={{ fontSize: 12.5 }} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <input className="in" value={fields.type} onChange={(e) => setFields((f) => ({ ...f, type: e.target.value }))} placeholder="Type" style={{ fontSize: 12.5 }} />
+              <input className="in mono" type="date" value={fields.date} onChange={(e) => setFields((f) => ({ ...f, date: e.target.value }))} style={{ fontSize: 12.5 }} />
+              <input className="in" value={fields.venue} onChange={(e) => setFields((f) => ({ ...f, venue: e.target.value }))} placeholder="Venue" style={{ fontSize: 12.5 }} />
+              <input className="in mono" type="number" min={0} value={fields.expectedAttendance} onChange={(e) => setFields((f) => ({ ...f, expectedAttendance: e.target.value }))} placeholder="Expected attendance" style={{ fontSize: 12.5 }} />
+              <input className="in mono" type="number" min={0} value={fields.budgetEstimate} onChange={(e) => setFields((f) => ({ ...f, budgetEstimate: e.target.value }))} placeholder="Estimated cost" style={{ fontSize: 12.5 }} />
             </div>
-          )}
-        </div>
+            {editError && <div style={{ fontSize: 11.5, color: "var(--critical)" }}>{editError}</div>}
+            <div style={{ display: "flex", gap: 6 }}>
+              <button type="button" onClick={saveEvent} disabled={pending} style={{ fontSize: 12, fontWeight: 700, background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>
+                Save
+              </button>
+              <button type="button" onClick={() => setEditing(false)} style={{ fontSize: 12, fontWeight: 600, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 12.5 }}>
+            <div>{new Date(event.date).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</div>
+            {event.venue && <div style={{ color: "var(--muted)" }}>{event.venue}</div>}
+            {event.expectedAttendance !== null && (
+              <div style={{ color: "var(--muted)" }}>
+                <span className="mono" style={{ fontWeight: 700 }}>
+                  {event.expectedAttendance}
+                </span>{" "}
+                expected
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ borderTop: "1px solid var(--line)" }} />
 

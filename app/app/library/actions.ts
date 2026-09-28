@@ -70,12 +70,13 @@ export async function updateBook(bookId: string, fields: UpdateBookFields) {
   revalidatePath("/app/library");
 }
 
+/** Soft delete — a hard delete used to cascade-wipe LibraryCirculation, losing issue history for copies that had already been returned, not just blocking active loans. */
 export async function deleteBook(bookId: string) {
   await requireModuleAccess("Library", "EDIT");
   const sdb = await getScopedDb();
   const activeLoans = await sdb.libraryCirculation.count({ where: { bookId, status: "ISSUED" } });
   if (activeLoans > 0) throw new Error("This title has copies currently on loan — return them before deleting it.");
-  await sdb.libraryBook.delete({ where: { id: bookId } });
+  await sdb.libraryBook.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
   revalidatePath("/app/library");
 }
 

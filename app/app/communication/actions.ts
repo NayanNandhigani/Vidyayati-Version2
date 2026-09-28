@@ -52,6 +52,36 @@ export async function publishAnnouncement(_prevState: AnnouncementFormState, for
   return { success: true };
 }
 
+export type AnnouncementEditFields = { title: string; body: string; audienceType: AudienceType; audienceTarget: string };
+
+/** Only while still PENDING — once approved/published, use withdrawAnnouncement instead (a published announcement may already have been read). */
+export async function updateAnnouncement(id: string, fields: AnnouncementEditFields): Promise<{ error?: string }> {
+  await requireModuleAccess("Communication", "EDIT");
+  const sdb = await getScopedDb();
+  const existing = await sdb.announcement.findUniqueOrThrow({ where: { id }, select: { approvalStatus: true } });
+  if (existing.approvalStatus !== "PENDING") return { error: "Only a pending (not yet approved) announcement can be edited — withdraw it instead." };
+
+  if (!fields.title.trim() || !fields.body.trim()) return { error: "Title and message are required." };
+  if ((fields.audienceType === "SPECIFIC_CLASS" || fields.audienceType === "SPECIFIC_STUDENT") && !fields.audienceTarget) {
+    return { error: "Select the target for this audience." };
+  }
+
+  await sdb.announcement.update({
+    where: { id },
+    data: { title: fields.title.trim(), body: fields.body.trim(), audienceType: fields.audienceType, audienceTarget: fields.audienceTarget || null },
+  });
+  revalidatePath("/app/communication");
+  return {};
+}
+
+/** Hides a published announcement from every recipient-facing view — kept (not deleted) so the admin's own history still shows it, marked withdrawn. */
+export async function withdrawAnnouncement(id: string) {
+  await requireAdmin();
+  const sdb = await getScopedDb();
+  await sdb.announcement.update({ where: { id }, data: { withdrawnAt: new Date() } });
+  revalidatePath("/app/communication");
+}
+
 export async function approveAnnouncement(id: string) {
   await requireAdmin();
   const sdb = await getScopedDb();

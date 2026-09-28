@@ -11,6 +11,7 @@ export default function EditBookPanel({ books, showIsbn }: { books: Book[]; show
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [title, setTitle] = useState(selected?.title ?? "");
   const [author, setAuthor] = useState(selected?.author ?? "");
@@ -30,6 +31,7 @@ export default function EditBookPanel({ books, showIsbn }: { books: Book[]; show
     setIsbn(b?.isbn ?? "");
     setError(null);
     setSaved(false);
+    setConfirmingDelete(false);
   }
 
   function save() {
@@ -47,14 +49,20 @@ export default function EditBookPanel({ books, showIsbn }: { books: Book[]; show
 
   function remove() {
     if (!selected) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
     setError(null);
     startTransition(async () => {
       try {
         await deleteBook(selected.id);
         const remaining = books.filter((b) => b.id !== selected.id);
         pick(remaining[0]?.id ?? "");
+        setConfirmingDelete(false);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not delete.");
+        setConfirmingDelete(false);
       }
     });
   }
@@ -123,9 +131,19 @@ export default function EditBookPanel({ books, showIsbn }: { books: Book[]; show
             <button type="button" onClick={save} disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
               {pending ? "Saving…" : "Save changes"}
             </button>
-            <button type="button" onClick={remove} disabled={pending} style={{ background: "var(--card)", border: "1px solid var(--critical)", color: "var(--critical)", borderRadius: 8, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, cursor: pending ? "default" : "pointer" }}>
-              Delete title
+            <button
+              type="button"
+              onClick={remove}
+              disabled={pending}
+              style={{ background: confirmingDelete ? "var(--critical)" : "var(--card)", border: "1px solid var(--critical)", color: confirmingDelete ? "#fff" : "var(--critical)", borderRadius: 8, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, cursor: pending ? "default" : "pointer" }}
+            >
+              {confirmingDelete ? "Confirm delete?" : "Delete title"}
             </button>
+            {confirmingDelete && (
+              <button type="button" onClick={() => setConfirmingDelete(false)} style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 8, padding: "9px 18px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                Cancel
+              </button>
+            )}
           </div>
         </>
       )}

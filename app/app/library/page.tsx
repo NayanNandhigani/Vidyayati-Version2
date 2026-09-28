@@ -28,7 +28,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   const tab: Tab = TABS.includes(params.tab as Tab) ? (params.tab as Tab) : "catalogue";
 
   const [books, students, issuedCirc, showBarcodes, showIsbnLookup, school] = await Promise.all([
-    sdb.libraryBook.findMany({ orderBy: { title: "asc" } }),
+    sdb.libraryBook.findMany({ where: { deletedAt: null }, orderBy: { title: "asc" } }),
     sdb.student.findMany({ where: { status: "ACTIVE" }, orderBy: [{ firstName: "asc" }, { surname: "asc" }], select: { id: true, firstName: true, surname: true } }),
     sdb.libraryCirculation.findMany({ where: { status: "ISSUED" }, include: { student: true, book: true }, orderBy: { dueDate: "asc" } }),
     hasFeature(session!.user.schoolId, "library.barcodesAndFines"),

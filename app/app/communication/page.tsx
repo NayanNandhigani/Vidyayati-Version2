@@ -3,6 +3,7 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import ComposeForm from "./ComposeForm";
 import { PendingAnnouncementsPanel } from "./PendingAnnouncementsPanel";
+import WithdrawButton from "./WithdrawButton";
 
 const AUDIENCE_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
   ALL_PARENTS: { bg: "var(--marigold-tint)", fg: "var(--marigold-deep)", label: "All Parents" },
@@ -57,6 +58,7 @@ export default async function CommunicationPage() {
       publishedOn: a.publishedOn!,
       viewed: a.reads.length,
       eligible: await eligibleCount(a),
+      withdrawn: a.withdrawnAt !== null,
     }))
   );
 
@@ -86,7 +88,7 @@ export default async function CommunicationPage() {
               const style = AUDIENCE_STYLE[a.audienceType];
               const pct = a.eligible ? Math.round((a.viewed / a.eligible) * 100) : 0;
               return (
-                <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, padding: "14px 0", borderBottom: "1px solid var(--line)" }}>
+                <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, padding: "14px 0", borderBottom: "1px solid var(--line)", opacity: a.withdrawn ? 0.55 : 1 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ fontWeight: 700, fontSize: 13.5 }}>{a.title}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -96,6 +98,7 @@ export default async function CommunicationPage() {
                       <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
                         {a.publishedOn.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                       </span>
+                      {isAdmin && <WithdrawButton id={a.id} withdrawn={a.withdrawn} />}
                     </div>
                   </div>
                   <div style={{ textAlign: "right", minWidth: 118, flex: "none" }}>
@@ -145,7 +148,7 @@ async function RecipientView() {
   }
 
   const announcements = await sdb.announcement.findMany({
-    where: { approvalStatus: "APPROVED", ...audienceFilter },
+    where: { approvalStatus: "APPROVED", withdrawnAt: null, ...audienceFilter },
     orderBy: { publishedOn: "desc" },
     take: 30,
   });

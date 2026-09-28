@@ -2557,6 +2557,7 @@ model LibraryBook {
   copiesTotal     Int     @map("copies_total")
   copiesAvailable Int     @map("copies_available")
   isbn            String? // used for barcode/QR generation (via /api/qrcode) and the optional Open Library lookup
+  deletedAt       DateTime? @map("deleted_at") // soft delete — a hard delete cascaded LibraryCirculation, wiping issue history for copies that had already been returned, not just blocking active loans
 
   circulation LibraryCirculation[]
 
@@ -2914,6 +2915,7 @@ model Announcement {
   // migration (they had a publishedOn already, nothing gets retroactively
   // un-published).
   approvalStatus AnnouncementApprovalStatus @default(PENDING) @map("approval_status")
+  withdrawnAt    DateTime?                  @map("withdrawn_at") // set instead of deleting a published announcement — hidden from every recipient-facing query, kept in the admin's own list for history
 
   reads AnnouncementRead[]
 

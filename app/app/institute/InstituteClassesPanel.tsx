@@ -97,6 +97,7 @@ function ClassThumbnail({ cls, staff, showCapacity, showCoTeacher, showRte }: { 
   const [board, setBoard] = useState(cls.board ?? "");
   const [rteQuota, setRteQuota] = useState(cls.rteQuotaSeats?.toString() ?? "");
   const [addingCoTeacher, setAddingCoTeacher] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const overCapacity = cls.maxStrength != null && cls.studentCount > cls.maxStrength;
   const availableCoTeachers = staff.filter((s) => !cls.coTeachers.some((ct) => ct.staffId === s.id) && s.id !== cls.classTeacherId);
@@ -108,9 +109,14 @@ function ClassThumbnail({ cls, staff, showCapacity, showCoTeacher, showRte }: { 
   }
 
   function handleDelete() {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
     startTransition(async () => {
       const res = await deleteClass(cls.id);
       setError(res.error ?? null);
+      setConfirmingDelete(false);
     });
   }
 
@@ -138,8 +144,15 @@ function ClassThumbnail({ cls, staff, showCapacity, showCoTeacher, showRte }: { 
         <div style={{ fontWeight: 700, fontSize: 15 }}>
           Class {cls.grade}-{cls.section}
         </div>
-        <span onClick={handleDelete} title="Delete class" style={{ color: "var(--critical)", cursor: "pointer", fontSize: 11.5, fontWeight: 600 }}>
-          Delete
+        <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {confirmingDelete && (
+            <span onClick={() => setConfirmingDelete(false)} style={{ color: "var(--muted)", cursor: "pointer", fontSize: 11.5, fontWeight: 600 }}>
+              Cancel
+            </span>
+          )}
+          <span onClick={handleDelete} title="Delete class" style={{ color: "var(--critical)", cursor: "pointer", fontSize: 11.5, fontWeight: 700 }}>
+            {confirmingDelete ? "Confirm delete?" : "Delete"}
+          </span>
         </span>
       </div>
 
