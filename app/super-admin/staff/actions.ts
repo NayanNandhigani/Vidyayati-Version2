@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { PLATFORM_MODULES } from "@/lib/platform-modules";
 import { createPendingAccount } from "@/lib/account-setup";
+import { setSetupTokenFlash } from "@/lib/setup-token-flash";
 
 export type StaffFormState = { error?: string };
 export type FormState = { error?: string; success?: boolean };
@@ -60,7 +61,8 @@ export async function createPlatformStaff(_prevState: StaffFormState, formData: 
   });
 
   revalidatePath("/super-admin/staff");
-  redirect(`/super-admin/staff?staff=${user.id}&setupToken=${token}`);
+  await setSetupTokenFlash(token);
+  redirect(`/super-admin/staff?staff=${user.id}`);
 }
 
 export async function cyclePlatformPermission(staffId: string, moduleName: string) {

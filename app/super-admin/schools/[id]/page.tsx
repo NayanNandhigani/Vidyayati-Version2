@@ -18,6 +18,7 @@ import SchoolBillingPanel, { type SchoolInvoiceRow } from "./SchoolBillingPanel"
 import AccessControlPanel from "./AccessControlPanel";
 import SchoolGroupField from "./SchoolGroupField";
 import SetupLinkBanner from "@/components/SetupLinkBanner";
+import { readSetupTokenFlash } from "@/lib/setup-token-flash";
 
 const STATUS_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
   ACTIVE: { bg: "var(--good-tint)", fg: "var(--good)", label: "Active" },
@@ -29,11 +30,11 @@ const STATUS_STYLE: Record<string, { bg: string; fg: string; label: string }> = 
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-export default async function SchoolProfilePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ setupToken?: string }> }) {
+export default async function SchoolProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const access = await requirePlatformModuleAccess("Schools", "VIEW");
   const canManage = access === "EDIT";
   const { id } = await params;
-  const { setupToken } = await searchParams;
+  const setupToken = await readSetupTokenFlash();
 
   const school = await db.school.findUnique({
     where: { id },

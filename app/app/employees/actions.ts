@@ -8,6 +8,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { auth } from "@/auth";
 import { createPendingAccount } from "@/lib/account-setup";
+import { setSetupTokenFlash } from "@/lib/setup-token-flash";
 import { resetPasswordToDefault } from "@/lib/account-reset";
 import { validatePhone, validateOptionalPhone } from "@/lib/validation";
 
@@ -70,7 +71,8 @@ export async function createStaff(_prevState: StaffFormState, formData: FormData
   });
 
   revalidatePath("/app/employees");
-  redirect(`/app/employees/${staff.id}?setupToken=${token}`);
+  await setSetupTokenFlash(token);
+  redirect(`/app/employees/${staff.id}`);
 }
 
 export async function cyclePermission(staffId: string, moduleName: string, classId: string | null = null) {

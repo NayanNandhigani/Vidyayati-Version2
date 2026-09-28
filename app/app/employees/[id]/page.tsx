@@ -5,6 +5,7 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { hasFeature } from "@/lib/feature-flags";
 import { attendancePercent } from "@/lib/attendance";
+import { readSetupTokenFlash } from "@/lib/setup-token-flash";
 import { getStaffLeaveSummary } from "../hr-depth-actions";
 import StaffDetailTabs from "../StaffDetailTabs";
 import StaffActionsPanel from "../StaffActionsPanel";
@@ -13,12 +14,12 @@ import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import SetupLinkBanner from "@/components/SetupLinkBanner";
 import { setStaffPhoto } from "../../settings/id-card-actions";
 
-export default async function StaffProfilePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ setupToken?: string }> }) {
+export default async function StaffProfilePage({ params }: { params: Promise<{ id: string }> }) {
   await requireModuleAccess("Employees", "VIEW");
   const session = await auth();
   const isAdmin = session!.user.role === "SCHOOL_ADMIN";
   const { id } = await params;
-  const { setupToken } = await searchParams;
+  const setupToken = await readSetupTokenFlash();
   const sdb = await getScopedDb();
 
   const selected = await sdb.staffProfile.findFirst({ where: { id }, include: { user: true } });

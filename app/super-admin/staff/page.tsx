@@ -7,12 +7,14 @@ import { avatarColorFor } from "@/lib/academic";
 import NewPlatformStaffForm from "./NewPlatformStaffForm";
 import PlatformStaffDetail, { type PlatformStaffRow } from "./PlatformStaffDetail";
 import SetupLinkBanner from "@/components/SetupLinkBanner";
+import { readSetupTokenFlash } from "@/lib/setup-token-flash";
 import type { AccessLevel } from "@prisma/client";
 
-export default async function StaffPage({ searchParams }: { searchParams: Promise<{ staff?: string; new?: string; setupToken?: string }> }) {
+export default async function StaffPage({ searchParams }: { searchParams: Promise<{ staff?: string; new?: string }> }) {
   await requirePlatformModuleAccess("Staff", "VIEW");
   const session = await auth();
   const params = await searchParams;
+  const setupToken = await readSetupTokenFlash();
 
   const users = await db.user.findMany({
     where: { schoolId: null, role: { in: ["SUPER_ADMIN", "PLATFORM_STAFF"] } },
@@ -44,7 +46,7 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
 
   return (
     <div style={{ padding: "28px 36px", display: "flex", flexDirection: "column", gap: 18, height: "100dvh", boxSizing: "border-box" }}>
-      {params.setupToken && <SetupLinkBanner token={params.setupToken} />}
+      {setupToken && <SetupLinkBanner token={setupToken} />}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div className="disp" style={{ fontSize: 22 }}>

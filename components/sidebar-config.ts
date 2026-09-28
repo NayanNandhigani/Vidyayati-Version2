@@ -20,7 +20,6 @@ import {
   IconSchool,
   IconBox,
   IconBed,
-  IconTarget,
 } from "./icons";
 
 export type NavItem = {
@@ -57,7 +56,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Exams", href: "/app/exams", icon: IconEdit, module: "Exams", roles: ["SCHOOL_ADMIN", "STAFF", "PARENT"] },
       { label: "Homework", href: "/app/homework", icon: IconBook, module: "Homework", roles: ["SCHOOL_ADMIN", "STAFF", "PARENT"] },
       { label: "Timetable", href: "/app/timetable", icon: IconClock, module: "Timetable", roles: ["SCHOOL_ADMIN", "STAFF", "PARENT"] },
-      { label: "Teaching", href: "/app/teaching", icon: IconTarget, module: "Teaching", roles: ["SCHOOL_ADMIN", "STAFF"] },
+      // "Teaching" hidden per QA fix 5.1 — the module was a bare "hasn't
+      // been set up yet" placeholder with no real functionality behind it
+      // (see app/app/teaching/page.tsx), which violates claude.md's "no
+      // stub reads as a stub" bar. QA's prompt explicitly offered hiding
+      // it as the alternative to building a first version now; picked
+      // that given how much else in this pass needed attention. Route and
+      // permission entries are left in place so re-enabling it later is a
+      // one-line change plus real content.
     ],
   },
   {

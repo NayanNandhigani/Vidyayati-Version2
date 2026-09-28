@@ -9,6 +9,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
 import { createPendingAccount } from "@/lib/account-setup";
+import { setSetupTokenFlash } from "@/lib/setup-token-flash";
 import { validateOptionalPhone, validateDob } from "@/lib/validation";
 import type { StaffFormState } from "./actions";
 
@@ -109,7 +110,8 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
   });
 
   revalidatePath("/app/employees");
-  redirect(`/app/employees/${staff.id}?setupToken=${token}`);
+  await setSetupTokenFlash(token);
+  redirect(`/app/employees/${staff.id}`);
 }
 
 export async function suggestEmployeeId(): Promise<string> {

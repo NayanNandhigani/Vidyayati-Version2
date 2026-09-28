@@ -8,6 +8,7 @@ import { requirePlatformModuleAccess } from "@/lib/permissions";
 import { generateSchoolCode } from "@/app/super-admin/schools/actions";
 import { readAddress, readContactAddress } from "@/lib/address";
 import { createPendingAccount } from "@/lib/account-setup";
+import { setSetupTokenFlash } from "@/lib/setup-token-flash";
 
 const AADHAR_PATTERN = /^\d{12}$/;
 function validateAadhar(formData: FormData): string | null | "INVALID" {
@@ -219,5 +220,6 @@ export async function convertToSchool(_prevState: FormState, formData: FormData)
 
   revalidatePath("/super-admin/leads");
   revalidatePath("/super-admin/schools");
-  redirect(`/super-admin/schools/${school.id}?setupToken=${token}`);
+  await setSetupTokenFlash(token);
+  redirect(`/super-admin/schools/${school.id}`);
 }

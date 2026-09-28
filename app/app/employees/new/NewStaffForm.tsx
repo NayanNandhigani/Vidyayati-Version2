@@ -42,7 +42,7 @@ export default function NewStaffForm() {
           <option value="NON_TEACHING">Non-teaching</option>
         </select>
       </label>
-      <div style={{ fontSize: 12, color: "var(--muted)" }}>Default password: <span className="mono">12345</span> — the staff member can change it after logging in.</div>
+      <div style={{ fontSize: 12, color: "var(--muted)" }}>A one-time setup link will be shown after saving — share it with the new staff member so they can set their own password. There is no default/shared password.</div>
 
       {state.error && (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--critical)", background: "var(--critical-tint)", border: "1px solid var(--critical-border)", borderRadius: 8, padding: "8px 11px" }}>

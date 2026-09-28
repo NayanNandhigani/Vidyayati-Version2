@@ -11,6 +11,7 @@ import { readAddress, readContactAddress } from "@/lib/address";
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/feature-flags";
 import { createPendingAccount } from "@/lib/account-setup";
 import { resetPasswordToDefault } from "@/lib/account-reset";
+import { setSetupTokenFlash } from "@/lib/setup-token-flash";
 
 const AADHAR_PATTERN = /^\d{12}$/;
 
@@ -133,7 +134,8 @@ export async function onboardSchool(_prevState: SchoolFormState, formData: FormD
   }
 
   revalidatePath("/super-admin/schools");
-  redirect(`/super-admin/schools/${school.id}?setupToken=${token}`);
+  await setSetupTokenFlash(token);
+  redirect(`/super-admin/schools/${school.id}`);
 }
 
 export async function updateSchool(_prevState: ManageFormState, formData: FormData): Promise<ManageFormState> {
