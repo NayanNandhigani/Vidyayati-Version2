@@ -463,4 +463,71 @@ committed):
   Attendance was always empty). True batch-upsert deferred — the audited-
   model system needs per-row upserts for its before/after diffing.
 
-Remaining: Priorities 3–9.
+**Priority 3 — input validation sweep** (commit `dad9c85`): applied the
+validation table across the forms it names, via lib/validation.ts's
+shared validators (phone, email, and a new validateDob covering "in the
+past" + a sensible age range). Class grade/section, fee amounts, event
+cost, student/staff DOB, and phone numbers across staff/vehicle/emergency-
+contact forms all gained real checks. Investigated "Add Student/Add Class
+wipe fields on error" — both use the standard useActionState +
+uncontrolled-input pattern, which doesn't clear values on a failed
+submit; didn't reproduce.
+
+**Priority 4 — safety, UX, performance** (commit `6b83d0b`): Class/Library-
+book delete gained inline confirmation (the server already blocked both
+correctly — Class via existing dependency counts, Library via existing
+active-loan count — the gap was purely the missing confirm step). Library
+book delete became a soft delete (was cascading LibraryCirculation,
+wiping returned-copy history, not just blocking active loans). Added
+Events edit/delete and Announcements edit-while-pending/withdraw-after-
+publish (Announcement.withdrawnAt). Events' checklist had the exact same
+stale-local-state bug as Timetable (2.1) — fixed the same way. Added
+app/error.tsx, the first (and only) error boundary anywhere in this app —
+the direct cause of every "raw server error" complaint across this whole
+QA pass. Communication input sizing, Hostel colors/room-size labeling,
+and the Certificates stray template didn't clearly reproduce or are
+literal test data, not code — left alone. Performance profiling deferred
+(needs a live database this sandbox has no access to).
+
+**Priority 5 — missing modules** (commit `235664c`, bundled with
+Priority 6): Teaching module hidden from the sidebar (was a bare
+placeholder, no real functionality — QA's prompt explicitly offered
+hiding as the alternative to building a first version). Everything else
+in this section — staff leave (already fully built, just feature-flagged
+off), guardians (already substantially fixed as a side effect of 1.3/
+1.4), Communication SMS/WhatsApp (explicitly on hold per claude.md),
+Library staff borrowers, Events multi-day, Settings General, Academic
+year relocation — noted rather than built; genuine net-new scope this
+pass didn't have room for.
+
+**Priority 6 — security** (commit `235664c`): the setup-token-in-URL bug
+existed in 5 places (both staff-creation flows, Super Admin's school and
+platform-staff creation) — all fixed via lib/setup-token-flash.ts, a
+short-lived httpOnly cookie read once by the destination page instead of
+a `?setupToken=` query param landing in browser history/server logs.
+Removed the literally-false "Default password: 12345" text from both Add
+Staff forms (every account is setup-token-based; nothing has ever used
+that password). Reset flows already force mustChangePassword=true, tenant
+isolation is already centrally enforced, and server-side permission
+checks were already present everywhere spot-checked — automated tests for
+this weren't added since there's no test runner in this project at all,
+and picking one is a bigger decision than this pass should make alone.
+
+**Priority 7 — audit log** (commit `28f13e8`): rows showed a raw id and
+nothing else — before→after diffing already existed (verified, not new).
+New lib/audit-labels.ts resolves a batch of rows (one query per entity
+type) into a human label + link for Student/Exam/FeePayment/PayrollRun/
+AccountsTransaction/AdmissionEnquiry/Parent/StaffProfile, matching the
+QA prompt's own example format exactly; a DELETEd row falls back to its
+already-stored snapshot instead of a live lookup. Added the missing
+audited modules named in the prompt (Class, Subject, Library, Events,
+Announcements, Transport) — cheap, since AUDITED_MODELS is a plain list
+the existing extension already handles generically. School settings
+changes are flagged as NOT newly audited: School has no schoolId column,
+so the tenant-scoping extension bails before its audit logic runs for it
+at all — fixing that means touching the single most sensitive piece of
+this codebase, which this pass deliberately left alone rather than risk
+under time pressure.
+
+Remaining: Priority 8 (test data cleanup — needs the live tenant, not
+code) and Priority 9 (definition of done / changelog).
