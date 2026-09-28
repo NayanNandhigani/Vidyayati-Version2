@@ -396,5 +396,71 @@ restored in the same commit — no functional change to that export, but
 worth remembering: always Read before Write, even for a file that looks
 like it should be new.
 
-Remaining: 1.4 (students/employees can't be edited after saving), then
-Priorities 2–5.
+**1.4 — Students/Employees couldn't be edited after saving** (commit
+`4c2694b`). Added: student profile edit (name/DOB/gender/address/blood
+group/medical notes/roll number), status change (StudentStatus gained
+TRANSFERRED/INACTIVE), transfer section, soft delete; guardian add/unlink
+(`lib/guardian.ts`, factored out of 1.3's admissions-only version so both
+reuse the same find-by-phone-or-create-login logic); bulk promote-to-
+next-grade with hold-back selection (Academic Management → new "Promote
+Students" tab) — pending fees carry forward automatically since
+FeeInstalment is keyed by student, not class. Employees: core-field edit
+(name/phone/designation/department/staffCategory/dateJoined — the
+existing detailed-profile feature flag never covered these), Deactivate/
+Reactivate (User.status, already enforced at login), Reset password/
+Regenerate setup link (`lib/account-reset.ts`, shared with Super Admin's
+existing school-admin-reset instead of duplicated), soft delete
+(StaffProfile.deletedAt). Also fixed the admission-number duplicate error
+to name the actual clashing student/class, and Employees' "teaching
+staff" count to use staffCategory instead of a designation-string guess.
+
+**Priority 2 — data correctness bugs**, worked in the same
+investigate → fix → verify → commit rhythm, one commit per numbered item
+(2.1 `e7afa00`; 2.2+2.3 combined `39a9a0d`; 2.4-2.8 combined `c8343c0`,
+after this session survived a mid-work disconnect and directory-access
+drop — recovered cleanly since everything through 2.3 was already
+committed):
+
+- **2.1 Timetable** — added the teacher-clash check the room-aware path
+  already had to the plain (default) path too, with an explicit override;
+  fixed the stale-grid bug (`key={classId}` — the grid's local state was
+  only ever seeded once, so switching classes kept the old schedule until
+  a reload).
+- **2.2 Homework** — blocked past due dates on create (not edit); the
+  real fix was a shared `classifyHomework()` (`lib/homework.ts`) so the
+  board's columns and the page's tiles can't disagree the way they used
+  to (no "Overdue" bucket existed at all); scoring now moves Pending →
+  Submitted and validates against a new configurable `maxMarks` (was
+  hardcoded to 10); added Edit/Delete, A–Z submission sort.
+- **2.3 Exams** — blocked end-before-start; the real bug was three
+  independent copies of "a student with no Mark row silently scores 0"
+  (persisted `StudentResult`, the Report Card panel's inline calc, the PDF
+  route's inline calc) — rewrote `calculateExamResults` as the one source
+  of truth, all three now read it. Added Absent (`Mark.isAbsent`, marks
+  nullable), per-subject pass marks + `StudentResult.resultStatus`
+  (replacing the PDF's hardcoded "33% of total" pass/fail line, which
+  ignored per-subject failure entirely), Delete exam.
+- **2.4 Admission numbers** — one shared `lib/admission-number.ts`
+  (highest existing numeric suffix, any prefix, + 1) replacing two
+  independent schemes that both ignored the configured prefix.
+- **2.5 Accounts** — Income/Expense now show separate category lists;
+  added Edit/Delete for manual rows only. Currency-as-tenant-setting
+  explicitly deferred (touches every ₹ in the app).
+- **2.6 Transport** — the "raw server error"/"list doesn't refresh" bugs
+  didn't reproduce against current code (already handled correctly) —
+  verified rather than blindly "fixed" a non-bug. Compliance-date badges
+  already existed per-vehicle too; added the missing fleet-wide Dashboard
+  surface, a Cancel button, and an expired-date warning on save.
+- **2.7 Dashboard** — "Net, last {period}" → "Net, this {period}" (label
+  bug only, the figure was always the current period).
+- **2.8 Attendance** — the real bug was data loss (no warning on
+  navigating away mid-save), fixed with a `beforeunload` guard; half-day
+  weighting is now `School.halfDayAttendanceWeight` (default 0.5) via one
+  shared `lib/attendance.ts` helper, replacing ~6 independent copies of
+  the same "half-day = 0" formula across student/staff profiles, the
+  parent view, and Reports; added staff attendance marking (admin-only —
+  there was no write path at all before, which is why Reports → Staff
+  Attendance was always empty). True batch-upsert deferred — the audited-
+  model system needs per-row upserts for its before/after diffing.
+
+Remaining: Priorities 3–9.
