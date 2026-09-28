@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { initials, daysUntil } from "@/lib/format";
+import { initials } from "@/lib/format";
 import { avatarColorFor, subjectStyleFor } from "@/lib/academic";
+import { classifyHomework, type HomeworkBucket } from "@/lib/homework";
 import type { SubmissionStatus } from "@prisma/client";
-import { cycleSubmissionStatus, setSubmissionScore, remindPending } from "./actions";
+import { cycleSubmissionStatus, setSubmissionScore, remindPending, updateHomework, deleteHomework } from "./actions";
 import { uploadHomeworkAttachment } from "./depth-actions";
 
 type Submission = { id: string; studentId: string; student: { name: string }; status: SubmissionStatus; score: number | null };
@@ -13,6 +14,7 @@ type Assignment = {
   title: string;
   description: string | null;
   dueDate: string;
+  maxMarks: number;
   subject: { name: string };
   class: { grade: string; section: string };
   staff: { user: { name: string } };
@@ -28,14 +30,8 @@ const STATUS_STYLE: Record<SubmissionStatus, { bg: string; fg: string }> = {
   LATE: { bg: "var(--critical-tint)", fg: "var(--critical)" },
 };
 
-function bucketFor(a: Assignment): "Assigned" | "Due this week" | "Submitted" | "Graded" {
-  const total = a.submissions.length;
-  const graded = a.submissions.filter((s) => s.score !== null).length;
-  const submitted = a.submissions.filter((s) => s.status === "SUBMITTED" || s.status === "LATE").length;
-  if (total > 0 && graded === total) return "Graded";
-  if (total > 0 && submitted === total) return "Submitted";
-  if (daysUntil(new Date(a.dueDate)) <= 7) return "Due this week";
-  return "Assigned";
+function bucketFor(a: Assignment): HomeworkBucket {
+  return classifyHomework(new Date(a.dueDate), a.submissions);
 }
 
 export default function HomeworkBoard({ assignments, initialSelectedId, canEdit, showAttachments }: { assignments: Assignment[]; initialSelectedId: string | null; canEdit: boolean; showAttachments: boolean }) {
@@ -43,6 +39,10 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
   const [pending, startTransition] = useTransition();
   const [reminded, setReminded] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"status" | "date">("status");
+  const [savedSubId, setSavedSubId] = useState<string | null>(null);
+  const [scoreError, setScoreError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function pickAttachment() {
@@ -57,7 +57,7 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
   }
 
   const columns = useMemo(() => {
-    const buckets: Record<string, Assignment[]> = { Assigned: [], "Due this week": [], Submitted: [], Graded: [] };
+    const buckets: Record<HomeworkBucket, Assignment[]> = { Overdue: [], Assigned: [], "Due this week": [], Submitted: [], Graded: [] };
     for (const a of assignments) buckets[bucketFor(a)].push(a);
     return buckets;
   }, [assignments]);
@@ -83,12 +83,16 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
     });
   }
 
-  function updateScore(subId: string, value: string) {
+  function updateScore(subId: string, value: string, maxMarks: number) {
     if (!canEdit || value === "") return;
-    const n = Math.max(0, Math.min(10, Number(value)));
+    const n = Number(value);
     if (Number.isNaN(n)) return;
+    setScoreError(null);
+    setSavedSubId(null);
     startTransition(async () => {
-      await setSubmissionScore(subId, n);
+      const res = await setSubmissionScore(subId, Math.max(0, Math.min(maxMarks, n)));
+      if (res.error) setScoreError(res.error);
+      else setSavedSubId(subId);
     });
   }
 
@@ -119,9 +123,9 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr) 300px", gap: 13, flex: 1, minHeight: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr) 300px", gap: 13, flex: 1, minHeight: 0 }}>
       {viewMode === "date" ? (
-        <div style={{ gridColumn: "1 / 5", overflowY: "auto", display: "flex", flexDirection: "column", gap: 16, paddingRight: 4 }}>
+        <div style={{ gridColumn: "1 / 6", overflowY: "auto", display: "flex", flexDirection: "column", gap: 16, paddingRight: 4 }}>
           {dateGroups.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13 }}>No homework assigned yet.</div>}
           {dateGroups.map(([dateKey, items]) => (
             <div key={dateKey}>
@@ -168,7 +172,7 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
           ))}
         </div>
       ) : (
-        (["Assigned", "Due this week", "Submitted", "Graded"] as const).map((col) => (
+        (["Overdue", "Assigned", "Due this week", "Submitted", "Graded"] as const).map((col) => (
         <div key={col} style={{ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 4px 10px" }}>
             <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{col}</span>
@@ -242,23 +246,53 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
                   {bucketFor(selected)}
                 </span>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{selected.title}</div>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{selected.title}</div>
+                {canEdit && (
+                  <div style={{ display: "flex", gap: 8, flex: "none" }}>
+                    <span onClick={() => setEditing((v) => !v)} style={{ fontSize: 11, fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
+                      Edit
+                    </span>
+                    <span
+                      onClick={() => {
+                        if (!confirmingDelete) {
+                          setConfirmingDelete(true);
+                          return;
+                        }
+                        startTransition(() => deleteHomework(selected.id));
+                      }}
+                      style={{ fontSize: 11, fontWeight: 700, color: "var(--critical)", cursor: "pointer" }}
+                    >
+                      {confirmingDelete ? "Confirm delete" : "Delete"}
+                    </span>
+                  </div>
+                )}
+              </div>
               <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
                 Class {selected.class.grade}-{selected.class.section} · {selected.staff.user.name}
               </div>
             </div>
 
-            <div className="field">
-              Due date
-              <div className="in mono">{new Date(selected.dueDate).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "short", year: "numeric" })}</div>
-            </div>
-            {selected.description && (
-              <div className="field">
-                Description
-                <div className="in" style={{ lineHeight: 1.5 }}>
-                  {selected.description}
+            {editing ? (
+              <EditAssignmentForm
+                assignment={selected}
+                onDone={() => setEditing(false)}
+              />
+            ) : (
+              <>
+                <div className="field">
+                  Due date
+                  <div className="in mono">{new Date(selected.dueDate).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "short", year: "numeric" })}</div>
                 </div>
-              </div>
+                {selected.description && (
+                  <div className="field">
+                    Description
+                    <div className="in" style={{ lineHeight: 1.5 }}>
+                      {selected.description}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {showAttachments && (
               <div className="field">
@@ -288,6 +322,7 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
                   {selected.submissions.filter((s) => s.status !== "PENDING").length}/{selected.submissions.length}
                 </span>
               </div>
+              {scoreError && <div style={{ fontSize: 11, color: "var(--critical)", marginBottom: 8 }}>{scoreError}</div>}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto" }}>
                 {selected.submissions.map((s) => (
                   <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -302,13 +337,13 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
                         <input
                           type="number"
                           min={0}
-                          max={10}
+                          max={selected.maxMarks}
                           placeholder="—"
                           defaultValue={s.score ?? undefined}
-                          onBlur={(e) => updateScore(s.id, e.target.value)}
+                          onBlur={(e) => updateScore(s.id, e.target.value, selected.maxMarks)}
                           className="mono"
-                          style={{ width: 34, fontSize: 11, textAlign: "center", border: "1px solid var(--line)", borderRadius: 5, padding: "3px 0" }}
-                          title="Score out of 10"
+                          style={{ width: 34, fontSize: 11, textAlign: "center", border: `1px solid ${savedSubId === s.id ? "var(--good)" : "var(--line)"}`, borderRadius: 5, padding: "3px 0" }}
+                          title={`Score out of ${selected.maxMarks}`}
                         />
                       )}
                       <span
@@ -338,6 +373,58 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
           <div style={{ color: "var(--muted)", fontSize: 13.5 }}>No assignments yet.</div>
         )}
       </div>
+      </div>
+    </div>
+  );
+}
+
+function EditAssignmentForm({ assignment, onDone }: { assignment: Assignment; onDone: () => void }) {
+  const [title, setTitle] = useState(assignment.title);
+  const [description, setDescription] = useState(assignment.description ?? "");
+  const [dueDate, setDueDate] = useState(new Date(assignment.dueDate).toISOString().slice(0, 10));
+  const [maxMarks, setMaxMarks] = useState(String(assignment.maxMarks));
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    startTransition(async () => {
+      const res = await updateHomework(assignment.id, { title, description, dueDate, maxMarks: Number(maxMarks) });
+      if (res.error) setError(res.error);
+      else {
+        setError(null);
+        onDone();
+      }
+    });
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--paper)", borderRadius: 8, padding: 10 }}>
+      <label className="field">
+        Title
+        <input className="in" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 12 }} />
+      </label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <label className="field">
+          Due date
+          <input className="in mono" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ fontSize: 12 }} />
+        </label>
+        <label className="field">
+          Max marks
+          <input className="in mono" type="number" min={1} value={maxMarks} onChange={(e) => setMaxMarks(e.target.value)} style={{ fontSize: 12 }} />
+        </label>
+      </div>
+      <label className="field">
+        Description
+        <textarea className="in" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} style={{ fontSize: 12 }} />
+      </label>
+      {error && <div style={{ fontSize: 11, color: "var(--critical)" }}>{error}</div>}
+      <div style={{ display: "flex", gap: 6 }}>
+        <button type="button" onClick={save} disabled={pending} style={{ fontSize: 11.5, fontWeight: 700, background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>
+          {pending ? "Saving…" : "Save"}
+        </button>
+        <button type="button" onClick={onDone} style={{ fontSize: 11.5, fontWeight: 600, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>
+          Cancel
+        </button>
       </div>
     </div>
   );

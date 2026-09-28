@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature, hasFeature } from "@/lib/feature-flags";
+import { calculateExamResults } from "@/lib/domain/exam-results";
 import type { Prisma } from "@prisma/client";
 
 async function schoolId() {
@@ -109,11 +110,21 @@ export async function bulkImportMarks(examId: string, csvText: string): Promise<
     rows.map((r) =>
       sdb.mark.upsert({
         where: { examSubjectId_studentId: { examSubjectId: r.examSubjectId, studentId: r.studentId } },
-        update: { marksObtained: r.marksObtained },
-        create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId: r.examSubjectId, studentId: r.studentId, marksObtained: r.marksObtained }),
+        // isAbsent: false on both branches — a re-import with a real score
+        // for a previously-absent student should clear that flag, not
+        // leave a stale "absent" marker alongside a new numeric mark.
+        update: { marksObtained: r.marksObtained, isAbsent: false },
+        create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId: r.examSubjectId, studentId: r.studentId, marksObtained: r.marksObtained, isAbsent: false }),
       })
     )
   );
+
+  // Report cards/rank now read the persisted StudentResult (see
+  // lib/domain/exam-results.ts) instead of re-deriving totals from raw
+  // marks, so a bulk import needs to trigger the same recompute the
+  // regular Save Marks grid already does — otherwise imported marks
+  // wouldn't show up on report cards until someone re-saved the grid.
+  await calculateExamResults(examId);
 
   revalidatePath("/app/exams");
   return { imported: rows.length };

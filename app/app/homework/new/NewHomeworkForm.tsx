@@ -82,10 +82,16 @@ export default function NewHomeworkForm({
         </label>
       )}
 
-      <label className="field">
-        Due date
-        <input className="in" type="date" name="dueDate" required />
-      </label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <label className="field">
+          Due date
+          <input className="in" type="date" name="dueDate" min={new Date().toISOString().slice(0, 10)} required />
+        </label>
+        <label className="field">
+          Max marks
+          <input className="in mono" type="number" name="maxMarks" min={1} step={1} defaultValue={10} />
+        </label>
+      </div>
 
       <label className="field">
         Description

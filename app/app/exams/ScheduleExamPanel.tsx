@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateExam, approveExam, rejectExam } from "./actions";
+import { updateExam, approveExam, rejectExam, deleteExam } from "./actions";
 
-type ExamSubjectRow = { id: string; subjectId: string; name: string; maxMarks: number };
+type ExamSubjectRow = { id: string; subjectId: string; name: string; maxMarks: number; passMarks: number | null };
 type Subject = { id: string; name: string };
 
 const APPROVAL_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
@@ -42,10 +42,12 @@ export default function ScheduleExamPanel({
   const [name, setName] = useState(examName);
   const [start, setStart] = useState(startDate);
   const [end, setEnd] = useState(endDate);
-  const [rows, setRows] = useState<{ examSubjectId?: string; subjectId: string; name: string; maxMarks: number }[]>(
-    examSubjects.map((es) => ({ examSubjectId: es.id, subjectId: es.subjectId, name: es.name, maxMarks: es.maxMarks }))
+  const [rows, setRows] = useState<{ examSubjectId?: string; subjectId: string; name: string; maxMarks: number; passMarks: number | null }[]>(
+    examSubjects.map((es) => ({ examSubjectId: es.id, subjectId: es.subjectId, name: es.name, maxMarks: es.maxMarks, passMarks: es.passMarks }))
   );
   const [addSubjectId, setAddSubjectId] = useState("");
+  const [deleteStep, setDeleteStep] = useState<"idle" | "confirming">("idle");
+  const [deleteWarning, setDeleteWarning] = useState<string | null>(null);
 
   const usedSubjectIds = new Set(rows.map((r) => r.subjectId));
   const availableToAdd = allSubjects.filter((s) => !usedSubjectIds.has(s.id));
@@ -54,19 +56,23 @@ export default function ScheduleExamPanel({
     if (!addSubjectId) return;
     const subject = allSubjects.find((s) => s.id === addSubjectId);
     if (!subject) return;
-    setRows((prev) => [...prev, { subjectId: subject.id, name: subject.name, maxMarks: 100 }]);
+    setRows((prev) => [...prev, { subjectId: subject.id, name: subject.name, maxMarks: 100, passMarks: null }]);
     setAddSubjectId("");
   }
 
   function save() {
     setError(null);
+    if (end < start) {
+      setError("End date can't be before the start date.");
+      return;
+    }
     startTransition(async () => {
       try {
         await updateExam(examId, {
           name,
           startDate: start,
           endDate: end,
-          subjects: rows.map((r) => ({ examSubjectId: r.examSubjectId, subjectId: r.subjectId, maxMarks: r.maxMarks })),
+          subjects: rows.map((r) => ({ examSubjectId: r.examSubjectId, subjectId: r.subjectId, maxMarks: r.maxMarks, passMarks: r.passMarks })),
         });
         setEditing(false);
       } catch (e) {
@@ -80,6 +86,18 @@ export default function ScheduleExamPanel({
   }
   function reject() {
     startTransition(() => rejectExam(examId));
+  }
+
+  function remove() {
+    if (deleteStep === "idle") {
+      setDeleteStep("confirming");
+      return;
+    }
+    startTransition(async () => {
+      const res = await deleteExam(examId, deleteWarning !== null);
+      if (res.error) setDeleteWarning(res.error);
+      // On success the exam disappears from the list server-side via revalidatePath.
+    });
   }
 
   const style = APPROVAL_STYLE[approvalStatus];
@@ -115,6 +133,16 @@ export default function ScheduleExamPanel({
                   value={r.maxMarks}
                   onChange={(e) => setRows((prev) => prev.map((row, j) => (j === i ? { ...row, maxMarks: Number(e.target.value) } : row)))}
                   style={{ width: 70 }}
+                  title="Max marks"
+                />
+                <input
+                  className="in"
+                  type="number"
+                  placeholder="Pass mark"
+                  value={r.passMarks ?? ""}
+                  onChange={(e) => setRows((prev) => prev.map((row, j) => (j === i ? { ...row, passMarks: e.target.value ? Number(e.target.value) : null } : row)))}
+                  style={{ width: 80 }}
+                  title="Pass mark (optional)"
                 />
               </div>
             ))}
@@ -169,8 +197,19 @@ export default function ScheduleExamPanel({
               Edit
             </span>
           )}
+          {canEdit && (
+            <span onClick={remove} style={{ fontSize: 12.5, fontWeight: 700, color: "var(--critical)", cursor: "pointer" }}>
+              {deleteStep === "confirming" ? "Confirm delete" : "Delete"}
+            </span>
+          )}
         </div>
       </div>
+
+      {deleteWarning && (
+        <div style={{ fontSize: 12, color: "var(--critical)", background: "var(--critical-tint)", border: "1px solid var(--critical-border)", borderRadius: 8, padding: "8px 11px" }}>
+          {deleteWarning} <span onClick={remove} style={{ fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Delete anyway</span>
+        </div>
+      )}
 
       <div>
         <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Subjects</div>

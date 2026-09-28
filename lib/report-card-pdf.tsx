@@ -51,12 +51,13 @@ export type ReportCardStudent = {
   name: string;
   admissionNo: string;
   className: string;
-  subjects: { name: string; obtained: number; max: number }[];
-  total: number;
-  maxTotal: number;
-  pct: number;
-  grade: string;
-  rank: number;
+  subjects: { name: string; obtained: number | null; isAbsent: boolean; max: number }[];
+  total: number | null;
+  maxTotal: number | null;
+  pct: number | null;
+  grade: string | null;
+  resultStatus: "PASS" | "FAIL" | null;
+  rank: number | null;
   outOf: number;
 };
 
@@ -96,7 +97,7 @@ export function ReportCardDocument({
             </View>
             <View style={{ alignItems: "flex-end" }}>
               <Text style={styles.studentMeta}>Rank in class</Text>
-              <Text style={{ fontSize: 13, fontWeight: 700, color: INK }}>{s.rank} of {s.outOf}</Text>
+              <Text style={{ fontSize: 13, fontWeight: 700, color: INK }}>{s.rank !== null ? `${s.rank} of ${s.outOf}` : "—"}</Text>
             </View>
           </View>
 
@@ -108,36 +109,36 @@ export function ReportCardDocument({
               <Text style={[styles.tHeadCell, { flex: 1, textAlign: "right" }]}>%</Text>
             </View>
             {s.subjects.map((sub, j) => {
-              const subPct = sub.max > 0 ? (sub.obtained / sub.max) * 100 : 0;
+              const subPct = sub.obtained !== null && sub.max > 0 ? (sub.obtained / sub.max) * 100 : null;
               return (
                 <View key={j} style={styles.tRow}>
                   <Text style={[styles.tCell, { flex: 2.2 }]}>{sub.name}</Text>
-                  <Text style={[styles.tCell, { flex: 1, textAlign: "right" }]}>{sub.obtained}</Text>
+                  <Text style={[styles.tCell, { flex: 1, textAlign: "right" }]}>{sub.isAbsent ? "AB" : sub.obtained ?? "—"}</Text>
                   <Text style={[styles.tCell, { flex: 1, textAlign: "right", color: FAINT }]}>{sub.max}</Text>
-                  <Text style={[styles.tCell, { flex: 1, textAlign: "right", color: gradeColorHex(subPct >= 90 ? "A+" : subPct >= 80 ? "A" : subPct >= 70 ? "B+" : subPct >= 60 ? "B" : subPct >= 50 ? "C" : "D") }]}>{subPct.toFixed(0)}%</Text>
+                  <Text style={[styles.tCell, { flex: 1, textAlign: "right", color: subPct === null ? FAINT : gradeColorHex(subPct >= 90 ? "A+" : subPct >= 80 ? "A" : subPct >= 70 ? "B+" : subPct >= 60 ? "B" : subPct >= 50 ? "C" : "D") }]}>{subPct === null ? "—" : `${subPct.toFixed(0)}%`}</Text>
                 </View>
               );
             })}
             <View style={styles.totalsRow}>
               <Text style={[styles.tCell, { flex: 2.2, fontWeight: 700 }]}>Total</Text>
-              <Text style={[styles.tCell, { flex: 1, textAlign: "right", fontWeight: 700 }]}>{s.total}</Text>
-              <Text style={[styles.tCell, { flex: 1, textAlign: "right", fontWeight: 700, color: FAINT }]}>{s.maxTotal}</Text>
-              <Text style={[styles.tCell, { flex: 1, textAlign: "right", fontWeight: 700 }]}>{s.pct.toFixed(1)}%</Text>
+              <Text style={[styles.tCell, { flex: 1, textAlign: "right", fontWeight: 700 }]}>{s.total ?? "—"}</Text>
+              <Text style={[styles.tCell, { flex: 1, textAlign: "right", fontWeight: 700, color: FAINT }]}>{s.maxTotal ?? "—"}</Text>
+              <Text style={[styles.tCell, { flex: 1, textAlign: "right", fontWeight: 700 }]}>{s.pct !== null ? `${s.pct.toFixed(1)}%` : "—"}</Text>
             </View>
           </View>
 
           <View style={styles.summaryRow}>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>Percentage</Text>
-              <Text style={styles.summaryValue}>{s.pct.toFixed(1)}%</Text>
+              <Text style={styles.summaryValue}>{s.pct !== null ? `${s.pct.toFixed(1)}%` : "—"}</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>Grade</Text>
-              <Text style={[styles.summaryValue, { color: gradeColorHex(s.grade) }]}>{s.grade}</Text>
+              <Text style={[styles.summaryValue, s.grade ? { color: gradeColorHex(s.grade) } : undefined]}>{s.grade ?? "—"}</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>Result</Text>
-              <Text style={[styles.summaryValue, { color: s.pct >= 33 ? GOOD : CRITICAL }]}>{s.pct >= 33 ? "PASS" : "FAIL"}</Text>
+              <Text style={[styles.summaryValue, s.resultStatus ? { color: s.resultStatus === "PASS" ? GOOD : CRITICAL } : undefined]}>{s.resultStatus ?? "—"}</Text>
             </View>
           </View>
 

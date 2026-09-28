@@ -17,6 +17,8 @@ export async function createHomework(_prevState: HomeworkFormState, formData: Fo
   const subjectId = formData.get("subjectId");
   const dueDate = formData.get("dueDate");
 
+  const maxMarksRaw = formData.get("maxMarks");
+
   if (
     typeof title !== "string" || !title.trim() ||
     typeof classId !== "string" || !classId ||
@@ -24,6 +26,17 @@ export async function createHomework(_prevState: HomeworkFormState, formData: Fo
     typeof dueDate !== "string" || !dueDate
   ) {
     return { error: "Title, class, subject, and due date are required." };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (new Date(dueDate) < today) {
+    return { error: "Due date can't be in the past." };
+  }
+
+  const maxMarks = typeof maxMarksRaw === "string" && maxMarksRaw ? Number(maxMarksRaw) : 10;
+  if (!Number.isFinite(maxMarks) || maxMarks <= 0) {
+    return { error: "Max marks must be a positive number." };
   }
 
   await requireModuleAccess("Homework", "EDIT", classId);
@@ -72,6 +85,7 @@ export async function createHomework(_prevState: HomeworkFormState, formData: Fo
       subjectId,
       staffId,
       dueDate: new Date(dueDate),
+      maxMarks,
     }),
   });
 
@@ -105,11 +119,51 @@ export async function cycleSubmissionStatus(submissionId: string) {
   return { status: next };
 }
 
-export async function setSubmissionScore(submissionId: string, score: number) {
+export async function setSubmissionScore(submissionId: string, score: number): Promise<{ error?: string }> {
   const sdb = await getScopedDb();
-  const sub = await sdb.homeworkSubmission.findUniqueOrThrow({ where: { id: submissionId }, include: { assignment: { select: { classId: true } } } });
+  const sub = await sdb.homeworkSubmission.findUniqueOrThrow({ where: { id: submissionId }, include: { assignment: { select: { classId: true, maxMarks: true } } } });
   await requireModuleAccess("Homework", "EDIT", sub.assignment.classId);
-  await sdb.homeworkSubmission.update({ where: { id: submissionId }, data: { score } });
+  if (score < 0 || score > sub.assignment.maxMarks) {
+    return { error: `Score must be between 0 and ${sub.assignment.maxMarks}.` };
+  }
+  // Scoring a submission implies it was submitted — a teacher grading
+  // something the board still showed as "Pending" shouldn't leave it
+  // stuck there (this was the "grading doesn't work" bug: score saved,
+  // status never moved, so the board/tiles never reflected it).
+  await sdb.homeworkSubmission.update({
+    where: { id: submissionId },
+    data: { score, status: sub.status === "PENDING" ? "SUBMITTED" : sub.status, submittedOn: sub.submittedOn ?? new Date() },
+  });
+  revalidatePath("/app/homework");
+  return {};
+}
+
+export type HomeworkEditFields = { title: string; description: string; dueDate: string; maxMarks: number };
+
+/** Editing an existing assignment — unlike createHomework, a past due date is allowed here (the QA ask is specifically "block on create, allow on edit"). */
+export async function updateHomework(homeworkId: string, fields: HomeworkEditFields): Promise<{ error?: string }> {
+  const sdb = await getScopedDb();
+  const homework = await sdb.homework.findUniqueOrThrow({ where: { id: homeworkId }, select: { classId: true } });
+  await requireModuleAccess("Homework", "EDIT", homework.classId);
+
+  if (!fields.title.trim()) return { error: "Title is required." };
+  if (!fields.dueDate || Number.isNaN(Date.parse(fields.dueDate))) return { error: "Due date isn't valid." };
+  if (!Number.isFinite(fields.maxMarks) || fields.maxMarks <= 0) return { error: "Max marks must be a positive number." };
+
+  await sdb.homework.update({
+    where: { id: homeworkId },
+    data: { title: fields.title.trim(), description: fields.description.trim() || null, dueDate: new Date(fields.dueDate), maxMarks: fields.maxMarks },
+  });
+  revalidatePath("/app/homework");
+  return {};
+}
+
+/** Deletes an assignment and its per-student submissions (cascades) — the client asks for confirmation before calling this. */
+export async function deleteHomework(homeworkId: string) {
+  const sdb = await getScopedDb();
+  const homework = await sdb.homework.findUniqueOrThrow({ where: { id: homeworkId }, select: { classId: true } });
+  await requireModuleAccess("Homework", "EDIT", homework.classId);
+  await sdb.homework.delete({ where: { id: homeworkId } });
   revalidatePath("/app/homework");
 }
 

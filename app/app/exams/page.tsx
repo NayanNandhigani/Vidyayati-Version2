@@ -80,10 +80,10 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   const marks = selectedExam
     ? await sdb.mark.findMany({ where: { examSubject: { examId: selectedExam.id }, studentId: { in: students.map((s) => s.id) } } })
     : [];
-  const initialMarks: Record<string, Record<string, number>> = {};
+  const initialMarks: Record<string, Record<string, number | "AB">> = {};
   for (const m of marks) {
     initialMarks[m.studentId] = initialMarks[m.studentId] ?? {};
-    initialMarks[m.studentId][m.examSubjectId] = Number(m.marksObtained);
+    initialMarks[m.studentId][m.examSubjectId] = m.isAbsent ? "AB" : Number(m.marksObtained);
   }
 
   const [showSeating, showResultRelease, rooms, school] = await Promise.all([
@@ -96,19 +96,21 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
 
   const examOptions = exams.map((e) => ({ id: e.id, classId: e.classId, label: `${e.name} · Class ${e.class.grade}-${e.class.section}` }));
 
-  // Report Card rows — total/percentage/grade/rank per student, computed
-  // once here from the same marks data ExamMarksGrid already uses, so the
-  // panel and the downloadable PDF (app/api/exams/[examId]/report-card/pdf)
-  // agree with what's on screen.
-  const maxTotal = examSubjects.reduce((s, es) => s + es.maxMarks, 0);
-  const totals = students.map((s) => {
-    const row = initialMarks[s.id] ?? {};
-    return { student: s, total: examSubjects.reduce((sum, es) => sum + (row[es.id] ?? 0), 0) };
-  });
-  const ranked = [...totals].sort((a, b) => b.total - a.total);
-  const reportCardRows = totals.map(({ student: s, total }) => {
-    const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-    return { id: s.id, name: studentName(s), total, maxTotal, pct, grade: gradeForPct(pct), rank: ranked.findIndex((r) => r.student.id === s.id) + 1 };
+  // Report Card rows — total/percentage/grade/rank per student. Reads the
+  // persisted StudentResult (computed by lib/domain/exam-results.ts right
+  // after every saveMarks) rather than re-deriving totals inline here, so
+  // this panel, the downloadable PDF, and the Dashboard's exam-average
+  // tile can never disagree the way they used to (a student with no marks
+  // used to get silently scored 0 and ranked/graded alongside everyone
+  // else). A student with no StudentResult row — nothing entered for them
+  // yet — shows "—" rather than being scored as zero or omitted.
+  const results = selectedExam ? await sdb.studentResult.findMany({ where: { examId: selectedExam.id } }) : [];
+  const resultByStudent = new Map(results.map((r) => [r.studentId, r]));
+  const reportCardRows = students.map((s) => {
+    const r = resultByStudent.get(s.id);
+    if (!r) return { id: s.id, name: studentName(s), total: null, maxTotal: null, pct: null, grade: null, resultStatus: null, rank: null };
+    const pct = Number(r.percentage);
+    return { id: s.id, name: studentName(s), total: Number(r.totalMarks), maxTotal: Number(r.maxMarks), pct, grade: r.grade ?? gradeForPct(pct), resultStatus: r.resultStatus, rank: r.rank };
   });
 
   const hallTicketRows = students.map((s) => ({ id: s.id, name: studentName(s), admissionNo: s.admissionNo }));
@@ -201,7 +203,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               approvalStatus={selectedExam.approvalStatus}
               isSchoolAdmin={isSchoolAdmin}
               canEdit={canEdit}
-              examSubjects={examSubjects.map((es) => ({ id: es.id, subjectId: es.subjectId, name: es.subject.name, maxMarks: es.maxMarks }))}
+              examSubjects={examSubjects.map((es) => ({ id: es.id, subjectId: es.subjectId, name: es.subject.name, maxMarks: es.maxMarks, passMarks: es.passMarks }))}
               allSubjects={allSubjects}
             />
           )}

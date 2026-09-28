@@ -26,6 +26,9 @@ export async function createExam(_prevState: ExamFormState, formData: FormData):
   ) {
     return { error: "Name, at least one class, dates, and at least one subject are required." };
   }
+  if (new Date(endDate) < new Date(startDate)) {
+    return { error: "End date can't be before the start date." };
+  }
 
   // Same exam (name/dates/subjects) scheduled once per selected class — the
   // data model keeps one Exam row per class (marks/seating/report cards
@@ -72,13 +75,15 @@ export async function createExam(_prevState: ExamFormState, formData: FormData):
       });
 
       await tx.examSubject.createMany({
-        data: subjectIds.map((subjectId) =>
-          scopedCreateData<Prisma.ExamSubjectUncheckedCreateInput>({
+        data: subjectIds.map((subjectId) => {
+          const passMarksRaw = formData.get(`passMarks_${subjectId}`);
+          return scopedCreateData<Prisma.ExamSubjectUncheckedCreateInput>({
             examId: exam.id,
             subjectId,
             maxMarks: Number(formData.get(`maxMarks_${subjectId}`)) || 100,
-          })
-        ),
+            passMarks: typeof passMarksRaw === "string" && passMarksRaw ? Number(passMarksRaw) : null,
+          });
+        }),
       });
 
       return exam.id;
@@ -91,7 +96,7 @@ export async function createExam(_prevState: ExamFormState, formData: FormData):
   redirect(`/app/exams?exam=${firstExamId}&classId=${classIds[0]}`);
 }
 
-export async function saveMarks(examId: string, marks: Record<string, Record<string, number>>) {
+export async function saveMarks(examId: string, marks: Record<string, Record<string, number | "AB">>) {
   const sdb = await getScopedDb();
   // An Exam belongs to exactly one Class, so every mark in this batch is
   // for that same class — one lookup covers the whole call.
@@ -112,15 +117,27 @@ export async function saveMarks(examId: string, marks: Record<string, Record<str
   const ops = [];
   for (const [studentId, bySubject] of Object.entries(marks)) {
     if (!validStudentIds.has(studentId)) continue;
-    for (const [examSubjectId, marksObtained] of Object.entries(bySubject)) {
+    for (const [examSubjectId, value] of Object.entries(bySubject)) {
       const maxMarks = maxMarksByExamSubject.get(examSubjectId);
       if (maxMarks === undefined) continue;
-      if (marksObtained < 0 || marksObtained > maxMarks) continue;
+
+      if (value === "AB") {
+        ops.push(
+          sdb.mark.upsert({
+            where: { examSubjectId_studentId: { examSubjectId, studentId } },
+            update: { marksObtained: null, isAbsent: true },
+            create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId, studentId, marksObtained: null, isAbsent: true }),
+          })
+        );
+        continue;
+      }
+
+      if (value < 0 || value > maxMarks) continue;
       ops.push(
         sdb.mark.upsert({
           where: { examSubjectId_studentId: { examSubjectId, studentId } },
-          update: { marksObtained },
-          create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId, studentId, marksObtained }),
+          update: { marksObtained: value, isAbsent: false },
+          create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId, studentId, marksObtained: value, isAbsent: false }),
         })
       );
     }
@@ -136,11 +153,12 @@ export type UpdateExamFields = {
   name: string;
   startDate: string;
   endDate: string;
-  // Existing subjects are keyed by their examSubjectId (maxMarks only, no
-  // add/remove — subjects already have Marks recorded against them, so
-  // deleting one would cascade-delete those); a row with no examSubjectId
-  // is a brand new subject being added to the exam, which is safe.
-  subjects: { examSubjectId?: string; subjectId: string; maxMarks: number }[];
+  // Existing subjects are keyed by their examSubjectId (maxMarks/passMarks
+  // only, no add/remove — subjects already have Marks recorded against
+  // them, so deleting one would cascade-delete those); a row with no
+  // examSubjectId is a brand new subject being added to the exam, which
+  // is safe.
+  subjects: { examSubjectId?: string; subjectId: string; maxMarks: number; passMarks: number | null }[];
 };
 
 /** Editing a scheduled exam sends it back to PENDING for re-approval, regardless of who edits it (School Admin included) — a changed exam needs a fresh sign-off just like a newly scheduled one does. */
@@ -151,6 +169,9 @@ export async function updateExam(examId: string, fields: UpdateExamFields) {
 
   if (!fields.name.trim() || !fields.startDate || !fields.endDate) {
     throw new Error("Name and both dates are required.");
+  }
+  if (new Date(fields.endDate) < new Date(fields.startDate)) {
+    throw new Error("End date can't be before the start date.");
   }
 
   await sdb.exam.update({
@@ -165,16 +186,34 @@ export async function updateExam(examId: string, fields: UpdateExamFields) {
 
   for (const s of fields.subjects) {
     if (s.examSubjectId) {
-      await sdb.examSubject.update({ where: { id: s.examSubjectId }, data: { maxMarks: s.maxMarks } });
+      await sdb.examSubject.update({ where: { id: s.examSubjectId }, data: { maxMarks: s.maxMarks, passMarks: s.passMarks } });
     } else {
       await sdb.subject.findUniqueOrThrow({ where: { id: s.subjectId }, select: { id: true } });
       await sdb.examSubject.create({
-        data: scopedCreateData<Prisma.ExamSubjectUncheckedCreateInput>({ examId, subjectId: s.subjectId, maxMarks: s.maxMarks }),
+        data: scopedCreateData<Prisma.ExamSubjectUncheckedCreateInput>({ examId, subjectId: s.subjectId, maxMarks: s.maxMarks, passMarks: s.passMarks }),
       });
     }
   }
 
   revalidatePath("/app/exams");
+}
+
+/** Deletes an exam entirely — blocked once any marks have been entered, unless forced (the client asks for confirmation either way). */
+export async function deleteExam(examId: string, force = false): Promise<{ error?: string }> {
+  const sdb = await getScopedDb();
+  const exam = await sdb.exam.findUniqueOrThrow({ where: { id: examId }, select: { classId: true } });
+  await requireModuleAccess("Exams", "EDIT", exam.classId);
+
+  if (!force) {
+    const markCount = await sdb.mark.count({ where: { examSubject: { examId } } });
+    if (markCount > 0) {
+      return { error: `This exam has ${markCount} mark${markCount === 1 ? "" : "s"} recorded. Delete anyway?` };
+    }
+  }
+
+  await sdb.exam.delete({ where: { id: examId } });
+  revalidatePath("/app/exams");
+  return {};
 }
 
 export async function approveExam(examId: string) {

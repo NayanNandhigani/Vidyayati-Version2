@@ -2,9 +2,9 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
-import { formatDate, daysUntil, studentName } from "@/lib/format";
+import { formatDate, studentName } from "@/lib/format";
 import { hasFeature } from "@/lib/feature-flags";
-import { effectiveStatus } from "@/lib/homework";
+import { effectiveStatus, classifyHomework } from "@/lib/homework";
 import { getOverdueHomework } from "./depth-actions";
 import HomeworkBoard from "./HomeworkBoard";
 import ParentSubmissionUpload from "./ParentSubmissionUpload";
@@ -44,9 +44,10 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
   });
   const homework = permittedClassIds === "ALL" ? homeworkRaw : homeworkRaw.filter((h) => permittedClassIds.has(h.classId));
 
-  const now = new Date();
-  const activeCount = homework.filter((h) => h.dueDate >= now).length;
-  const dueThisWeekCount = homework.filter((h) => daysUntil(h.dueDate) >= 0 && daysUntil(h.dueDate) <= 7).length;
+  const buckets = homework.map((h) => classifyHomework(h.dueDate, h.submissions.map((s) => ({ status: s.status, score: s.score !== null ? Number(s.score) : null }))));
+  const overdueCount = buckets.filter((b) => b === "Overdue").length;
+  const activeCount = buckets.filter((b) => b !== "Graded").length;
+  const dueThisWeekCount = buckets.filter((b) => b === "Due this week").length;
   const rates = homework
     .filter((h) => h.submissions.length > 0)
     .map((h) => h.submissions.filter((s) => s.status !== "PENDING").length / h.submissions.length);
@@ -65,10 +66,13 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
     title: h.title,
     description: h.description,
     dueDate: h.dueDate.toISOString(),
+    maxMarks: h.maxMarks,
     subject: { name: h.subject.name },
     class: { grade: h.class.grade, section: h.class.section },
     staff: { user: { name: h.staff.user.name } },
-    submissions: h.submissions.map((s) => ({ id: s.id, studentId: s.studentId, student: { name: studentName(s.student) }, status: s.status, score: s.score !== null ? Number(s.score) : null })),
+    submissions: h.submissions
+      .map((s) => ({ id: s.id, studentId: s.studentId, student: { name: studentName(s.student) }, status: s.status, score: s.score !== null ? Number(s.score) : null }))
+      .sort((a, b) => a.student.name.localeCompare(b.student.name)),
     attachmentPath: h.attachmentPath,
   }));
 
@@ -91,8 +95,9 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12 }}>
         <StatCard label="Active assignments" value={activeCount} />
+        <StatCard label="Overdue" value={overdueCount} color="var(--critical)" />
         <StatCard label="Due this week" value={dueThisWeekCount} color="var(--warn)" />
         <StatCard label="Avg. submission rate" value={`${avgSubmissionRate}%`} color="var(--teal)" />
         <StatCard label="Pending grading" value={pendingGrading} color="var(--clay)" />
@@ -192,7 +197,7 @@ async function ParentHomeworkView() {
                     {showAttachments && <ParentSubmissionUpload submissionId={sub.id} hasAttachment={!!sub.attachmentPath} />}
                     {sub.score !== null && (
                       <span className="mono" style={{ fontSize: 12, fontWeight: 700 }}>
-                        {Number(sub.score)}/10
+                        {Number(sub.score)}/{sub.assignment.maxMarks}
                       </span>
                     )}
                     <span className="pill" style={{ background: style.bg, color: style.fg }}>

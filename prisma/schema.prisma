@@ -1528,6 +1528,11 @@ model ExamSchedule {
 // view) still computes this inline from Marks and hasn't been migrated
 // to read from here yet — both stay in sync since they use the same
 // grade-band logic.
+enum ExamResultStatus {
+  PASS
+  FAIL
+}
+
 model StudentResult {
   id         String   @id @default(cuid())
   schoolId   String   @map("school_id")
@@ -1540,6 +1545,10 @@ model StudentResult {
   maxMarks   Decimal  @map("max_marks") @db.Decimal(8, 2)
   percentage Decimal  @db.Decimal(5, 2)
   grade      String?
+  // Null when no subject in this exam has a passMarks configured — pass/
+  // fail isn't applicable to that exam at all. FAIL if any subject with a
+  // configured pass mark was scored below it, or marked absent.
+  resultStatus ExamResultStatus? @map("result_status")
   rank       Int?
   computedAt DateTime @default(now()) @map("computed_at")
 
@@ -1563,6 +1572,7 @@ model ExamSubject {
   subjectId String  @map("subject_id")
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   maxMarks  Int     @map("max_marks") // e.g. 100
+  passMarks Int?    @map("pass_marks") // null = no pass/fail computed for this subject
 
   marks                Mark[]
   assessmentComponents AssessmentComponent[]
@@ -1581,7 +1591,11 @@ model Mark {
   examSubject   ExamSubject @relation(fields: [examSubjectId], references: [id], onDelete: Cascade)
   studentId     String      @map("student_id")
   student       Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  marksObtained Decimal     @map("marks_obtained") @db.Decimal(6, 2)
+  // Null exactly when isAbsent is true — an absent student has no score to
+  // record, not a zero. A row not existing at all means "not entered yet",
+  // which is different again — see lib/domain/exam-results.ts.
+  marksObtained Decimal?    @map("marks_obtained") @db.Decimal(6, 2)
+  isAbsent      Boolean     @default(false) @map("is_absent")
 
   @@unique([examSubjectId, studentId])
   @@index([schoolId])
@@ -1601,6 +1615,7 @@ model Homework {
   title       String
   description String?
   dueDate     DateTime     @map("due_date")
+  maxMarks    Int          @default(10) @map("max_marks")
   createdAt   DateTime     @default(now()) @map("created_at")
   attachmentPath String?   @map("attachment_path") // the assignment's own file, set by the teacher
 

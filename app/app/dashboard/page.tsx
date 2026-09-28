@@ -174,6 +174,7 @@ async function AdminStaffDashboard() {
     for (const es of ex.examSubjects) {
       subjectNamesSet.add(es.subject.name);
       for (const m of es.marks) {
+        if (m.isAbsent || m.marksObtained === null) continue; // excluded, not scored as 0 — same rule as report cards
         const obtained = Number(m.marksObtained);
         const max = es.maxMarks;
         const all = perClassAll.get(ex.classId) ?? { obtained: 0, max: 0 };

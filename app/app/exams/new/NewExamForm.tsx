@@ -86,7 +86,8 @@ export default function NewExamForm({
                 onChange={() => toggle(s.id)}
               />
               <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{s.name}</span>
-              <input className="in" type="number" name={`maxMarks_${s.id}`} defaultValue={100} style={{ width: 70 }} disabled={!selectedSubjects.has(s.id)} />
+              <input className="in" type="number" name={`maxMarks_${s.id}`} defaultValue={100} placeholder="Max" title="Max marks" style={{ width: 70 }} disabled={!selectedSubjects.has(s.id)} />
+              <input className="in" type="number" name={`passMarks_${s.id}`} placeholder="Pass" title="Pass mark (optional)" style={{ width: 70 }} disabled={!selectedSubjects.has(s.id)} />
             </div>
           ))}
           {subjects.length === 0 && <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No subjects set up yet for this school.</div>}
