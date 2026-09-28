@@ -6,6 +6,7 @@ import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
 import { studentName } from "@/lib/format";
 import { feeStatusFor, FEE_STATUS_STYLE, gradeFor, gradeForScale } from "@/lib/academic";
 import { getSchoolFeatures } from "@/lib/feature-flags";
+import { attendancePercent } from "@/lib/attendance";
 import { getSiblings } from "../depth-actions";
 import ProfileTabs from "./ProfileTabs";
 import StudentActionsPanel from "./StudentActionsPanel";
@@ -62,11 +63,13 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const classActualFee = classFeeDefault ? Number(classFeeDefault.actualFee) : null;
 
   // Attendance stat totals (all recorded days, not just the last 15 shown)
-  const allAttendance = await sdb.attendance.groupBy({ by: ["status"], where: { studentId: student.id }, _count: true });
+  const [allAttendance, schoolForAttendance] = await Promise.all([
+    sdb.attendance.groupBy({ by: ["status"], where: { studentId: student.id }, _count: true }),
+    sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { halfDayAttendanceWeight: true } }),
+  ]);
   const attendanceTotals = { PRESENT: 0, ABSENT: 0, HALF_DAY: 0 };
   for (const row of allAttendance) attendanceTotals[row.status] = row._count;
-  const attendanceTotal = attendanceTotals.PRESENT + attendanceTotals.ABSENT + attendanceTotals.HALF_DAY;
-  const attendancePct = attendanceTotal ? Math.round((attendanceTotals.PRESENT / attendanceTotal) * 100) : null;
+  const attendancePct = attendancePercent(attendanceTotals, schoolForAttendance ? Number(schoolForAttendance.halfDayAttendanceWeight) : 0.5);
 
   // Exam marks grouped by exam
   const examGroups = new Map<string, { examName: string; date: Date; obtained: number; max: number }>();

@@ -35,6 +35,40 @@ export async function setTransactionAccountHead(transactionId: string, accountHe
   revalidatePath("/app/accounts");
 }
 
+export type ManualTransactionFields = { date: string; description: string; category: string; amount: number; type: "INCOME" | "EXPENSE" };
+
+/** Edit/delete only ever touch a MANUAL row — an auto-posted fee/payroll row stays locked to whatever generated it (see AUTO_FEES/AUTO_PAYROLL), same rule as everywhere else in this app that auto vs. manual matters. */
+export async function updateManualTransaction(transactionId: string, fields: ManualTransactionFields): Promise<{ error?: string }> {
+  await requireModuleAccess("Accounts", "EDIT");
+  const sdb = await getScopedDb();
+  const existing = await sdb.accountsTransaction.findUniqueOrThrow({ where: { id: transactionId }, select: { source: true } });
+  if (existing.source !== "MANUAL") return { error: "Only manually entered rows can be edited." };
+
+  if (!fields.description.trim()) return { error: "Description is required." };
+  if (!Number.isFinite(fields.amount) || fields.amount <= 0) return { error: "Enter a valid amount." };
+  if (!fields.date || Number.isNaN(Date.parse(fields.date))) return { error: "Date isn't valid." };
+
+  await sdb.accountsTransaction.update({
+    where: { id: transactionId },
+    data: { date: new Date(fields.date), description: fields.description.trim(), category: fields.category || null, amount: fields.amount, type: fields.type },
+  });
+  revalidatePath("/app/accounts");
+  revalidatePath("/app/dashboard");
+  return {};
+}
+
+export async function deleteManualTransaction(transactionId: string): Promise<{ error?: string }> {
+  await requireModuleAccess("Accounts", "EDIT");
+  const sdb = await getScopedDb();
+  const existing = await sdb.accountsTransaction.findUniqueOrThrow({ where: { id: transactionId }, select: { source: true } });
+  if (existing.source !== "MANUAL") return { error: "Only manually entered rows can be deleted." };
+
+  await sdb.accountsTransaction.delete({ where: { id: transactionId } });
+  revalidatePath("/app/accounts");
+  revalidatePath("/app/dashboard");
+  return {};
+}
+
 export async function updateAccountsApprovalThreshold(threshold: number | null) {
   const sid = await schoolId();
   await requireModuleAccess("Accounts", "EDIT");

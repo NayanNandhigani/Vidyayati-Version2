@@ -93,6 +93,12 @@ model School {
   loginBlocked    Boolean  @default(false) @map("login_blocked")
   admissionNoPrefix String? @map("admission_no_prefix") // used only to suggest the next admission number in the New Student form — admissionNo itself stays a free-text, manually-editable field exactly as before
   attendanceDefaulterThresholdPct Int? @map("attendance_defaulter_threshold_pct") // a student below this overall attendance % is flagged a defaulter; null = feature not configured
+  // How much a HALF_DAY counts toward the attendance rate — 0.5 (default,
+  // counts as half-present) or 1.0 (counts as fully present). Used
+  // everywhere an attendance percentage is shown; a half-day used to be
+  // silently treated as 0 (fully absent) in that rate with no way to
+  // change it.
+  halfDayAttendanceWeight Decimal @default(0.5) @map("half_day_attendance_weight") @db.Decimal(3, 2)
   consecutiveAbsenceAlertDays     Int? @map("consecutive_absence_alert_days") // flag a student after this many consecutive ABSENT days; null = not configured
   resultsLockUntilFeesCleared     Boolean @default(false) @map("results_lock_until_fees_cleared") // when true, a parent with outstanding fees sees a "clear dues to view" notice instead of marks, even after resultReleaseAt has passed
   homeworkGraceDays Int? @map("homework_grace_days") // a submission after the due date is only *displayed* as late once this many days have passed — purely a display computation, the stored SubmissionStatus (still manually cycled by the teacher) is untouched

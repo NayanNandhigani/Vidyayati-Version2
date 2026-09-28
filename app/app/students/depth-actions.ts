@@ -8,6 +8,7 @@ import { requireFeature, hasFeature } from "@/lib/feature-flags";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 import { findOrLinkGuardian } from "@/lib/guardian";
 import { validatePhone, validateOptionalEmail } from "@/lib/validation";
+import { nextAdmissionNumber } from "@/lib/admission-number";
 import type { ParentRelation } from "@prisma/client";
 
 async function schoolId() {
@@ -150,13 +151,7 @@ export async function deletePersonDocument(redirectPath: string, documentId: str
 /** A pure suggestion for the New Student form — never blocks or changes the existing free-text admissionNo field/validation. */
 export async function suggestAdmissionNo(): Promise<string> {
   const sdb = await getScopedDb();
-  const sid = await schoolId();
-  const [school, count] = await Promise.all([
-    sdb.school.findUnique({ where: { id: sid }, select: { admissionNoPrefix: true } }),
-    sdb.student.count(),
-  ]);
-  const prefix = school?.admissionNoPrefix?.trim() || "STU";
-  return `${prefix}-${String(count + 1).padStart(4, "0")}`;
+  return nextAdmissionNumber(sdb, await schoolId());
 }
 
 export async function updateAdmissionNoPrefix(prefix: string) {

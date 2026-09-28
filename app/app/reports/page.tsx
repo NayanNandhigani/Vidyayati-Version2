@@ -4,6 +4,7 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { hasFeature } from "@/lib/feature-flags";
 import { formatINR } from "@/lib/format";
+import { attendancePercent } from "@/lib/attendance";
 import ReportBuilderPanel from "./ReportBuilderPanel";
 
 export default async function ReportsPage() {
@@ -17,20 +18,26 @@ export default async function ReportsPage() {
   const eightWeeksAgo = new Date(now);
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
 
-  const [attendance, exams, staffAttendance, routes, enquiries] = await Promise.all([
+  const [attendance, exams, staffAttendance, routes, enquiries, schoolForAttendance] = await Promise.all([
     sdb.attendance.findMany({ where: { date: { gte: eightWeeksAgo } }, select: { date: true, status: true } }),
     sdb.exam.findMany({ include: { examSubjects: { include: { marks: true } } }, orderBy: { startDate: "desc" }, take: 5 }),
     sdb.staffAttendance.findMany({ where: { date: { gte: eightWeeksAgo } }, select: { status: true } }),
     sdb.transportRoute.findMany({ include: { assignments: true, vehicle: true } }),
     sdb.admissionEnquiry.findMany({ select: { stage: true, createdAt: true } }),
+    sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { halfDayAttendanceWeight: true } }),
   ]);
+  const halfDayWeight = schoolForAttendance ? Number(schoolForAttendance.halfDayAttendanceWeight) : 0.5;
+
+  function countsFor(rows: { status: "PRESENT" | "ABSENT" | "HALF_DAY" }[]) {
+    return { PRESENT: rows.filter((r) => r.status === "PRESENT").length, ABSENT: rows.filter((r) => r.status === "ABSENT").length, HALF_DAY: rows.filter((r) => r.status === "HALF_DAY").length };
+  }
 
   const feeInstalments = await sdb.feeInstalment.findMany({ select: { amount: true } });
   const feePayments = await sdb.feePayment.findMany({ select: { amount: true, paidOn: true } });
   const billed = feeInstalments.reduce((s, f) => s + Number(f.amount), 0);
   const collected = feePayments.reduce((s, p) => s + Number(p.amount), 0);
 
-  const overallAttendancePct = attendance.length ? Math.round((attendance.filter((a) => a.status === "PRESENT").length / attendance.length) * 100) : 0;
+  const overallAttendancePct = attendancePercent(countsFor(attendance), halfDayWeight) ?? 0;
   const feePct = billed ? Math.round((collected / billed) * 100) : 0;
 
   const examAvg = exams.length
@@ -43,8 +50,7 @@ export default async function ReportsPage() {
       )
     : 0;
 
-  const staffPresent = staffAttendance.filter((a) => a.status === "PRESENT").length;
-  const staffAttPct = staffAttendance.length ? Math.round((staffPresent / staffAttendance.length) * 100) : 0;
+  const staffAttPct = attendancePercent(countsFor(staffAttendance), halfDayWeight) ?? 0;
 
   const totalSeats = routes.reduce((s, r) => s + (r.vehicle?.capacity ?? 0), 0);
   const totalRiders = routes.reduce((s, r) => s + r.assignments.length, 0);

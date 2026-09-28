@@ -7,6 +7,7 @@ import { addStaffDocument } from "./depth-actions";
 import { addSalaryComponent, removeSalaryComponent, runStructuredPayroll } from "./payroll-depth-actions";
 import { updateStaffProfileDetails, createLeaveType, deleteLeaveType, applyForStaffLeave, actOnStaffLeave } from "./hr-depth-actions";
 import PersonDocumentsPanel, { type PersonDocumentRow } from "@/components/PersonDocumentsPanel";
+import { attendancePercent } from "@/lib/attendance";
 
 const MODULES = ["Students", "Employees", "Attendance", "Exams", "Homework", "Timetable", "Teaching", "Fees", "Accounts", "Admissions", "Transport", "Library", "Events", "Certificates", "Communication", "Reports"];
 
@@ -43,6 +44,7 @@ type Props = {
   staff: Staff;
   isAdmin: boolean;
   attendanceTotals: { PRESENT: number; ABSENT: number; HALF_DAY: number };
+  halfDayWeight: number;
   recentAttendance: { date: string; status: "PRESENT" | "ABSENT" | "HALF_DAY"; checkInTime: string | null }[];
   payrollRuns: { month: string; amount: number; status: "PENDING" | "PAID"; paidOn: string | null; grossAmount: number | null; pfAmount: number | null; esiAmount: number | null; tdsAmount: number | null; ptAmount: number | null; lopAmount: number | null }[];
   permissions: PermRow[];
@@ -64,6 +66,7 @@ export default function StaffDetailTabs({
   staff,
   isAdmin,
   attendanceTotals,
+  halfDayWeight,
   recentAttendance,
   payrollRuns,
   permissions,
@@ -149,8 +152,7 @@ export default function StaffDetailTabs({
   const [pending, startTransition] = useTransition();
   const [payAmount, setPayAmount] = useState("");
 
-  const attendanceTotal = attendanceTotals.PRESENT + attendanceTotals.ABSENT + attendanceTotals.HALF_DAY;
-  const attendancePct = attendanceTotal ? Math.round((attendanceTotals.PRESENT / attendanceTotal) * 100) : null;
+  const attendancePct = attendancePercent(attendanceTotals, halfDayWeight);
   const currentMonth = new Date().toISOString().slice(0, 7);
   const latestPay = payrollRuns[0];
 

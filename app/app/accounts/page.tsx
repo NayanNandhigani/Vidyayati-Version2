@@ -5,13 +5,7 @@ import { formatINR, formatDate } from "@/lib/format";
 import { hasFeature } from "@/lib/feature-flags";
 import AddTransactionPanel from "./AddTransactionPanel";
 import AccountsDepthPanel from "./AccountsDepthPanel";
-
-const AUTO_SOURCE_LABEL: Record<string, string> = {
-  AUTO_FEES: "Fee payment",
-  AUTO_PAYROLL: "Payroll",
-  AUTO_LIBRARY_FINE: "Library fine",
-  AUTO_INVENTORY_PURCHASE: "Inventory purchase",
-};
+import TransactionRow from "./TransactionRow";
 
 export default async function AccountsPage() {
   const accessLevel = await requireModuleAccess("Accounts", "VIEW");
@@ -126,29 +120,11 @@ export default async function AccountsPage() {
             <div style={{ overflowY: "auto" }}>
               {ledger.length === 0 && <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>No transactions recorded yet.</div>}
               {ledger.map((t) => (
-                <div key={t.id} style={{ display: "grid", gridTemplateColumns: "56px 2fr 78px 168px 92px 108px", alignItems: "center", padding: "8px 20px", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
-                  <div className="mono" style={{ color: "var(--faint)" }}>
-                    {t.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
-                  </div>
-                  <div>{t.description}</div>
-                  <div style={{ color: "var(--muted)" }}>{t.category ?? "—"}</div>
-                  <div>
-                    {t.source === "MANUAL" ? (
-                      <span style={{ color: "var(--faint)", fontWeight: 600, fontSize: 11.5 }}>Manual</span>
-                    ) : (
-                      <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 100, background: "#EDEFF4", color: "var(--ink2)" }}>
-                        Auto: {AUTO_SOURCE_LABEL[t.source] ?? "Payroll"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mono" style={{ textAlign: "right", fontWeight: 600, color: t.type === "INCOME" ? "var(--teal)" : "var(--clay)" }}>
-                    {t.type === "INCOME" ? "+" : "−"}
-                    {formatINR(Number(t.amount))}
-                  </div>
-                  <div className="mono" style={{ textAlign: "right", fontWeight: 600 }}>
-                    {formatINR(t.balance)}
-                  </div>
-                </div>
+                <TransactionRow
+                  key={t.id}
+                  canEdit={canEdit}
+                  t={{ id: t.id, date: t.date.toISOString(), description: t.description, category: t.category, source: t.source, type: t.type, amount: Number(t.amount), balance: t.balance }}
+                />
               ))}
             </div>
           </div>

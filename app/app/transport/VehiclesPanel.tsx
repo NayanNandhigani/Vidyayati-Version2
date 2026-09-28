@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createVehicle, updateVehicle, type VehicleFields } from "./vehicle-actions";
+
+function isPastDate(value: string | null | undefined): boolean {
+  return !!value && new Date(value) < new Date(new Date().toDateString());
+}
 
 export type VehicleRow = VehicleFields & {
   id: string;
@@ -33,6 +38,10 @@ function Field({ children }: { children: React.ReactNode }) {
   return <label className="field">{children}</label>;
 }
 
+function ExpiredWarning() {
+  return <div style={{ fontSize: 10.5, color: "var(--critical)", fontWeight: 600, marginTop: 2 }}>Already expired — allowed, but flagged on the vehicle page.</div>;
+}
+
 function toFormFields(f: Partial<VehicleFields>): VehicleFields {
   return {
     vehicleNo: f.vehicleNo ?? "",
@@ -53,6 +62,7 @@ function toFormFields(f: Partial<VehicleFields>): VehicleFields {
 }
 
 export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; onSaved?: (id?: string) => void }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState<VehicleFields>(vehicle ? toFormFields(vehicle) : EMPTY);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +139,7 @@ export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; 
       <Field>
         License expiry
         <input className="in mono" type="date" value={form.driverLicenseExpiry ?? ""} onChange={(e) => set("driverLicenseExpiry", e.target.value as never)} style={{ maxWidth: 180 }} />
+        {isPastDate(form.driverLicenseExpiry) && <ExpiredWarning />}
       </Field>
 
       <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Compliance</div>
@@ -140,14 +151,17 @@ export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; 
         <Field>
           Insurance expiry
           <input className="in mono" type="date" value={form.insuranceExpiry ?? ""} onChange={(e) => set("insuranceExpiry", e.target.value as never)} />
+          {isPastDate(form.insuranceExpiry) && <ExpiredWarning />}
         </Field>
         <Field>
           Fitness cert. expiry
           <input className="in mono" type="date" value={form.fitnessExpiry ?? ""} onChange={(e) => set("fitnessExpiry", e.target.value as never)} />
+          {isPastDate(form.fitnessExpiry) && <ExpiredWarning />}
         </Field>
         <Field>
           Pollution cert. expiry
           <input className="in mono" type="date" value={form.pollutionCertExpiry ?? ""} onChange={(e) => set("pollutionCertExpiry", e.target.value as never)} />
+          {isPastDate(form.pollutionCertExpiry) && <ExpiredWarning />}
         </Field>
       </div>
       {vehicle && (
@@ -158,9 +172,14 @@ export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; 
       )}
 
       {error && <div style={{ color: "var(--critical)", fontSize: 12 }}>{error}</div>}
-      <button type="button" onClick={submit} disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, fontWeight: 700, cursor: pending ? "default" : "pointer" }}>
-        {pending ? "Saving…" : vehicle ? "Save changes" : "Add vehicle"}
-      </button>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" onClick={submit} disabled={pending} style={{ flex: 1, background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontSize: 13, fontWeight: 700, cursor: pending ? "default" : "pointer" }}>
+          {pending ? "Saving…" : vehicle ? "Save changes" : "Add vehicle"}
+        </button>
+        <button type="button" onClick={() => router.push("/app/transport")} style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

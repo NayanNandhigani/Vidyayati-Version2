@@ -5,13 +5,27 @@ import { addTransaction, type TransactionFormState } from "./actions";
 
 const initialState: TransactionFormState = {};
 
+const EXPENSE_CATEGORIES = ["Maintenance", "Utilities", "Supplies", "Events", "Facilities", "Transport", "Other"];
+const INCOME_CATEGORIES = ["Fees", "Donations", "Grants", "Rent", "Other income"];
+
 export default function AddTransactionPanel() {
   const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   const [state, formAction, pending] = useActionState(addTransaction, initialState);
   const [key, setKey] = useState(0);
+  const categories = type === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const [category, setCategory] = useState(categories[0]);
+
+  function changeType(next: "INCOME" | "EXPENSE") {
+    setType(next);
+    setCategory((next === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES)[0]);
+  }
 
   useEffect(() => {
-    if (state.success) setKey((k) => k + 1); // reset uncontrolled fields after a successful submit
+    if (state.success) {
+      setKey((k) => k + 1); // reset uncontrolled fields after a successful submit
+      setCategory(EXPENSE_CATEGORIES[0]);
+      setType("EXPENSE");
+    }
   }, [state.success]);
 
   return (
@@ -23,13 +37,13 @@ export default function AddTransactionPanel() {
 
       <div style={{ display: "flex", background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 3 }}>
         <span
-          onClick={() => setType("INCOME")}
+          onClick={() => changeType("INCOME")}
           style={{ flex: 1, textAlign: "center", padding: 7, borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: "pointer", background: type === "INCOME" ? "var(--teal)" : "transparent", color: type === "INCOME" ? "#fff" : "var(--faint)" }}
         >
           Income
         </span>
         <span
-          onClick={() => setType("EXPENSE")}
+          onClick={() => changeType("EXPENSE")}
           style={{ flex: 1, textAlign: "center", padding: 7, borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: "pointer", background: type === "EXPENSE" ? "var(--clay)" : "transparent", color: type === "EXPENSE" ? "#fff" : "var(--faint)" }}
         >
           Expense
@@ -48,14 +62,10 @@ export default function AddTransactionPanel() {
         </label>
         <label className="field">
           Category
-          <select className="in" name="category" defaultValue="Maintenance">
-            <option>Maintenance</option>
-            <option>Utilities</option>
-            <option>Supplies</option>
-            <option>Events</option>
-            <option>Facilities</option>
-            <option>Transport</option>
-            <option>Other</option>
+          <select className="in" name="category" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {categories.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
           </select>
         </label>
         <label className="field">

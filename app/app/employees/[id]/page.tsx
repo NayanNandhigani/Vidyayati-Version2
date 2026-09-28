@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { hasFeature } from "@/lib/feature-flags";
+import { attendancePercent } from "@/lib/attendance";
 import { getStaffLeaveSummary } from "../hr-depth-actions";
 import StaffDetailTabs from "../StaffDetailTabs";
 import StaffActionsPanel from "../StaffActionsPanel";
@@ -27,7 +28,7 @@ export default async function StaffProfilePage({ params, searchParams }: { param
   const showStructuredPayroll = await hasFeature(session!.user.schoolId, "payroll.structuredSalary");
   const showLeave = await hasFeature(session!.user.schoolId, "employees.leave");
 
-  const [attendanceGroups, recentAttendance, payrollRuns, permissions, classes, documents, salaryComponents, allLeaveTypes, leaveRequests, pendingLeaveRequestsRaw, leaveSummary] = await Promise.all([
+  const [attendanceGroups, recentAttendance, payrollRuns, permissions, classes, documents, salaryComponents, allLeaveTypes, leaveRequests, pendingLeaveRequestsRaw, leaveSummary, schoolForAttendance] = await Promise.all([
     sdb.staffAttendance.groupBy({ by: ["status"], where: { staffId: selected.id }, _count: true }),
     sdb.staffAttendance.findMany({ where: { staffId: selected.id }, orderBy: { date: "desc" }, take: 10 }),
     sdb.payrollRun.findMany({ where: { staffId: selected.id }, orderBy: { month: "desc" } }),
@@ -39,12 +40,13 @@ export default async function StaffProfilePage({ params, searchParams }: { param
     showLeave ? sdb.staffLeaveRequest.findMany({ where: { staffId: selected.id }, include: { leaveType: true }, orderBy: { requestedAt: "desc" } }) : Promise.resolve([]),
     showLeave && isAdmin ? sdb.staffLeaveRequest.findMany({ where: { status: "PENDING" }, include: { leaveType: true, staff: { include: { user: true } } }, orderBy: { requestedAt: "desc" } }) : Promise.resolve([]),
     showLeave ? getStaffLeaveSummary(selected.id) : Promise.resolve([]),
+    sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { halfDayAttendanceWeight: true } }),
   ]);
 
+  const halfDayWeight = schoolForAttendance ? Number(schoolForAttendance.halfDayAttendanceWeight) : 0.5;
   const attendanceTotals = { PRESENT: 0, ABSENT: 0, HALF_DAY: 0 };
   for (const g of attendanceGroups) attendanceTotals[g.status] = g._count;
-  const attendanceTotal = attendanceTotals.PRESENT + attendanceTotals.ABSENT + attendanceTotals.HALF_DAY;
-  const attendancePct = attendanceTotal ? Math.round((attendanceTotals.PRESENT / attendanceTotal) * 100) : null;
+  const attendancePct = attendancePercent(attendanceTotals, halfDayWeight);
 
   const yearsOfService = selected.dateJoined ? ((Date.now() - selected.dateJoined.getTime()) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1) : null;
 
@@ -123,6 +125,7 @@ export default async function StaffProfilePage({ params, searchParams }: { param
         staff={staff}
         isAdmin={isAdmin}
         attendanceTotals={attendanceTotals}
+        halfDayWeight={halfDayWeight}
         recentAttendance={recentAttendance.map((a) => ({ date: a.date.toISOString(), status: a.status, checkInTime: a.checkInTime }))}
         payrollRuns={payrollRuns.map((p) => ({
           month: p.month,

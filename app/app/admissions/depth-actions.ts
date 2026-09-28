@@ -7,6 +7,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { enrollStudent } from "@/lib/domain/enrollment";
 import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
+import { nextAdmissionNumber } from "@/lib/admission-number";
 import { createGuardianAccountForEnquiry } from "./guardian";
 
 export type ApplicationFields = {
@@ -94,8 +95,7 @@ export async function approveAdmissionWithFee(
     }
   }
 
-  const count = await sdb.student.count();
-  const admissionNo = `AD-${2000 + count + 1}`;
+  const admissionNo = await nextAdmissionNumber(sdb, session!.user.schoolId!);
   const nameParts = enquiry.applicantName.trim().split(/\s+/);
   const surname = nameParts.length > 1 ? nameParts.pop()! : "";
   const firstName = nameParts.join(" ");

@@ -165,7 +165,12 @@ export function CashFlowChart({ data }: { data: Record<FlowPeriod, FlowBucket[]>
           </span>
         </div>
         <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-          Net, last {period}:{" "}
+          {/* `last` is the most recent bucket in the selected range — the
+              current, still-in-progress period, not the previous
+              completed one. "Net, last month" used to be read as "last
+              month's total" while actually showing this month's running
+              total. */}
+          Net, this {period}:{" "}
           <span className="mono" style={{ fontWeight: 700, color: net >= 0 ? "var(--good)" : "var(--critical)" }}>
             {net >= 0 ? "+" : ""}
             {formatINR(net)}

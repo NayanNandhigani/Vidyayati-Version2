@@ -79,6 +79,23 @@ async function AdminStaffDashboard() {
     sdb.class.findMany({ orderBy: [{ grade: "asc" }, { section: "asc" }] }),
   ]);
 
+  // Vehicles with any compliance date already expired, or expiring within
+  // 30 days — same rule VehicleSections.tsx uses per-vehicle, surfaced
+  // here since nothing previously flagged this fleet-wide.
+  const in30Days = new Date(today);
+  in30Days.setDate(in30Days.getDate() + 30);
+  const vehiclesNeedingAttention = await sdb.transportVehicle.count({
+    where: {
+      isActive: true,
+      OR: [
+        { insuranceExpiry: { lte: in30Days } },
+        { fitnessExpiry: { lte: in30Days } },
+        { pollutionCertExpiry: { lte: in30Days } },
+        { driverLicenseExpiry: { lte: in30Days } },
+      ],
+    },
+  });
+
   const attendancePresent = todaysAttendance.filter((a) => a.status === "PRESENT").length;
   const feesToday = Number(feesTodayAgg._sum.amount ?? 0);
 
@@ -124,6 +141,9 @@ async function AdminStaffDashboard() {
       { label: "Accounts transactions", count: accountsPending, href: "/app/accounts" },
       { label: "Announcements awaiting approval", count: announcementsPending, href: "/app/communication" }
     );
+    if (vehiclesNeedingAttention > 0) {
+      approvalItems.push({ label: "Vehicles with expiring/expired compliance docs", count: vehiclesNeedingAttention, href: "/app/transport" });
+    }
   } else {
     const attendanceClassIds = await getPermittedClassIds("Attendance", "EDIT");
     if (attendanceClassIds === "ALL" || attendanceClassIds.size > 0) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { initials, studentName } from "@/lib/format";
 import { avatarColorFor } from "@/lib/academic";
 import type { AttendanceStatus } from "@prisma/client";
@@ -26,10 +26,27 @@ type SortField = "name" | "admissionNo";
 
 export default function AttendanceRoster({ classId, date, students, initialMarks, canEdit }: Props) {
   const [marks, setMarks] = useState<Record<string, AttendanceStatus>>(initialMarks);
+  const [savedMarks, setSavedMarks] = useState<Record<string, AttendanceStatus>>(initialMarks);
   const [pending, startTransition] = useTransition();
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const isDirty = pending || Object.keys(marks).some((id) => marks[id] !== savedMarks[id]);
+
+  // Losing a save mid-navigation was the actual data-loss bug here — the
+  // roster took long enough to save that a teacher would tab away or hit
+  // back before it finished, and the browser gave zero warning either way
+  // (during the save, or with unsaved local edits never submitted at all).
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   // Sorted entirely client-side — the roster is already fully loaded (one
   // class, one day), no server round-trip needed the way a paginated list
@@ -77,8 +94,10 @@ export default function AttendanceRoster({ classId, date, students, initialMarks
   }
 
   function save() {
+    const toSave = marks;
     startTransition(async () => {
-      await saveAttendance(classId, date, marks);
+      await saveAttendance(classId, date, toSave);
+      setSavedMarks(toSave);
       setSavedAt(Date.now());
     });
   }

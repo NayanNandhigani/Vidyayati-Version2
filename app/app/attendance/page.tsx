@@ -3,9 +3,12 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
 import { studentName } from "@/lib/format";
 import { hasFeature } from "@/lib/feature-flags";
+import { attendancePercent } from "@/lib/attendance";
 import { getAttendanceFlags } from "./depth-actions";
 import AttendanceFilters from "./AttendanceFilters";
 import AttendanceRoster from "./AttendanceRoster";
+import StaffAttendanceRoster from "./StaffAttendanceRoster";
+import AttendanceViewToggle from "./AttendanceViewToggle";
 import LeaveRequestsPanel from "./LeaveRequestsPanel";
 import AttendanceFlagsPanel from "./AttendanceFlagsPanel";
 import ParentLeaveForm from "./ParentLeaveForm";
@@ -15,13 +18,40 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ classId?: string; date?: string }> }) {
+export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ classId?: string; date?: string; view?: string }> }) {
   const session = await auth();
   const params = await searchParams;
   const sdb = await getScopedDb();
 
   if (session!.user.role === "PARENT") {
     return <ParentAttendanceView />;
+  }
+
+  const isAdmin = session!.user.role === "SCHOOL_ADMIN";
+  const date = params.date ?? todayISO();
+
+  // Staff attendance is its own admin-only roster, entirely separate from
+  // the per-class student view below — feeds the Dashboard staff tiles,
+  // each employee's Attendance tab, and Reports → Staff Attendance, none
+  // of which had any way to get real data before this.
+  if (params.view === "staff" && isAdmin) {
+    const [staff, existingStaffAttendance] = await Promise.all([
+      sdb.staffProfile.findMany({ include: { user: true }, orderBy: { user: { name: "asc" } } }),
+      sdb.staffAttendance.findMany({ where: { date: new Date(`${date}T00:00:00`) } }),
+    ]);
+    const initialStaffMarks: Record<string, "PRESENT" | "ABSENT" | "HALF_DAY"> = {};
+    for (const a of existingStaffAttendance) initialStaffMarks[a.staffId] = a.status;
+
+    return (
+      <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <AttendanceViewToggle view="staff" date={date} />
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <StaffAttendanceRoster date={date} staff={staff.map((s) => ({ id: s.id, name: s.user.name }))} initialMarks={initialStaffMarks} />
+        </div>
+      </div>
+    );
   }
 
   // A staffer scoped to specific classes (no school-wide row) still needs
@@ -50,7 +80,6 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const classesRaw = await sdb.class.findMany({ orderBy: [{ grade: "asc" }, { section: "asc" }] });
   const classes = permittedClassIds === "ALL" ? classesRaw : classesRaw.filter((c) => permittedClassIds.has(c.id));
   const classId = params.classId ?? classes[0]?.id ?? "";
-  const date = params.date ?? todayISO();
 
   // Resolve actual per-class access — a staffer can have EDIT on one class
   // and only VIEW (or none) on another. Throws if classId itself isn't
@@ -73,7 +102,6 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const initialMarks: Record<string, "PRESENT" | "ABSENT" | "HALF_DAY"> = {};
   for (const a of existing) initialMarks[a.studentId] = a.status;
 
-  const isAdmin = session!.user.role === "SCHOOL_ADMIN";
   const [showLeaveWorkflow, showFlags] = await Promise.all([
     hasFeature(session!.user.schoolId, "attendance.studentLeave"),
     hasFeature(session!.user.schoolId, "attendance.defaulterAlerts"),
@@ -104,7 +132,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
   return (
     <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {isAdmin ? <AttendanceViewToggle view="students" date={date} /> : <div />}
         <AttendanceFilters classes={classes} classId={classId} date={date} />
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -161,8 +190,9 @@ async function ParentAttendanceView() {
       </div>
       {students.length === 0 && <div style={{ color: "var(--muted)" }}>No students linked to your account.</div>}
       {students.map((s) => {
-        const present = s.attendance.filter((a) => a.status === "PRESENT").length;
-        const pct = s.attendance.length ? Math.round((present / s.attendance.length) * 100) : null;
+        const counts = { PRESENT: 0, ABSENT: 0, HALF_DAY: 0 };
+        for (const a of s.attendance) counts[a.status] += 1;
+        const pct = attendancePercent(counts);
         return (
           <div key={s.id} className="card" style={{ padding: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
