@@ -36,6 +36,15 @@ export const AUDITED_MODELS = new Set([
   "AdmissionEnquiry",
   "Parent",
   "StaffProfile",
+  "Class",
+  "Subject",
+  "LibraryBook",
+  "LibraryCirculation",
+  "Event",
+  "Announcement",
+  "TransportVehicle",
+  "TransportRoute",
+  "StudentTransportAssignment",
 ]);
 
 export const AUDITED_MODEL_LABEL: Record<string, string> = {
@@ -56,7 +65,25 @@ export const AUDITED_MODEL_LABEL: Record<string, string> = {
   AdmissionEnquiry: "Admission Enquiry",
   Parent: "Parent/Guardian",
   StaffProfile: "Staff Profile",
+  Class: "Class/Section",
+  Subject: "Subject",
+  LibraryBook: "Library Book",
+  LibraryCirculation: "Library Issue/Return",
+  Event: "Event",
+  Announcement: "Announcement",
+  TransportVehicle: "Transport Vehicle",
+  TransportRoute: "Transport Route",
+  StudentTransportAssignment: "Transport Assignment",
 };
+
+// School itself isn't in AUDITED_MODELS: it has no schoolId column (it IS
+// the tenant), so the scopedDb() extension's tenant-scoping check bails
+// before the audit logic ever runs for it — auditing School-level
+// settings changes needs a different code path (special-casing School in
+// that extension), not just adding it to this set. Flagged, not fixed
+// here: the multi-tenancy extension is the single most sensitive piece of
+// this codebase, and this QA pass is not the place to modify it under
+// time pressure without room to verify nothing broke.
 
 const FILTER_BY_WHERE_OPS = new Set([
   "findFirst",

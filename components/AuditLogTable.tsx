@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 const ACTION_STYLE: Record<string, { bg: string; fg: string; label: string }> = {
   CREATE: { bg: "var(--good-tint)", fg: "var(--good)", label: "Created" },
@@ -17,6 +18,8 @@ export type AuditLogRow = {
   occurredAt: string;
   actorName: string | null;
   schoolName?: string | null;
+  resolvedLabel?: string | null;
+  href?: string | null;
 };
 
 const ENTITY_LABEL: Record<string, string> = {
@@ -29,6 +32,20 @@ const ENTITY_LABEL: Record<string, string> = {
   Attendance: "Attendance",
   HostelAllocation: "Hostel Allocation",
 };
+
+// A DELETEd row has no live record to look up — fall back to whatever
+// name-ish field its own stored "before" snapshot happens to have.
+const SNAPSHOT_NAME_FIELDS = ["title", "name", "applicantName", "description", "firstName"];
+
+function deletedSnapshotLabel(entityType: string, changes: unknown): string | null {
+  if (!changes || typeof changes !== "object" || !("deleted" in changes)) return null;
+  const deleted = (changes as { deleted: Record<string, unknown> }).deleted;
+  for (const field of SNAPSHOT_NAME_FIELDS) {
+    const value = deleted[field];
+    if (typeof value === "string" && value) return `${ENTITY_LABEL[entityType] ?? entityType}: ${value}`;
+  }
+  return null;
+}
 
 export default function AuditLogTable({ rows, showSchool }: { rows: AuditLogRow[]; showSchool?: boolean }) {
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -61,6 +78,7 @@ export default function AuditLogTable({ rows, showSchool }: { rows: AuditLogRow[
       {rows.map((r) => {
         const style = ACTION_STYLE[r.action];
         const isOpen = expanded === r.id;
+        const label = r.resolvedLabel ?? (r.action === "DELETE" ? deletedSnapshotLabel(r.entityType, r.changes) : null) ?? `${ENTITY_LABEL[r.entityType] ?? r.entityType} ${r.entityId.slice(0, 10)}…`;
         return (
           <div key={r.id} style={{ borderBottom: "1px solid var(--line)" }}>
             <div
@@ -80,9 +98,17 @@ export default function AuditLogTable({ rows, showSchool }: { rows: AuditLogRow[
                 </span>
               </div>
               <div>
-                <div style={{ fontWeight: 600 }}>{ENTITY_LABEL[r.entityType] ?? r.entityType}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {r.href ? (
+                    <Link href={r.href} onClick={(e) => e.stopPropagation()} style={{ color: "var(--marigold-deep)", textDecoration: "none" }}>
+                      {label} ↗
+                    </Link>
+                  ) : (
+                    label
+                  )}
+                </div>
                 <div className="mono" style={{ fontSize: 10.5, color: "var(--faint)" }}>
-                  {r.entityId}
+                  {ENTITY_LABEL[r.entityType] ?? r.entityType} · {r.entityId}
                 </div>
               </div>
               {showSchool && <div style={{ color: "var(--muted)" }}>{r.schoolName ?? "—"}</div>}

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getScopedDb, AUDITED_MODEL_LABEL } from "@/lib/tenant-db";
+import { resolveAuditLabels } from "@/lib/audit-labels";
 import AuditLogTable, { type AuditLogRow } from "@/components/AuditLogTable";
 
 export default async function AuditLogPage({ searchParams }: { searchParams: Promise<{ entityType?: string; actorUserId?: string; from?: string; to?: string }> }) {
@@ -31,15 +32,27 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
     sdb.user.findMany({ where: { role: { in: ["SCHOOL_ADMIN", "STAFF"] } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
-  const rows: AuditLogRow[] = rowsRaw.map((r) => ({
-    id: r.id,
-    action: r.action,
-    entityType: r.entityType,
-    entityId: r.entityId,
-    changes: r.changes,
-    occurredAt: r.occurredAt.toISOString(),
-    actorName: r.actor?.name ?? null,
-  }));
+  // CREATE/UPDATE rows get a real label+link via one batched query per
+  // entity type (see lib/audit-labels.ts); DELETE rows resolve from their
+  // own stored snapshot instead, since there's no live record left to
+  // query — both replace what used to be just the raw entityId.
+  const nonDeleted = rowsRaw.filter((r) => r.action !== "DELETE");
+  const labels = await resolveAuditLabels(sdb, nonDeleted);
+
+  const rows: AuditLogRow[] = rowsRaw.map((r) => {
+    const resolved = labels.get(`${r.entityType}:${r.entityId}`);
+    return {
+      id: r.id,
+      action: r.action,
+      entityType: r.entityType,
+      entityId: r.entityId,
+      changes: r.changes,
+      occurredAt: r.occurredAt.toISOString(),
+      actorName: r.actor?.name ?? null,
+      resolvedLabel: resolved?.label ?? null,
+      href: resolved?.href ?? null,
+    };
+  });
 
   return (
     <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 18, height: "100dvh", boxSizing: "border-box" }}>
