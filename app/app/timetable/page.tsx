@@ -127,6 +127,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
         </div>
         {classId ? (
           <TimetableGrid
+            key={classId}
             classId={classId}
             grid={grid}
             subjects={subjects}

@@ -45,7 +45,8 @@ export async function setTimetableSlotWithRoom(
   periodNo: number,
   subjectId: string | null,
   staffId: string | null,
-  roomId: string | null
+  roomId: string | null,
+  override = false
 ): Promise<{ error?: string }> {
   await requireModuleAccess("Timetable", "EDIT", classId);
   const sid = await schoolId();
@@ -64,10 +65,12 @@ export async function setTimetableSlotWithRoom(
   if (roomId) await sdb.room.findUniqueOrThrow({ where: { id: roomId }, select: { id: true } });
 
   const [teacherConflict, roomConflict] = await Promise.all([
-    sdb.timetableSlot.findFirst({
-      where: { staffId, dayOfWeek, periodNo, classId: { not: classId } },
-      include: { class: true },
-    }),
+    override
+      ? Promise.resolve(null)
+      : sdb.timetableSlot.findFirst({
+          where: { staffId, dayOfWeek, periodNo, classId: { not: classId } },
+          include: { class: true },
+        }),
     roomId
       ? sdb.timetableSlot.findFirst({ where: { roomId, dayOfWeek, periodNo, classId: { not: classId } }, include: { class: true } })
       : Promise.resolve(null),

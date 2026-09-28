@@ -10,8 +10,9 @@ export async function setTimetableSlot(
   dayOfWeek: DayOfWeek,
   periodNo: number,
   subjectId: string | null,
-  staffId: string | null
-) {
+  staffId: string | null,
+  override = false
+): Promise<{ success?: true; error?: string }> {
   await requireModuleAccess("Timetable", "EDIT", classId);
   const sdb = await getScopedDb();
 
@@ -24,6 +25,16 @@ export async function setTimetableSlot(
   await sdb.class.findUniqueOrThrow({ where: { id: classId }, select: { id: true } });
   await sdb.subject.findUniqueOrThrow({ where: { id: subjectId }, select: { id: true } });
   await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { id: true } });
+
+  if (!override) {
+    const conflict = await sdb.timetableSlot.findFirst({
+      where: { staffId, dayOfWeek, periodNo, classId: { not: classId } },
+      include: { class: true },
+    });
+    if (conflict) {
+      return { error: `This teacher is already scheduled in Class ${conflict.class.grade}-${conflict.class.section} at this time.` };
+    }
+  }
 
   await sdb.timetableSlot.upsert({
     where: { classId_dayOfWeek_periodNo: { classId, dayOfWeek, periodNo } },

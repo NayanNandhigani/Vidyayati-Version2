@@ -36,7 +36,7 @@ export default function TimetableGrid({
   const [conflictError, setConflictError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  function save(period: number, day: DayOfWeek, subjectId: string, staffId: string, roomId: string) {
+  function save(period: number, day: DayOfWeek, subjectId: string, staffId: string, roomId: string, override = false) {
     const subject = subjects.find((s) => s.id === subjectId);
     const staffMember = staff.find((s) => s.id === staffId);
     const room = rooms.find((r) => r.id === roomId);
@@ -44,7 +44,7 @@ export default function TimetableGrid({
 
     if (showRooms) {
       startTransition(async () => {
-        const res = await setTimetableSlotWithRoom(classId, day, period, subjectId || null, staffId || null, roomId || null);
+        const res = await setTimetableSlotWithRoom(classId, day, period, subjectId || null, staffId || null, roomId || null, override);
         if (res.error) {
           setConflictError(res.error);
           return;
@@ -58,13 +58,17 @@ export default function TimetableGrid({
       return;
     }
 
-    setGrid((prev) => ({
-      ...prev,
-      [period]: { ...prev[period], [day]: subject && staffMember ? { subjectId, subjectName: subject.name, staffId, staffName: staffMember.name, roomId: null, roomName: null } : undefined },
-    }));
-    setEditing(null);
     startTransition(async () => {
-      await setTimetableSlot(classId, day, period, subjectId || null, staffId || null);
+      const res = await setTimetableSlot(classId, day, period, subjectId || null, staffId || null, override);
+      if (res.error) {
+        setConflictError(res.error);
+        return;
+      }
+      setGrid((prev) => ({
+        ...prev,
+        [period]: { ...prev[period], [day]: subject && staffMember ? { subjectId, subjectName: subject.name, staffId, staffName: staffMember.name, roomId: null, roomName: null } : undefined },
+      }));
+      setEditing(null);
     });
   }
 
@@ -103,7 +107,7 @@ export default function TimetableGrid({
                     showRooms={showRooms}
                     initial={slot}
                     error={conflictError}
-                    onSave={(subjectId, staffId, roomId) => save(period, day, subjectId, staffId, roomId)}
+                    onSave={(subjectId, staffId, roomId, override) => save(period, day, subjectId, staffId, roomId, override)}
                     onCancel={() => {
                       setEditing(null);
                       setConflictError(null);
@@ -147,7 +151,7 @@ function CellEditor({
   showRooms: boolean;
   initial?: Slot;
   error: string | null;
-  onSave: (subjectId: string, staffId: string, roomId: string) => void;
+  onSave: (subjectId: string, staffId: string, roomId: string, override?: boolean) => void;
   onCancel: () => void;
 }) {
   const [subjectId, setSubjectId] = useState(initial?.subjectId ?? "");
@@ -194,6 +198,14 @@ function CellEditor({
           {initial ? "Clear" : "Cancel"}
         </button>
       </div>
+      {error && (
+        <button
+          onClick={() => onSave(subjectId, staffId, roomId, true)}
+          style={{ fontSize: 9, fontWeight: 700, background: "var(--critical)", color: "#fff", border: "none", borderRadius: 4, padding: "3px 0", cursor: "pointer" }}
+        >
+          Save anyway (double-book teacher)
+        </button>
+      )}
     </div>
   );
 }
