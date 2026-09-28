@@ -8,6 +8,7 @@ import { requireModuleAccess } from "@/lib/permissions";
 import { enrollStudent } from "@/lib/domain/enrollment";
 import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
 import { nextAdmissionNumber } from "@/lib/admission-number";
+import { validateDob } from "@/lib/validation";
 import { createGuardianAccountForEnquiry } from "./guardian";
 
 export type ApplicationFields = {
@@ -40,8 +41,11 @@ export type ApplicationFields = {
   penNumber: string | null;
 };
 
-export async function updateApplicationDetails(enquiryId: string, fields: ApplicationFields) {
+export async function updateApplicationDetails(enquiryId: string, fields: ApplicationFields): Promise<{ error?: string }> {
   await requireModuleAccess("Admissions", "EDIT");
+  const dobError = fields.dob ? validateDob(fields.dob) : null;
+  if (dobError) return { error: dobError };
+
   const sdb = await getScopedDb();
   await sdb.admissionEnquiry.update({
     where: { id: enquiryId },
@@ -49,6 +53,7 @@ export async function updateApplicationDetails(enquiryId: string, fields: Applic
   });
   revalidatePath("/app/admissions");
   revalidatePath(`/app/admissions/${enquiryId}`);
+  return {};
 }
 
 /** The "Admit" button on a filled-in Application — flags it to the School Admin instead of creating the student immediately. */

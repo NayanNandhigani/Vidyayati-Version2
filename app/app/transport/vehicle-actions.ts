@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { deleteUploadedFile, saveUploadedFile } from "@/lib/storage";
+import { validateOptionalPhone } from "@/lib/validation";
 
 export type VehicleFields = {
   vehicleNo: string;
@@ -24,9 +25,20 @@ export type VehicleFields = {
   notes: string | null;
 };
 
+function validateVehicleFields(fields: VehicleFields) {
+  if (!fields.vehicleNo.trim()) return "Vehicle (registration) number is required.";
+  if (fields.driverPhone) {
+    const phoneErr = validateOptionalPhone(fields.driverPhone, "Driver phone");
+    if (phoneErr) return phoneErr;
+  }
+  if (fields.capacity != null && (!Number.isFinite(fields.capacity) || fields.capacity < 0)) return "Capacity must be ≥ 0.";
+  return null;
+}
+
 export async function createVehicle(fields: VehicleFields) {
   await requireModuleAccess("Transport", "EDIT");
-  if (!fields.vehicleNo.trim()) throw new Error("Vehicle (registration) number is required.");
+  const validationError = validateVehicleFields(fields);
+  if (validationError) throw new Error(validationError);
   const sdb = await getScopedDb();
   const vehicle = await sdb.transportVehicle.create({
     data: scopedCreateData<Prisma.TransportVehicleUncheckedCreateInput>({
@@ -51,7 +63,8 @@ export async function createVehicle(fields: VehicleFields) {
 
 export async function updateVehicle(vehicleId: string, fields: VehicleFields) {
   await requireModuleAccess("Transport", "EDIT");
-  if (!fields.vehicleNo.trim()) throw new Error("Vehicle (registration) number is required.");
+  const validationError = validateVehicleFields(fields);
+  if (validationError) throw new Error(validationError);
   const sdb = await getScopedDb();
   await sdb.transportVehicle.update({
     where: { id: vehicleId },

@@ -9,6 +9,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
 import { createPendingAccount } from "@/lib/account-setup";
+import { validateOptionalPhone, validateDob } from "@/lib/validation";
 import type { StaffFormState } from "./actions";
 
 function str(formData: FormData, key: string): string | null {
@@ -26,6 +27,15 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
   const name = str(formData, "name");
   const username = str(formData, "username");
   if (!name || !username) return { error: "Name and username are required." };
+
+  const mobilePrimaryRaw = str(formData, "mobilePrimary");
+  if (mobilePrimaryRaw) {
+    const phoneErr = validateOptionalPhone(mobilePrimaryRaw);
+    if (phoneErr) return { error: phoneErr };
+  }
+  const dobRaw = str(formData, "dob");
+  const dobErr = dobRaw ? validateDob(dobRaw, 18, 75, "Date of birth") : null;
+  if (dobErr) return { error: dobErr };
 
   const normalizedUsername = username.toLowerCase();
   const existing = await db.user.findUnique({ where: { username: normalizedUsername } });
@@ -144,10 +154,18 @@ export type DetailedProfileFields = {
 };
 
 /** Editing the detailed profile after creation, from the staff detail view. */
-export async function updateStaffDetailedProfile(staffId: string, fields: DetailedProfileFields) {
+export async function updateStaffDetailedProfile(staffId: string, fields: DetailedProfileFields): Promise<{ error?: string }> {
   await requireModuleAccess("Employees", "EDIT");
   const session = await auth();
   await requireFeature(session!.user.schoolId, "employees.detailedProfile");
+
+  if (fields.mobilePrimary) {
+    const phoneErr = validateOptionalPhone(fields.mobilePrimary);
+    if (phoneErr) return { error: phoneErr };
+  }
+  const dobErr = fields.dob ? validateDob(fields.dob, 18, 75, "Date of birth") : null;
+  if (dobErr) return { error: dobErr };
+
   const sdb = await getScopedDb();
   await sdb.staffProfile.update({
     where: { id: staffId },
@@ -157,4 +175,5 @@ export async function updateStaffDetailedProfile(staffId: string, fields: Detail
     },
   });
   revalidatePath(`/app/employees/${staffId}`);
+  return {};
 }

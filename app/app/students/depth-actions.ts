@@ -29,7 +29,10 @@ export async function updateStudentMedicalInfo(
   revalidatePath(`/app/students/${studentId}`);
 }
 
-export async function addEmergencyContact(studentId: string, data: { name: string; relation: string; phone: string; priority: number }) {
+export async function addEmergencyContact(studentId: string, data: { name: string; relation: string; phone: string; priority: number }): Promise<{ error?: string }> {
+  const phoneErr = validatePhone(data.phone, "Phone number");
+  if (phoneErr) return { error: phoneErr };
+
   const sdb = await getScopedDb();
   const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId } });
   await requireModuleAccess("Students", "EDIT", student.classId);
@@ -37,6 +40,7 @@ export async function addEmergencyContact(studentId: string, data: { name: strin
 
   await sdb.studentEmergencyContact.create({ data: { ...data, studentId, schoolId: await schoolId() } });
   revalidatePath(`/app/students/${studentId}`);
+  return {};
 }
 
 export async function deleteEmergencyContact(studentId: string, contactId: string) {

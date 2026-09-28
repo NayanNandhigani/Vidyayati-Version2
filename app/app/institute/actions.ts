@@ -30,6 +30,18 @@ export async function revokeClassAttendanceAccess(sdb: Awaited<ReturnType<typeof
 
 export type FormState = { error?: string; success?: boolean };
 
+const NUMERIC_GRADE = /^(1[0-2]|[1-9])$/;
+const DEFAULT_GRADE_LABELS = new Set(["LKG", "UKG", "NURSERY", "PRE-KG", "KG"]);
+const SECTION_PATTERN = /^[A-Za-z0-9]{1,5}$/;
+
+async function validateGrade(sdb: Awaited<ReturnType<typeof getScopedDb>>, yearId: string, grade: string): Promise<string | null> {
+  if (NUMERIC_GRADE.test(grade)) return null;
+  if (DEFAULT_GRADE_LABELS.has(grade.toUpperCase())) return null;
+  const configured = await sdb.academicGrade.findUnique({ where: { yearId_name: { yearId, name: grade } } });
+  if (configured) return null;
+  return `"${grade}" isn't a valid grade — use 1-12 or a configured label (e.g. LKG, UKG, Nursery — set these in Academic Management).`;
+}
+
 export async function createClass(_prevState: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
   const sdb = await getScopedDb();
@@ -41,11 +53,16 @@ export async function createClass(_prevState: FormState, formData: FormData): Pr
   if (typeof grade !== "string" || !grade.trim() || typeof section !== "string" || !section.trim()) {
     return { error: "Grade and section are required." };
   }
+  if (!SECTION_PATTERN.test(section.trim())) {
+    return { error: "Section must be letters/numbers only, up to 5 characters." };
+  }
 
   const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
   if (!currentYear) return { error: "Set an active academic year in Settings first." };
 
   const gradeTrim = grade.trim();
+  const gradeError = await validateGrade(sdb, currentYear.id, gradeTrim);
+  if (gradeError) return { error: gradeError };
   const sectionTrim = section.trim().toUpperCase();
 
   const existing = await sdb.class.findFirst({ where: { yearId: currentYear.id, grade: gradeTrim, section: sectionTrim } });

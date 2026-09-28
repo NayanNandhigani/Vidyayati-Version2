@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma, type Gender } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { validatePhone, validateOptionalEmail } from "@/lib/validation";
+import { validatePhone, validateOptionalEmail, validateDob } from "@/lib/validation";
 
 export type EnquiryFormState = { error?: string };
 
@@ -30,8 +30,8 @@ function validateEnquiryCore(f: EnquiryCoreFields): string | null {
   if (phoneErr) return phoneErr;
   const emailErr = validateOptionalEmail(f.email);
   if (emailErr) return emailErr;
-  if (f.dob && Number.isNaN(Date.parse(f.dob))) return "Date of birth isn't valid.";
-  if (f.dob && new Date(f.dob) > new Date()) return "Date of birth can't be in the future.";
+  const dobErr = validateDob(f.dob);
+  if (dobErr) return dobErr;
   if (f.followUpDate && Number.isNaN(Date.parse(f.followUpDate))) return "Follow-up date isn't valid.";
   return null;
 }

@@ -9,6 +9,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { enrollStudent, promoteStudent } from "@/lib/domain/enrollment";
 import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
+import { validateDob } from "@/lib/validation";
 import type { StudentStatus } from "@prisma/client";
 
 export type StudentFormState = { error?: string };
@@ -29,6 +30,8 @@ export async function createStudent(_prevState: StudentFormState, formData: Form
   ) {
     return { error: "First name, surname, admission number, and class are required." };
   }
+  const dobError = typeof dob === "string" ? validateDob(dob) : null;
+  if (dobError) return { error: dobError };
 
   await requireModuleAccess("Students", "EDIT", classId);
   const sdb = await getScopedDb();
@@ -87,6 +90,10 @@ export async function updateStudentChargedFee(studentId: string, chargedFee: num
   if (session!.user.role !== "SCHOOL_ADMIN") throw new Error("Only a School Admin can change a student's charged fee.");
   const sdb = await getScopedDb();
 
+  if (chargedFee != null && (!Number.isFinite(chargedFee) || chargedFee < 0 || !Number.isInteger(chargedFee))) {
+    throw new Error("Charged fee must be a whole number ≥ 0.");
+  }
+
   const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { classId: true } });
   const cls = await sdb.class.findUniqueOrThrow({ where: { id: student.classId }, select: { grade: true, yearId: true } });
   const feeDefault = await sdb.classFeeDefault.findUnique({ where: { yearId_grade: { yearId: cls.yearId, grade: cls.grade } } });
@@ -115,6 +122,8 @@ export type StudentProfileFields = {
 export async function updateStudentProfile(studentId: string, fields: StudentProfileFields): Promise<{ error?: string }> {
   await requireModuleAccess("Students", "EDIT");
   if (!fields.firstName.trim() || !fields.surname.trim()) return { error: "First name and surname are required." };
+  const dobError = fields.dob ? validateDob(fields.dob) : null;
+  if (dobError) return { error: dobError };
   const sdb = await getScopedDb();
 
   const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { classId: true } });

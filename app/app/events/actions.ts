@@ -22,6 +22,10 @@ export async function createEvent(_prevState: FormState, formData: FormData): Pr
   if (typeof title !== "string" || !title.trim() || typeof date !== "string" || !date) {
     return { error: "Title and date are required." };
   }
+  const budgetValue = typeof budgetEstimate === "string" && budgetEstimate ? Number(budgetEstimate) : null;
+  if (budgetValue != null && (!Number.isFinite(budgetValue) || budgetValue < 0)) {
+    return { error: "Estimated cost must be ≥ 0." };
+  }
 
   const event = await sdb.event.create({
     data: scopedCreateData<Prisma.EventUncheckedCreateInput>({
@@ -30,7 +34,7 @@ export async function createEvent(_prevState: FormState, formData: FormData): Pr
       date: new Date(date),
       venue: typeof venue === "string" && venue ? venue : null,
       expectedAttendance: typeof expectedAttendance === "string" && expectedAttendance ? Number(expectedAttendance) : null,
-      budgetEstimate: typeof budgetEstimate === "string" && budgetEstimate ? Number(budgetEstimate) : null,
+      budgetEstimate: budgetValue,
     }),
   });
 

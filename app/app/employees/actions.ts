@@ -9,7 +9,7 @@ import { requireModuleAccess } from "@/lib/permissions";
 import { auth } from "@/auth";
 import { createPendingAccount } from "@/lib/account-setup";
 import { resetPasswordToDefault } from "@/lib/account-reset";
-import { validatePhone } from "@/lib/validation";
+import { validatePhone, validateOptionalPhone } from "@/lib/validation";
 
 export type StaffFormState = { error?: string };
 
@@ -27,6 +27,10 @@ export async function createStaff(_prevState: StaffFormState, formData: FormData
 
   if (typeof name !== "string" || !name.trim() || typeof username !== "string" || !username.trim()) {
     return { error: "Name and username are required." };
+  }
+  if (typeof phone === "string" && phone) {
+    const phoneErr = validateOptionalPhone(phone);
+    if (phoneErr) return { error: phoneErr };
   }
 
   const normalizedUsername = username.trim().toLowerCase();

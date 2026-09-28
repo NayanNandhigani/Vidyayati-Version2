@@ -94,10 +94,18 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
     setSaved(false);
   }
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   function save() {
     startTransition(async () => {
-      await updateApplicationDetails(enquiry.id, fields);
-      setSaved(true);
+      const res = await updateApplicationDetails(enquiry.id, fields);
+      if (res.error) {
+        setSaveError(res.error);
+        setSaved(false);
+      } else {
+        setSaveError(null);
+        setSaved(true);
+      }
     });
   }
 
@@ -308,6 +316,7 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
             {pending ? "Saving…" : "Save application"}
           </button>
           {saved && <span style={{ fontSize: 12, color: "var(--good)", fontWeight: 600 }}>Saved.</span>}
+          {saveError && <span style={{ fontSize: 12, color: "var(--critical)", fontWeight: 600 }}>{saveError}</span>}
 
           {enquiry.stage === "APPLICATION" && (enquiry.approvalStatus === "NONE" || enquiry.approvalStatus === "REJECTED") && (
             <button type="button" onClick={submit} disabled={pending} style={{ marginLeft: "auto", background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: pending ? "default" : "pointer" }}>

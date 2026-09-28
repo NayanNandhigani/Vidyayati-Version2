@@ -43,3 +43,14 @@ export function validateOptionalEmail(value: string, label = "Email"): string | 
   if (!value.trim()) return null;
   return validateEmail(value, label);
 }
+
+/** A date of birth must be in the past and within a sensible age range — defaults (2-25) suit a student; pass wider bounds for staff. Treats an empty string as valid (DOB is optional almost everywhere it's captured). */
+export function validateDob(value: string, minAge = 2, maxAge = 25, label = "Date of birth"): string | null {
+  if (!value) return null;
+  const dob = new Date(value);
+  if (Number.isNaN(dob.getTime())) return `${label} isn't a valid date.`;
+  if (dob > new Date()) return `${label} can't be in the future.`;
+  const ageYears = (Date.now() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  if (ageYears < minAge || ageYears > maxAge) return `${label} should put age between ${minAge} and ${maxAge}.`;
+  return null;
+}
