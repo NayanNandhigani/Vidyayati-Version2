@@ -26,7 +26,7 @@ given.
 
 | # | Status | Commit | Notes |
 |---|---|---|---|
-| 2.1 Timetable | Fixed | `e7afa00` | Teacher clash detection with an override. Fixed the stale grid when switching classes. Deferred: teacher-dropdown ordering, teacher view, period timings. |
+| 2.1 Timetable | Fixed | `e7afa00` | Teacher clash detection with an override. Fixed the stale grid when switching classes. A "By teacher" view was added afterwards (see below). Deferred: teacher-dropdown ordering, period timings. |
 | 2.2 Homework | Fixed | `39a9a0d` | One shared bucket classifier, so the board and the tiles now agree. Added an Overdue column. Scoring now moves the status. Added configurable `maxMarks`, edit/delete, and A–Z sorting. |
 | 2.3 Exams | Fixed | `39a9a0d` | The "unentered mark counts as 0" bug existed in three separate places; all three now read from one source. Added Absent, per-subject pass marks with a Pass/Fail result, and Delete. Deferred: per-subject exam times, maker-checker setting. |
 | 2.4 Admission numbers | Fixed | `c8343c0` | One tenant-level sequence (highest existing number + 1) that honours the configured prefix. |
@@ -115,3 +115,14 @@ deploying:
 - [ ] Typical saves under 2 seconds: **not measured.** Needs a live
   database.
 - [ ] Automated tests: **not added.** No test runner is configured.
+
+## Follow-ups
+
+- **Teacher timetable view (from 2.1).** The Timetable page has a "By
+  class / By teacher" switch. The teacher view shows one teacher's week
+  across every class, read-only, with the class name in each cell. An
+  overridden clash shows both classes in the same cell and is marked
+  "(clash)". A staffer always sees their own week in full, even with no
+  class access. Other teachers' slots are limited to the classes the
+  viewer may see. Deleted staff are no longer offered in the teacher
+  pickers.
