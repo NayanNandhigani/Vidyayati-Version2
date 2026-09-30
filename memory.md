@@ -532,7 +532,7 @@ under time pressure.
 Remaining: Priority 8 (test data cleanup — needs the live tenant, not
 code) and Priority 9 (definition of done / changelog).
 
-## 2026-09-30 — QA follow-ups on hold; homepage chatbot (phase 1)
+## 2026-09-30 — QA follow-ups on hold
 
 On hold at the user's request (remind them when they ask what's pending):
 every item marked Deferred / Not built / Partly fixed in QA-CHANGELOG.md —
@@ -544,24 +544,13 @@ moving academic years, an "On leave" dashboard tile, SMS/WhatsApp. Also
 after deploy: `npm run dedupe-payroll-accounts [--apply]` and test-data
 cleanup. The teacher timetable view was done on 2026-09-29 (`bcad8db`).
 
-Added the "Ask Vidya Yati" chatbot on the public homepage (option A of
-the options discussed: product Q&A only). `app/api/chat/route.ts` streams
-replies from the Anthropic API using the fixed facts in
-`lib/chatbot/knowledge.ts` — no tools, no database access, so it can't
-leak school data. Per-IP in-memory rate limit (20 messages / 10 min),
-1000-char message cap, last 20 turns kept. The bubble
-(`components/marketing/ChatWidget.tsx`) only renders when
-`ANTHROPIC_API_KEY` is set. Tested locally: 503 without a key, 400 on bad
-input, 429 after the limit, friendly message on API errors, widget works
-at desktop and phone width. Not tested with a real key (none in the
-sandbox). Next phase if wanted: option B, read-only questions for signed-in
-parents/staff through the existing permission checks.
-
 ## 2026-09-30 — Fees (1.1) verified against a real database
 
-User clarified that "priority 1" meant fees, not the chatbot. (The
-homepage chatbot commit `4a96eee` stays in; it's hidden until
-ANTHROPIC_API_KEY is set. Ask the user if they want it removed.)
+User clarified that "priority 1" meant fees. A homepage AI chatbot had
+been built by mistake (commit `4a96eee`); it was removed at the user's
+request with a revert commit. If a chatbot is wanted later, that commit
+is a working starting point (product Q&A only, Anthropic API, hidden
+until ANTHROPIC_API_KEY is set).
 
 This sandbox has PostgreSQL 16 installed, so fees were finally tested
 against a real database: `initdb` into a postgres-owned dir, start on

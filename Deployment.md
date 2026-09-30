@@ -71,7 +71,6 @@ a local `.env` copied from `.env.example`):
 | `AUTH_URL` | The app's exact public HTTPS URL (e.g. the domain from step 4) — **required**, not optional; see below |
 | `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Step 2 |
 | `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL` | Your choice — used once, in step 6 |
-| `ANTHROPIC_API_KEY` | Optional. An API key from console.anthropic.com for the homepage chatbot. Without it the chat bubble is hidden. Set a monthly spend limit on the key in the Anthropic console. |
 
 Never commit `.env`.
 
