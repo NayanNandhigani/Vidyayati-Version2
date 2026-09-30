@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ChatWidget from "@/components/marketing/ChatWidget";
 
 const MODULES = [
   { name: "Students & Academics", desc: "Enrolment, classes, attendance, homework, timetables and exam report cards in one record per child." },
@@ -210,6 +211,8 @@ export default function MarketingHome() {
           </Link>
         </div>
       </footer>
+      {/* Only offered once the chatbot's API key is configured (see .env.example). */}
+      {process.env.ANTHROPIC_API_KEY && <ChatWidget />}
     </div>
   );
 }
