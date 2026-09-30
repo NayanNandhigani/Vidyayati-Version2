@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { promoteStudent } from "@/lib/domain/enrollment";
+import { applyFeePlan, generateInstalmentsForClass, regenerateInstalmentsForGrade, type FeePlanTerm, type InstalmentPlanResult } from "@/lib/fee-instalments";
 
 async function requireAdmin() {
   const session = await auth();
@@ -206,64 +207,40 @@ export async function setClassFeeDefault(grade: string, actualFee: number) {
     update: { actualFee },
     create: scopedCreateData<Prisma.ClassFeeDefaultUncheckedCreateInput>({ yearId: currentYear.id, grade, actualFee }),
   });
+  // Students without their own charged fee are billed from this figure, so
+  // their instalments must follow it.
+  await regenerateInstalmentsForGrade(sdb, currentYear.id, grade);
   revalidatePath("/app/institute");
+  revalidatePath("/app/fees");
   revalidatePath("/app/admissions");
   revalidatePath("/app/students");
 }
 
-export type FeeInstalmentPlanTerm = { term: string; amount: number; dueDate: string };
+export type FeeInstalmentPlanTerm = FeePlanTerm;
 
 // Saves a grade's instalment plan (applied to every section/class in that
 // grade for the current year, since FeeStructure is keyed by classId but
 // the admin thinks in terms of a grade) and immediately regenerates every
-// active student's FeeInstalment rows from it. Never overwrites an
-// instalment that already has a payment — see lib/fee-instalments.ts.
-export async function saveFeeInstalmentPlan(grade: string, head: string, terms: FeeInstalmentPlanTerm[]) {
+// active student's FeeInstalment rows from it. Never overwrites or removes
+// an instalment that already has a payment — see lib/fee-instalments.ts.
+// Returns problems as { error } rather than throwing: Next.js hides thrown
+// server-action messages in production, so the admin would only see a
+// generic failure.
+export async function saveFeeInstalmentPlan(grade: string, head: string, terms: FeeInstalmentPlanTerm[]): Promise<InstalmentPlanResult | { error: string }> {
   await requireAdmin();
   const trimmedHead = head.trim() || "Tuition";
-  if (terms.length === 0) throw new Error("Add at least one instalment term.");
+  if (terms.length === 0) return { error: "Add at least one instalment term." };
   for (const t of terms) {
-    if (!t.term.trim()) throw new Error("Every instalment needs a term name.");
-    assertWholeNonNegative(t.amount, `${t.term} amount`);
-    if (!t.dueDate || Number.isNaN(Date.parse(t.dueDate))) throw new Error(`${t.term} needs a valid due date.`);
+    if (!t.term.trim()) return { error: "Every instalment needs a term name." };
+    if (!Number.isFinite(t.amount) || t.amount < 0 || !Number.isInteger(t.amount)) return { error: `${t.term.trim()} amount must be a whole number of 0 or more.` };
+    if (!t.dueDate || Number.isNaN(Date.parse(t.dueDate))) return { error: `${t.term.trim()} needs a valid due date.` };
   }
 
   const sdb = await getScopedDb();
   const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
-  if (!currentYear) throw new Error("Set an active academic year in Settings first.");
+  if (!currentYear) return { error: "Set an active academic year in Settings first." };
 
-  const classes = await sdb.class.findMany({ where: { yearId: currentYear.id, grade }, select: { id: true } });
-  if (classes.length === 0) throw new Error(`No sections exist for Class ${grade} yet.`);
-
-  for (const cls of classes) {
-    for (const t of terms) {
-      await sdb.feeStructure.upsert({
-        where: { classId_yearId_head_term: { classId: cls.id, yearId: currentYear.id, head: trimmedHead, term: t.term.trim() } },
-        update: { amount: t.amount, dueDate: new Date(t.dueDate) },
-        create: scopedCreateData<Prisma.FeeStructureUncheckedCreateInput>({
-          classId: cls.id,
-          yearId: currentYear.id,
-          head: trimmedHead,
-          term: t.term.trim(),
-          amount: t.amount,
-          dueDate: new Date(t.dueDate),
-        }),
-      });
-    }
-  }
-
-  const { generateInstalmentsForClass } = await import("@/lib/fee-instalments");
-  let studentsConsidered = 0;
-  let instalmentsCreated = 0;
-  let instalmentsUpdated = 0;
-  const flagged: { studentId: string; studentName: string }[] = [];
-  for (const cls of classes) {
-    const r = await generateInstalmentsForClass(sdb, cls.id, currentYear.id);
-    studentsConsidered += r.studentsConsidered;
-    instalmentsCreated += r.instalmentsCreated;
-    instalmentsUpdated += r.instalmentsUpdated;
-    flagged.push(...r.flagged);
-  }
+  const result = await applyFeePlan(sdb, currentYear.id, grade, trimmedHead, terms);
 
   revalidatePath("/app/institute");
   revalidatePath("/app/fees");
@@ -272,7 +249,7 @@ export async function saveFeeInstalmentPlan(grade: string, head: string, terms: 
   revalidatePath("/app/dashboard");
   revalidatePath("/app/reports");
 
-  return { studentsConsidered, instalmentsCreated, instalmentsUpdated, flagged };
+  return result;
 }
 
 export async function setClassSubjectTeacher(classId: string, subjectId: string, staffId: string | null) {
@@ -348,6 +325,12 @@ export async function bulkPromoteClass(
     if (heldBack.has(student.id)) heldBackCount += 1;
     else promotedCount += 1;
   }
+
+  // Bill the new class's fee plan straight away (a no-op if that class has
+  // no plan yet — saving one later generates them). The previous year's
+  // unpaid instalments are left alone as arrears.
+  const destinations = await sdb.class.findMany({ where: { id: { in: Array.from(new Set([promoteToClassId, holdBackClassId])) } }, select: { id: true, yearId: true } });
+  for (const cls of destinations) await generateInstalmentsForClass(sdb, cls.id, cls.yearId);
 
   revalidatePath("/app/institute");
   revalidatePath("/app/students");

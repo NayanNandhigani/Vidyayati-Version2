@@ -69,7 +69,7 @@ function InstalmentPlanEditor({ grade, initialPlan }: { grade: string; initialPl
     const forHead = initialPlan.filter((p) => p.head === (heads[0] ?? "Tuition"));
     return forHead.length > 0 ? forHead.map(({ term, amount, dueDate }) => ({ term, amount, dueDate })) : [{ term: "Term 1", amount: 0, dueDate: "" }];
   });
-  const [result, setResult] = useState<{ instalmentsCreated: number; instalmentsUpdated: number; flagged: { studentId: string; studentName: string }[] } | null>(null);
+  const [result, setResult] = useState<{ instalmentsCreated: number; instalmentsUpdated: number; instalmentsRemoved: number; flagged: { studentId: string; studentName: string }[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function switchHead(nextHead: string) {
@@ -98,7 +98,8 @@ function InstalmentPlanEditor({ grade, initialPlan }: { grade: string; initialPl
     startTransition(async () => {
       try {
         const r = await saveFeeInstalmentPlan(grade, head, terms);
-        setResult(r);
+        if ("error" in r) setError(r.error);
+        else setResult(r);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not save the instalment plan.");
       }
@@ -164,7 +165,8 @@ function InstalmentPlanEditor({ grade, initialPlan }: { grade: string; initialPl
       {error && <div style={{ marginTop: 8, fontSize: 12, color: "var(--critical)" }}>{error}</div>}
       {result && (
         <div style={{ marginTop: 8, fontSize: 12, color: "var(--good)" }}>
-          {result.instalmentsCreated} instalment{result.instalmentsCreated === 1 ? "" : "s"} created, {result.instalmentsUpdated} updated.
+          {result.instalmentsCreated} instalment{result.instalmentsCreated === 1 ? "" : "s"} created, {result.instalmentsUpdated} updated
+          {result.instalmentsRemoved > 0 && `, ${result.instalmentsRemoved} removed`}.
           {result.flagged.length > 0 && (
             <span style={{ color: "var(--warn)" }}>
               {" "}

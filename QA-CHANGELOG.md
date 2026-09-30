@@ -17,7 +17,7 @@ given.
 
 | # | Status | Commit | Notes |
 |---|---|---|---|
-| 1.1 Fees: no instalments | Fixed | `9d84b8e` | New `FeeInstalment` model, one row per student per term, split in proportion to the charged fee. Instalment plan editor added under Fee Structure. Generation runs on admit and whenever the charged fee is edited. |
+| 1.1 Fees: no instalments | Fixed, then tested | `9d84b8e`, follow-up below | New `FeeInstalment` model, one row per student per term, split in proportion to the charged fee. Instalment plan editor added under Fee Structure. Generation runs on admit and whenever the charged fee is edited. |
 | 1.2 Payroll duplicate Accounts entry | Fixed | `6f0a647` | Accounts rows are now linked to their payroll run by a unique `payrollRunId`, and a re-run edits the existing row instead of adding a second one. `npm run dedupe-payroll-accounts` removes duplicates that already exist. |
 | 1.3 Admissions data loss | Fixed | `00e58f2` | The basic admit flow was removed, so the detailed flow (previously behind an off-by-default flag) is the only one. Admitting now creates the Parent/Guardian record, and cards can be edited, rejected with a reason, and deleted. |
 | 1.4 Students/Employees uneditable | Fixed | `4c2694b` | Edit, status change, section transfer, soft delete and guardian management for students. Bulk promote. Edit, deactivate, reset password and soft delete for employees. |
@@ -126,3 +126,30 @@ deploying:
   class access. Other teachers' slots are limited to the classes the
   viewer may see. Deleted staff are no longer offered in the teacher
   pickers.
+
+- **Fees (1.1) tested end to end, and five bugs fixed.** Tested against a
+  local PostgreSQL database, not in the sandbox-only way the other
+  commits were. All migrations apply to an empty database and match the
+  schema exactly. The fee migration was also run on a database holding
+  old-style payments: every payment was kept and linked to an
+  instalment. 22 fee scenarios pass using the real code, and the Fee
+  Structure and Fees screens were driven in a browser on a production
+  build. Fixed:
+  - Moving a student to another section billed them twice. Unpaid
+    instalments from the old section are now removed; a term already
+    paid there is not billed again.
+  - Removing or renaming a term in the instalment plan left the old term
+    on every student's bill. It is now removed, unless payments exist
+    against it, in which case the save is refused with a message naming
+    the term.
+  - Changing a grade's actual fee didn't update the instalments of
+    students billed from it.
+  - Terms didn't always add up to the fee (₹10,000 over three terms
+    billed ₹9,999). The last term now takes the remainder.
+  - A payment bigger than one term was refused. It is now spread over
+    the oldest unpaid terms, with one Accounts entry for the full amount.
+  - Also: promoting a class now bills the new class's fee plan straight
+    away; setting a student's charged fee to 0, or removing a
+    transport/hostel assignment, removes the matching unpaid instalments;
+    and instalment-plan errors now reach the admin instead of Next.js's
+    generic production error.

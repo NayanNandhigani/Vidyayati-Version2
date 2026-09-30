@@ -556,3 +556,26 @@ input, 429 after the limit, friendly message on API errors, widget works
 at desktop and phone width. Not tested with a real key (none in the
 sandbox). Next phase if wanted: option B, read-only questions for signed-in
 parents/staff through the existing permission checks.
+
+## 2026-09-30 — Fees (1.1) verified against a real database
+
+User clarified that "priority 1" meant fees, not the chatbot. (The
+homepage chatbot commit `4a96eee` stays in; it's hidden until
+ANTHROPIC_API_KEY is set. Ask the user if they want it removed.)
+
+This sandbox has PostgreSQL 16 installed, so fees were finally tested
+against a real database: `initdb` into a postgres-owned dir, start on
+port 5433, `prisma migrate deploy`. All migrations apply and
+`prisma migrate diff` shows no drift. The fee migration's backfill was
+tested on a pre-fee database with old-style payments (all kept). The fee
+migration would fail on duplicate (class, year, term) FeeStructure rows,
+but the old app never created FeeStructure rows at all, so live data
+can't have them; the migration file was left untouched.
+
+Five bugs found and fixed (see QA-CHANGELOG.md, Follow-ups): section
+transfer double-billing, stale removed/renamed terms, actual-fee change
+not flowing to instalments, rounding loss, and payments bigger than one
+term being refused. Logic now lives in lib/fee-instalments.ts
+(`applyFeePlan`, `regenerateInstalmentsForGrade`, `allocatePayment`,
+`splitProportionally`). The 22-scenario test script was not committed:
+it TRUNCATEs tables, so it must never run against a real DATABASE_URL.
