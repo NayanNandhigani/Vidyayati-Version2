@@ -1,3 +1,4 @@
+import { todayIST } from "@/lib/ist";
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
@@ -304,7 +305,7 @@ async function AttendanceTab({
   sdb: Awaited<ReturnType<typeof getScopedDb>>;
   canEdit: boolean;
 }) {
-  const date = params.date ?? new Date().toISOString().slice(0, 10);
+  const date = params.date ?? todayIST();
   const selectedRoute = routes.find((r) => r.id === params.route) ?? routes[0];
 
   const [assignments, attendanceRows] = selectedRoute

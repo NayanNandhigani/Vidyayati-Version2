@@ -5,6 +5,8 @@ import { formatINR, formatDate, daysUntil, studentName } from "@/lib/format";
 import { RemindersPanel, StaffAvailabilityTile, PendingApprovalsPanel, NotesPanel } from "./DashboardWidgets";
 import { AttendanceByClassChart, ResultsByClassChart, CashFlowChart } from "./DashboardCharts";
 import { classAveragePercent, subjectAveragePercent, type MarkCell } from "@/lib/exam-rules";
+import { ACTIVE_STAFF_WHERE } from "@/lib/staff";
+import { greetingIST, todayIST, todayISTDate } from "@/lib/ist";
 
 function StatTile({ label, value, color }: { label: string; value: React.ReactNode; color?: string }) {
   return (
@@ -36,25 +38,30 @@ export default async function DashboardPage() {
   );
 }
 
+// Greeting by the time in India, not the server's clock (UTC on Vercel —
+// it said "Good morning" at 7 pm IST).
 function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  return greetingIST();
 }
 
 async function AdminStaffDashboard() {
   const session = await auth();
   const isAdmin = session!.user.role === "SCHOOL_ADMIN";
   const sdb = await getScopedDb();
+  // All "today / this week / this month" boundaries are in IST. Date-only
+  // columns (attendance, ledger dates, exam dates) are stored as UTC
+  // midnight of the calendar date, so they're compared with the IST
+  // calendar date; payment timestamps use the IST start of day.
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const weekAgo = new Date(today);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const todayStr = todayIST(now);
+  const today = todayISTDate(now);
+  const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000);
+  const weekAgo = addDays(today, -7);
+  const [curY, curM] = todayStr.split("-").map(Number) as [number, number];
+  const monthStart = new Date(Date.UTC(curY, curM - 1, 1));
+  const yearStart = new Date(Date.UTC(curY, 0, 1));
+  const istDayStart = new Date(`${todayStr}T00:00:00+05:30`);
+  const istDayEnd = addDays(istDayStart, 1);
 
   const [
     totalStudents,
@@ -71,10 +78,10 @@ async function AdminStaffDashboard() {
     sdb.student.count({ where: { status: "ACTIVE" } }),
     sdb.attendance.findMany({ where: { date: today } }),
     sdb.exam.findFirst({ where: { startDate: { gte: today } }, orderBy: { startDate: "asc" } }),
-    sdb.staffProfile.findMany({ where: { staffCategory: "TEACHING" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
-    sdb.staffProfile.findMany({ where: { staffCategory: "NON_TEACHING" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
+    sdb.staffProfile.findMany({ where: { ...ACTIVE_STAFF_WHERE, staffCategory: "TEACHING" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
+    sdb.staffProfile.findMany({ where: { ...ACTIVE_STAFF_WHERE, staffCategory: "NON_TEACHING" }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
     sdb.staffAttendance.findMany({ where: { date: today } }),
-    sdb.feePayment.aggregate({ _sum: { amount: true }, where: { paidOn: { gte: today, lt: tomorrow } } }),
+    sdb.feePayment.aggregate({ _sum: { amount: true }, where: { paidOn: { gte: istDayStart, lt: istDayEnd } } }),
     sdb.dashboardReminder.findMany({ orderBy: [{ remindAt: "asc" }, { createdAt: "desc" }] }),
     sdb.dashboardNote.findMany({ orderBy: { createdAt: "desc" } }),
     sdb.class.findMany({ orderBy: [{ grade: "asc" }, { section: "asc" }] }),
@@ -83,8 +90,7 @@ async function AdminStaffDashboard() {
   // Vehicles with any compliance date already expired, or expiring within
   // 30 days — same rule VehicleSections.tsx uses per-vehicle, surfaced
   // here since nothing previously flagged this fleet-wide.
-  const in30Days = new Date(today);
-  in30Days.setDate(in30Days.getDate() + 30);
+  const in30Days = addDays(today, 30);
   const vehiclesNeedingAttention = await sdb.transportVehicle.count({
     where: {
       isActive: true,
@@ -219,7 +225,7 @@ async function AdminStaffDashboard() {
 
 
   // --- Accounts money flow, bucketed for day / week / month / year ---
-  const fiveYearsAgo = new Date(now.getFullYear() - 4, 0, 1);
+  const fiveYearsAgo = new Date(Date.UTC(curY - 4, 0, 1));
   const allTxns = await sdb.accountsTransaction.findMany({ where: { date: { gte: fiveYearsAgo }, approvalStatus: { not: "PENDING" } } });
   function sumFlow(txns: typeof allTxns) {
     return {
@@ -227,30 +233,26 @@ async function AdminStaffDashboard() {
       expense: txns.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + Number(t.amount), 0),
     };
   }
+  const label = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-IN", { ...opts, timeZone: "UTC" });
   const dayBuckets = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (13 - i));
-    const next = new Date(d);
-    next.setDate(next.getDate() + 1);
-    return { label: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }), ...sumFlow(allTxns.filter((t) => t.date >= d && t.date < next)) };
+    const d = addDays(today, -(13 - i));
+    const next = addDays(d, 1);
+    return { label: label(d, { day: "2-digit", month: "short" }), ...sumFlow(allTxns.filter((t) => t.date >= d && t.date < next)) };
   });
   const weekBuckets = Array.from({ length: 8 }, (_, i) => {
-    const weeksAgo = 7 - i;
-    const end = new Date(today);
-    end.setDate(end.getDate() + 1 - weeksAgo * 7);
-    const start = new Date(end);
-    start.setDate(start.getDate() - 7);
-    return { label: `Wk of ${start.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`, ...sumFlow(allTxns.filter((t) => t.date >= start && t.date < end)) };
+    const end = addDays(today, 1 - (7 - i) * 7);
+    const start = addDays(end, -7);
+    return { label: `Wk of ${label(start, { day: "2-digit", month: "short" })}`, ...sumFlow(allTxns.filter((t) => t.date >= start && t.date < end)) };
   });
   const monthBuckets = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
-    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-    return { label: d.toLocaleDateString("en-IN", { month: "short" }), ...sumFlow(allTxns.filter((t) => t.date >= d && t.date < next)) };
+    const d = new Date(Date.UTC(curY, curM - 1 - 11 + i, 1));
+    const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+    return { label: label(d, { month: "short" }), ...sumFlow(allTxns.filter((t) => t.date >= d && t.date < next)) };
   });
   const yearBuckets = Array.from({ length: 5 }, (_, i) => {
-    const y = now.getFullYear() - 4 + i;
-    const start = new Date(y, 0, 1);
-    const end = new Date(y + 1, 0, 1);
+    const y = curY - 4 + i;
+    const start = new Date(Date.UTC(y, 0, 1));
+    const end = new Date(Date.UTC(y + 1, 0, 1));
     return { label: String(y), ...sumFlow(allTxns.filter((t) => t.date >= start && t.date < end)) };
   });
   const cashFlow = { day: dayBuckets, week: weekBuckets, month: monthBuckets, year: yearBuckets };
@@ -294,7 +296,7 @@ async function AdminStaffDashboard() {
 async function ParentDashboard() {
   const session = await auth();
   const sdb = await getScopedDb();
-  const today = new Date(new Date().setHours(0, 0, 0, 0));
+  const today = todayISTDate();
 
   const parent = await sdb.parent.findUnique({
     where: { userId: session!.user.id },

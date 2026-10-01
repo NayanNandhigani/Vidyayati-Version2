@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma, DayOfWeek } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
+import { unassignedMessage, unassignedSubjects } from "@/lib/subject-assignments";
 
 export async function setTimetableSlot(
   classId: string,
@@ -25,6 +26,14 @@ export async function setTimetableSlot(
   await sdb.class.findUniqueOrThrow({ where: { id: classId }, select: { id: true } });
   await sdb.subject.findUniqueOrThrow({ where: { id: subjectId }, select: { id: true } });
   await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { id: true } });
+
+  // The subject must be one this class studies (Academic Management →
+  // Subjects), so the timetable can't disagree with the Subjects screen.
+  const missingSubject = await unassignedSubjects(sdb, classId, [subjectId]);
+  if (missingSubject.length > 0) {
+    const cls = await sdb.class.findUniqueOrThrow({ where: { id: classId }, select: { grade: true, section: true } });
+    return { error: unassignedMessage(`${cls.grade}-${cls.section}`, missingSubject) };
+  }
 
   if (!override) {
     const conflict = await sdb.timetableSlot.findFirst({

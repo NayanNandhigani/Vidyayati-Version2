@@ -1,3 +1,5 @@
+import { daysFromTodayIST } from "./ist";
+
 // Plain utility, not a server action — kept out of app/app/homework/depth-actions.ts
 // because a "use server" file requires every export to be an async function.
 
@@ -22,14 +24,21 @@ export type HomeworkBucket = "Overdue" | "Assigned" | "Due this week" | "Submitt
  * to (an overdue assignment used to fall through both "Active" and "Due
  * this week" while the board silently lumped it into "Due this week").
  */
-export function classifyHomework(dueDate: Date, submissions: { status: "PENDING" | "SUBMITTED" | "LATE"; score: number | null }[]): HomeworkBucket {
+export function classifyHomework(dueDate: Date, submissions: { status: "PENDING" | "SUBMITTED" | "LATE"; score: number | null }[], now: Date = new Date()): HomeworkBucket {
   const total = submissions.length;
   const graded = submissions.filter((s) => s.score !== null).length;
   const submitted = submissions.filter((s) => s.status === "SUBMITTED" || s.status === "LATE").length;
   if (total > 0 && graded === total) return "Graded";
   if (total > 0 && submitted === total) return "Submitted";
-  const daysUntil = Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  // Calendar days from today in India (due today = 0), not server-clock
+  // milliseconds — due 1 Sept is Overdue on 29 Sept, whatever the hour.
+  const daysUntil = daysFromTodayIST(dueDate, now);
   if (daysUntil < 0) return "Overdue";
   if (daysUntil <= 7) return "Due this week";
   return "Assigned";
+}
+
+/** Still open: everything that isn't fully submitted or graded (Assigned, Due this week, Overdue). */
+export function isActiveBucket(b: HomeworkBucket): boolean {
+  return b === "Assigned" || b === "Due this week" || b === "Overdue";
 }

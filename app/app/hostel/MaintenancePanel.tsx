@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import type { HostelLogType, HostelLogStatus } from "@prisma/client";
@@ -28,7 +29,7 @@ export function MaintenancePanel({ targets, logs }: { targets: MaintenanceTarget
   const [pending, startTransition] = useTransition();
   const [targetKey, setTargetKey] = useState(targets[0]?.key ?? "");
   const [type, setType] = useState<HostelLogType>("MAINTENANCE");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayIST());
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
 

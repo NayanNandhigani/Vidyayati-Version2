@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState } from "react";
 import Link from "next/link";
@@ -87,7 +88,7 @@ export default function NewHomeworkForm({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Due date
-          <input className="in" type="date" name="dueDate" min={new Date().toISOString().slice(0, 10)} required />
+          <input className="in" type="date" name="dueDate" min={todayIST()} required />
         </label>
         <label className="field">
           Max marks

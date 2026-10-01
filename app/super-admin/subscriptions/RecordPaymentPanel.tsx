@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import { formatINR } from "@/lib/format";
@@ -51,7 +52,7 @@ export default function RecordPaymentPanel({ invoice }: { invoice: Invoice }) {
         </label>
         <label className="field">
           Payment date
-          <input className="in mono" type="date" name="paidOn" defaultValue={new Date().toISOString().slice(0, 10)} />
+          <input className="in mono" type="date" name="paidOn" defaultValue={todayIST()} />
         </label>
         <label className="field">
           Reference / UTR number

@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { toast } from "@/components/Toaster";
 import { unwrap } from "@/lib/unwrap";
@@ -314,7 +315,7 @@ export default function FeesView({
                 </label>
                 <label className="field">
                   Date received
-                  <input className="in mono" name="paidOn" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+                  <input className="in mono" name="paidOn" type="date" defaultValue={todayIST()} />
                 </label>
                 {state.error && (
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--critical)", background: "var(--critical-tint)", border: "1px solid var(--critical-border)", borderRadius: 8, padding: "8px 11px" }}>

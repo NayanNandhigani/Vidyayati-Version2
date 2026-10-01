@@ -1,5 +1,6 @@
 "use server";
 
+import { todayIST } from "@/lib/ist";
 import { revalidatePath } from "next/cache";
 import { Prisma, HostelAttendanceSession, HostelAttendanceStatus } from "@prisma/client";
 import { auth } from "@/auth";
@@ -57,7 +58,7 @@ export async function getHostelAttendanceSummary() {
     include: { hostelAttendance: { orderBy: { date: "desc" }, take: 90 } },
   });
 
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = todayIST();
 
   const absentToday: { id: string; name: string; session: HostelAttendanceSession }[] = [];
   const summary: { id: string; name: string; pct: number; marked: number }[] = [];

@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
@@ -110,7 +111,7 @@ export default function ContractDetail({ contract, canManage }: { contract: Cont
                 </label>
                 <label className="field">
                   Date signed
-                  <input className="in mono" type="date" name="signedDate" required defaultValue={new Date().toISOString().slice(0, 10)} />
+                  <input className="in mono" type="date" name="signedDate" required defaultValue={todayIST()} />
                 </label>
                 {signState.error && <div style={{ fontSize: 12, fontWeight: 600, color: "var(--critical)" }}>{signState.error}</div>}
                 <div style={{ display: "flex", gap: 8 }}>

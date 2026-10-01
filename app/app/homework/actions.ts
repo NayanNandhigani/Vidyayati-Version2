@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
+import { parseDateOnly, todayIST } from "@/lib/ist";
 
 export type HomeworkFormState = { error?: string };
 
@@ -28,9 +29,9 @@ export async function createHomework(_prevState: HomeworkFormState, formData: Fo
     return { error: "Title, class, subject, and due date are required." };
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (new Date(dueDate) < today) {
+  // Compared as IST calendar dates — today (India) is allowed, yesterday isn't.
+  if (!parseDateOnly(dueDate)) return { error: "Due date isn't a valid date." };
+  if (dueDate < todayIST()) {
     return { error: "Due date can't be in the past." };
   }
 
@@ -84,7 +85,7 @@ export async function createHomework(_prevState: HomeworkFormState, formData: Fo
       classId,
       subjectId,
       staffId,
-      dueDate: new Date(dueDate),
+      dueDate: parseDateOnly(dueDate)!,
       maxMarks,
     }),
   });

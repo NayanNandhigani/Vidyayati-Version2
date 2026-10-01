@@ -1,5 +1,6 @@
 "use client";
 
+import { pipelineCounts, pipelineStage } from "@/lib/admissions";
 import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -43,12 +44,7 @@ const COLS = [
   { key: "REJECTED" as const, label: "Rejected", bg: "var(--critical-tint)", fg: "var(--critical)" },
 ];
 
-function columnFor(e: Enquiry): (typeof COLS)[number]["key"] {
-  if (e.approvalStatus === "REJECTED") return "REJECTED";
-  if (e.stage === "ADMITTED") return "ADMITTED";
-  if (e.stage === "APPLICATION") return "APPLICATION";
-  return "ENQUIRY";
-}
+const columnFor = (e: Enquiry): (typeof COLS)[number]["key"] => pipelineStage(e);
 
 export default function AdmissionsBoard({
   enquiries,
@@ -64,11 +60,8 @@ export default function AdmissionsBoard({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const total = enquiries.length;
-  const applications = enquiries.filter((e) => e.stage === "APPLICATION" || e.stage === "ADMITTED").length;
-  const admitted = enquiries.filter((e) => e.stage === "ADMITTED").length;
-  const rejected = enquiries.filter((e) => e.approvalStatus === "REJECTED").length;
-  const conversion = total ? Math.round((admitted / total) * 100) : 0;
+  // Same grouping as the columns below, so every count matches its list.
+  const counts = pipelineCounts(enquiries);
 
   function move(id: string) {
     startTransition(async () => {
@@ -79,22 +72,19 @@ export default function AdmissionsBoard({
   return (
     <>
       <div style={{ display: "flex", gap: 24, fontSize: 13, flexWrap: "wrap" }}>
+        {COLS.map((col, i) => (
+          <div key={col.key} style={{ display: "flex", gap: 24 }}>
+            {i > 0 && i < 3 && <div style={{ color: "var(--faint)" }}>→</div>}
+            <div>
+              <span style={{ color: "var(--muted)" }}>{col.label}</span> <span className="mono" style={{ fontWeight: 700 }}>{counts[col.key]}</span>
+            </div>
+          </div>
+        ))}
         <div>
-          <span style={{ color: "var(--muted)" }}>Total enquiries</span> <span className="mono" style={{ fontWeight: 700 }}>{total}</span>
-        </div>
-        <div style={{ color: "var(--faint)" }}>→</div>
-        <div>
-          <span style={{ color: "var(--muted)" }}>Total applications</span> <span className="mono" style={{ fontWeight: 700 }}>{applications}</span>
-        </div>
-        <div style={{ color: "var(--faint)" }}>→</div>
-        <div>
-          <span style={{ color: "var(--muted)" }}>Total admitted</span> <span className="mono" style={{ fontWeight: 700 }}>{admitted}</span>
-        </div>
-        <div>
-          <span style={{ color: "var(--muted)" }}>Total rejected</span> <span className="mono" style={{ fontWeight: 700 }}>{rejected}</span>
+          <span style={{ color: "var(--muted)" }}>Total</span> <span className="mono" style={{ fontWeight: 700 }}>{counts.total}</span>
         </div>
         <div style={{ marginLeft: "auto", color: "var(--muted)" }}>
-          Conversion rate <span className="mono" style={{ color: "var(--marigold-deep)", fontWeight: 700 }}>{conversion}%</span>
+          Conversion rate <span className="mono" style={{ color: "var(--marigold-deep)", fontWeight: 700 }}>{counts.conversionPct}%</span>
         </div>
       </div>
 

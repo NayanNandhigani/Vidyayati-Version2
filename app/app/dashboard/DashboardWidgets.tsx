@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "@/components/Toaster";
 import { useState, useTransition } from "react";
@@ -36,7 +37,7 @@ export function RemindersPanel({ reminders }: { reminders: Reminder[] }) {
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [remindAt, setRemindAt] = useState(new Date().toISOString().slice(0, 10));
+  const [remindAt, setRemindAt] = useState(todayIST());
 
   function add() {
     if (!title.trim() || !remindAt) return;

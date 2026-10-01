@@ -1,5 +1,6 @@
 "use client";
 
+import DepartmentSelect from "@/components/form/DepartmentSelect";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { StaffCategory, UserStatus } from "@prisma/client";
@@ -118,7 +119,7 @@ export default function StaffActionsPanel({ staffId, fields: initialFields, user
             </label>
             <label className="field">
               Department
-              <input className="in" value={fields.department} onChange={(e) => set("department", e.target.value)} style={{ fontSize: 12 }} />
+              <DepartmentSelect value={fields.department} onChange={(v) => set("department", v)} style={{ fontSize: 12 }} />
             </label>
             <label className="field">
               Staff category

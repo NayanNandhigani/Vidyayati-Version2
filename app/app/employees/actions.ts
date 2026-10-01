@@ -1,5 +1,6 @@
 "use server";
 
+import { normalizeDepartment } from "@/lib/staff";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Prisma, AccessLevel, type StaffCategory } from "@prisma/client";
@@ -67,7 +68,7 @@ export async function createStaff(_prevState: StaffFormState, formData: FormData
     data: scopedCreateData<Prisma.StaffProfileUncheckedCreateInput>({
       userId: user.id,
       designation: typeof designation === "string" && designation ? designation : null,
-      department: typeof department === "string" && department ? department : null,
+      department: typeof department === "string" && department ? normalizeDepartment(department) ?? department.trim() : null,
       staffCategory: staffCategory === "NON_TEACHING" ? "NON_TEACHING" : "TEACHING",
       dateJoined: new Date(),
     }),
@@ -248,7 +249,7 @@ export async function updateStaffCore(staffId: string, fields: StaffCoreFields):
       where: { id: staffId },
       data: {
         designation: fields.designation.trim() || null,
-        department: fields.department.trim() || null,
+        department: normalizeDepartment(fields.department) ?? (fields.department.trim() || null),
         staffCategory: fields.staffCategory,
         dateJoined: fields.dateJoined ? new Date(fields.dateJoined) : null,
       },
@@ -306,6 +307,12 @@ export async function deleteStaff(staffId: string) {
   await sdb.$transaction([
     sdb.staffProfile.update({ where: { id: staffId }, data: { deletedAt: new Date() } }),
     sdb.user.update({ where: { id: staff.userId }, data: { status: "INACTIVE" } }),
+    // A deleted staffer can't stay a class teacher — otherwise screens that
+    // only list current staff show the class as unassigned while others
+    // still print the old name (QA BUG-17).
+    sdb.class.updateMany({ where: { classTeacherStaffId: staffId }, data: { classTeacherStaffId: null } }),
   ]);
   revalidatePath("/app/employees");
+  revalidatePath("/app/institute");
+  revalidatePath("/app/timetable");
 }

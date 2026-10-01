@@ -9,6 +9,7 @@ import TimetableFilter from "./TimetableFilter";
 import TimetableGrid from "./TimetableGrid";
 import RoomsPanel from "./RoomsPanel";
 import type { DayOfWeek } from "@prisma/client";
+import { assignedSubjectIds } from "@/lib/subject-assignments";
 
 function todayColumn() {
   const day = new Date().getDay(); // 0=Sun..6=Sat
@@ -114,6 +115,10 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
   // only VIEW (or none) on another.
   const accessLevel = classId ? await requireModuleAccess("Timetable", "VIEW", classId) : "NONE";
   const canEdit = accessLevel === "EDIT";
+  // The cell editor only offers subjects this class studies (Academic
+  // Management → Subjects); the server enforces the same rule.
+  const assignedIds = classId ? await assignedSubjectIds(sdb, classId) : new Set<string>();
+  const classSubjects = subjects.filter((sub) => assignedIds.has(sub.id));
 
   return (
     <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 13, height: "100dvh", boxSizing: "border-box" }}>
@@ -156,6 +161,11 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
+      {canEdit && classId && classSubjects.length === 0 && (
+        <div className="card" style={{ padding: "10px 16px", fontSize: 12.5, color: "var(--warn)", fontWeight: 600 }}>
+          No subjects are assigned to this class yet. Assign them in Academic Management → Subjects, then they can be added to the timetable.
+        </div>
+      )}
       <div className="card" style={{ padding: 0, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "84px repeat(6,1fr)", borderBottom: "1px solid var(--line)", flex: "none" }}>
           <div style={{ padding: "9px 12px", fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", borderRight: "1px solid var(--line)" }}>Period</div>
@@ -180,7 +190,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
             key={classId}
             classId={classId}
             grid={grid}
-            subjects={subjects}
+            subjects={classSubjects}
             staff={staff.map((s) => ({ id: s.id, name: s.user.name }))}
             todayCol={todayColumn()}
             canEdit={canEdit}

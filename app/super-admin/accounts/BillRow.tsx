@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { recordBillPayment, type AccountsFormState } from "./actions";
@@ -91,7 +92,7 @@ export default function BillRow({ bill }: { bill: BillRowData }) {
           </label>
           <label className="field" style={{ flex: 1 }}>
             Paid on
-            <input className="in" type="date" name="paidOn" defaultValue={new Date().toISOString().slice(0, 10)} />
+            <input className="in" type="date" name="paidOn" defaultValue={todayIST()} />
           </label>
           <label className="field" style={{ flex: 1 }}>
             Reference no.

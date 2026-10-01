@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
+import { unassignedMessage, unassignedSubjects } from "@/lib/subject-assignments";
 
 async function schoolId() {
   const session = await auth();
@@ -63,6 +64,14 @@ export async function setTimetableSlotWithRoom(
   await sdb.subject.findUniqueOrThrow({ where: { id: subjectId }, select: { id: true } });
   await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { id: true } });
   if (roomId) await sdb.room.findUniqueOrThrow({ where: { id: roomId }, select: { id: true } });
+
+  // The subject must be one this class studies (Academic Management →
+  // Subjects), so the timetable can't disagree with the Subjects screen.
+  const missingSubject = await unassignedSubjects(sdb, classId, [subjectId]);
+  if (missingSubject.length > 0) {
+    const cls = await sdb.class.findUniqueOrThrow({ where: { id: classId }, select: { grade: true, section: true } });
+    return { error: unassignedMessage(`${cls.grade}-${cls.section}`, missingSubject) };
+  }
 
   const [teacherConflict, roomConflict] = await Promise.all([
     override

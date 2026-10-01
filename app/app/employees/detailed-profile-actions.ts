@@ -1,5 +1,6 @@
 "use server";
 
+import { normalizeDepartment } from "@/lib/staff";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Prisma, Gender } from "@prisma/client";
@@ -76,7 +77,7 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
     data: scopedCreateData<Prisma.StaffProfileUncheckedCreateInput>({
       userId: user.id,
       designation: str(formData, "designation"),
-      department: str(formData, "department"),
+      department: normalizeDepartment(str(formData, "department")) ?? str(formData, "department"),
       staffCategory: str(formData, "staffCategory") === "NON_TEACHING" ? "NON_TEACHING" : "TEACHING",
       dateJoined: new Date(),
       employeeId: str(formData, "employeeId"),

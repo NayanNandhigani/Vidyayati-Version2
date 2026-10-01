@@ -1,3 +1,5 @@
+import { daysFromTodayIST } from "./ist";
+
 const INR = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
 
 /**
@@ -24,8 +26,9 @@ export function formatINRCompact(amount: number): string {
   return `${sign}₹${Math.round(a)}`;
 }
 
+/** "Thursday, 1 October 2026" — in IST, so "today" in a page heading is India's today whatever the server's time zone. */
 export function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return date.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 
 export function initials(name: string): string {
@@ -38,9 +41,9 @@ export function initials(name: string): string {
     .toUpperCase();
 }
 
+/** Whole calendar days from today (IST) to a date — 0 when it's today. */
 export function daysUntil(date: Date): number {
-  const ms = date.getTime() - Date.now();
-  return Math.ceil(ms / (1000 * 60 * 60 * 24));
+  return daysFromTodayIST(date);
 }
 
 export function studentName(s: { firstName: string; surname: string }): string {

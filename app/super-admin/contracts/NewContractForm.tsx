@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
@@ -14,7 +15,7 @@ export default function NewContractForm({ schools, defaultSchoolId }: { schools:
   const [schoolId, setSchoolId] = useState(defaultSchoolId ?? "");
   const [billingCycle, setBillingCycle] = useState("YEARLY");
   const [annualFee, setAnnualFee] = useState("");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIST();
   const nextYear = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().slice(0, 10);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(nextYear);

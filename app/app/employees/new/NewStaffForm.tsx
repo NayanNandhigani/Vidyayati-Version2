@@ -1,5 +1,6 @@
 "use client";
 
+import DepartmentSelect from "@/components/form/DepartmentSelect";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import Link from "next/link";
@@ -34,7 +35,7 @@ export default function NewStaffForm() {
         </label>
         <label className="field">
           Department
-          <input className="in" name="department" placeholder="Academics" />
+          <DepartmentSelect name="department" />
         </label>
       </div>
       <label className="field">

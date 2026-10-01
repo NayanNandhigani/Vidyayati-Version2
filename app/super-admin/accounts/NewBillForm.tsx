@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createBill, type AccountsFormState } from "./actions";
 
@@ -68,7 +69,7 @@ export default function NewBillForm({ vendors, expenseAccounts }: { vendors: Opt
         </label>
         <label className="field">
           Issue date
-          <input className="in" type="date" name="issueDate" defaultValue={new Date().toISOString().slice(0, 10)} />
+          <input className="in" type="date" name="issueDate" defaultValue={todayIST()} />
         </label>
         <label className="field">
           Due date

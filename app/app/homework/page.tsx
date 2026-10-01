@@ -4,7 +4,8 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
 import { formatDate, studentName } from "@/lib/format";
 import { hasFeature } from "@/lib/feature-flags";
-import { effectiveStatus, classifyHomework } from "@/lib/homework";
+import { effectiveStatus, classifyHomework, isActiveBucket } from "@/lib/homework";
+import { syncHomeworkRosters } from "@/lib/homework-server";
 import { getOverdueHomework } from "./depth-actions";
 import HomeworkBoard from "./HomeworkBoard";
 import ParentSubmissionUpload from "./ParentSubmissionUpload";
@@ -42,11 +43,21 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
     },
     orderBy: { dueDate: "desc" },
   });
-  const homework = permittedClassIds === "ALL" ? homeworkRaw : homeworkRaw.filter((h) => permittedClassIds.has(h.classId));
+  const visible = permittedClassIds === "ALL" ? homeworkRaw : homeworkRaw.filter((h) => permittedClassIds.has(h.classId));
+  // Count against the class as it is now: add rows for students who joined
+  // after the homework was set, and leave out students who've left.
+  await syncHomeworkRosters(sdb, visible.map((h) => ({ id: h.id, classId: h.classId })));
+  const refreshed = visible.length
+    ? await sdb.homeworkSubmission.findMany({ where: { assignmentId: { in: visible.map((h) => h.id) } }, include: { student: true } })
+    : [];
+  const homework = visible.map((h) => ({
+    ...h,
+    submissions: refreshed.filter((sub) => sub.assignmentId === h.id && sub.student.status === "ACTIVE" && sub.student.classId === h.classId),
+  }));
 
   const buckets = homework.map((h) => classifyHomework(h.dueDate, h.submissions.map((s) => ({ status: s.status, score: s.score !== null ? Number(s.score) : null }))));
   const overdueCount = buckets.filter((b) => b === "Overdue").length;
-  const activeCount = buckets.filter((b) => b !== "Graded").length;
+  const activeCount = buckets.filter(isActiveBucket).length;
   const dueThisWeekCount = buckets.filter((b) => b === "Due this week").length;
   const rates = homework
     .filter((h) => h.submissions.length > 0)

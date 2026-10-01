@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useState, useTransition } from "react";
 import { createAccountHead, deleteAccountHead, updateAccountsApprovalThreshold, actOnTransactionApproval, getIncomeExpenditureReport } from "./depth-actions";
 import type { AccountHeadType, TxnType } from "@prisma/client";
@@ -44,9 +45,8 @@ export default function AccountsDepthPanel({
 
   function loadReport() {
     setLoadingReport(true);
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    const to = now.toISOString().slice(0, 10);
+    const to = todayIST();
+    const from = `${to.slice(0, 7)}-01`;
     getIncomeExpenditureReport(from, to).then((r) => {
       setReport(r);
       setLoadingReport(false);

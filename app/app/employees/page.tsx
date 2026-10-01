@@ -7,6 +7,7 @@ import { SortableHeader, resolveSort } from "@/components/SortableHeader";
 import type { Prisma } from "@prisma/client";
 import StatutoryRatesPanel from "./StatutoryRatesPanel";
 import { hasFeature } from "@/lib/feature-flags";
+import { ACTIVE_STAFF_WHERE, getStaffCounts } from "@/lib/staff";
 
 export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{ q?: string; sortBy?: string; sortDir?: string }> }) {
   await requireModuleAccess("Employees", "VIEW");
@@ -28,14 +29,17 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   );
 
   const staffList = await sdb.staffProfile.findMany({
-    where: { deletedAt: null, ...(params.q ? { user: { name: { contains: params.q, mode: "insensitive" } } } : {}) },
+    where: { ...ACTIVE_STAFF_WHERE, ...(params.q ? { user: { name: { contains: params.q, mode: "insensitive" } } } : {}) },
     include: { user: true },
     orderBy,
   });
 
-  const totalStaff = staffList.length;
-  const teachingStaff = staffList.filter((s) => s.staffCategory === "TEACHING").length;
-  const onLeaveToday = staffList.filter((s) => s.employmentStatus === "ON_LEAVE").length;
+  // Counts come from the shared definition (lib/staff.ts), not the
+  // search-filtered list, so they match the Dashboard.
+  const counts = await getStaffCounts(sdb);
+  const totalStaff = counts.total;
+  const teachingStaff = counts.teaching;
+  const onLeaveToday = counts.onLeave;
 
   const showStructuredPayroll = await hasFeature(session!.user.schoolId, "payroll.structuredSalary");
   const school = showStructuredPayroll && isAdmin
@@ -68,7 +72,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         <Stat label="Total staff" value={totalStaff} />
         <Stat label="Teaching staff" value={teachingStaff} color="var(--teal)" />
-        <Stat label="Non-teaching staff" value={totalStaff - teachingStaff} />
+        <Stat label="Non-teaching staff" value={counts.nonTeaching} />
         <Stat label="On leave" value={onLeaveToday} color="var(--warn)" />
       </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { recordInboundPayment, recordOutboundPayment, type AccountsFormState } from "./actions";
 
@@ -81,7 +82,7 @@ function EntryForm({
         </label>
         <label className="field">
           Date
-          <input className="in" type="date" name="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+          <input className="in" type="date" name="date" defaultValue={todayIST()} />
         </label>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>

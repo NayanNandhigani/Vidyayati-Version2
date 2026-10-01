@@ -1,5 +1,6 @@
 "use client";
 
+import DepartmentSelect from "@/components/form/DepartmentSelect";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -168,7 +169,7 @@ export default function NewStaffDetailedForm({ staff }: { staff: { id: string; n
         <Row>
           <label className="field">
             Department
-            <input className="in" name="department" placeholder={staffType === "teaching" ? "Academic" : "Non-academic"} />
+            <DepartmentSelect name="department" defaultValue={staffType === "teaching" ? "Academics" : ""} />
           </label>
           <label className="field">
             Employment type

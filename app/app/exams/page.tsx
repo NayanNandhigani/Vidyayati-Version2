@@ -13,6 +13,7 @@ import ScheduleExamPanel from "./ScheduleExamPanel";
 import ReportCardPanel from "./ReportCardPanel";
 import HallTicketPanel from "./HallTicketPanel";
 import { calculateExamResults } from "@/lib/domain/exam-results";
+import { unassignedMessage, unassignedSubjects } from "@/lib/subject-assignments";
 import { evaluateStudent, resultLabel, type MarkCell } from "@/lib/exam-rules";
 
 // Results computed before this date used the old rules (partial entries
@@ -134,6 +135,11 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
     return { id: s.id, name: studentName(s), total: Number(r.totalMarks), maxTotal: Number(r.maxMarks), pct, grade: r.grade ?? gradeForPct(pct), resultStatus: r.resultStatus, resultLabel: resultLabel(passed, failLabel), rank: r.rank, status: null };
   });
 
+  // An exam scheduled before subject assignments were enforced may include
+  // a subject the class doesn't study per Academic Management → Subjects.
+  const unassigned = selectedExam ? await unassignedSubjects(sdb, selectedExam.classId, examSubjects.map((es) => es.subjectId)) : [];
+  const unassignedWarning = unassigned.length && selectedExam ? unassignedMessage(`${selectedExam.class.grade}-${selectedExam.class.section}`, unassigned) : null;
+
   const hallTicketRows = students.map((s) => ({ id: s.id, name: studentName(s), admissionNo: s.admissionNo }));
 
   const tabHref = (t: Tab) => `/app/exams?tab=${t}${selectedExam ? `&exam=${selectedExam.id}&classId=${selectedExam.classId}` : ""}`;
@@ -244,6 +250,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
       ) : tab === "grades" ? (
         <>
           <ExamPicker exams={examOptions} selectedExamId={selectedExam?.id ?? null} tab="grades" />
+          {unassignedWarning && <div className="card" style={{ padding: "10px 16px", fontSize: 12.5, color: "var(--warn)", fontWeight: 600 }}>{unassignedWarning}</div>}
           {selectedExam ? (
             <ExamMarksGrid
               examId={selectedExam.id}

@@ -1,5 +1,6 @@
 "use client";
 
+import { todayIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import type { MealType } from "@prisma/client";
@@ -13,7 +14,7 @@ export type MealServedRow = { id: string; date: string; mealType: MealType; desc
 
 export function MealsServedLog({ logs }: { logs: MealServedRow[] }) {
   const [pending, startTransition] = useTransition();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayIST());
   const [mealType, setMealType] = useState<MealType>("BREAKFAST");
   const [description, setDescription] = useState("");
   const [headcount, setHeadcount] = useState("");

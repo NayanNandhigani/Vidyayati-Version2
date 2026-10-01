@@ -98,7 +98,7 @@ async function ClassesPanelData({ sdb, yearId, showCapacity, showCoTeacher, show
       include: { classTeacher: { include: { user: true } }, _count: { select: { students: true } }, coTeachers: { include: { staff: { include: { user: true } } } } },
       orderBy: [{ grade: "asc" }, { section: "asc" }],
     }),
-    sdb.staffProfile.findMany({ include: { user: true }, orderBy: { user: { name: "asc" } } }),
+    sdb.staffProfile.findMany({ where: { deletedAt: null }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
   ]);
 
   return (

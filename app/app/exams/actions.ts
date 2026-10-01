@@ -8,6 +8,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { calculateExamResults } from "@/lib/domain/exam-results";
 import { runAction, UserError } from "@/lib/action-result";
+import { unassignedMessage, unassignedSubjects } from "@/lib/subject-assignments";
 
 export type ExamFormState = { error?: string };
 
@@ -48,6 +49,23 @@ export async function createExam(_prevState: ExamFormState, formData: FormData):
   const validSubjects = await sdb.subject.findMany({ where: { id: { in: subjectIds } }, select: { id: true } });
   if (validSubjects.length !== subjectIds.length) {
     return { error: "One or more selected subjects could not be found." };
+  }
+
+  for (const subjectId of subjectIds) {
+    const max = Number(formData.get(`maxMarks_${subjectId}`)) || 100;
+    const passRaw = formData.get(`passMarks_${subjectId}`);
+    const pass = typeof passRaw === "string" && passRaw ? Number(passRaw) : null;
+    if (!Number.isInteger(max) || max <= 0 || max > 1000) return { error: "Maximum marks must be a whole number between 1 and 1000." };
+    if (pass !== null && (!Number.isFinite(pass) || pass < 0 || pass > max)) return { error: `Pass marks must be between 0 and the maximum (${max}).` };
+  }
+
+  // Every subject must be one the class studies (Academic Management →
+  // Subjects) — the single source the Subjects screen also reads.
+  for (const classId of classIds) {
+    const cls = await sdb.class.findUnique({ where: { id: classId }, select: { grade: true, section: true } });
+    if (!cls) return { error: "One of the selected classes no longer exists." };
+    const missing = await unassignedSubjects(sdb, classId, subjectIds);
+    if (missing.length > 0) return { error: unassignedMessage(`${cls.grade}-${cls.section}`, missing) };
   }
 
   let firstExamId: string | null = null;
@@ -193,6 +211,16 @@ export async function updateExam(examId: string, fields: UpdateExamFields) {
     if (new Date(fields.endDate) < new Date(fields.startDate)) {
       throw new UserError("End date can't be before the start date.");
     }
+    for (const sub of fields.subjects) {
+      if (!Number.isInteger(sub.maxMarks) || sub.maxMarks <= 0 || sub.maxMarks > 1000) throw new UserError("Maximum marks must be a whole number between 1 and 1000.");
+      if (sub.passMarks != null && (sub.passMarks < 0 || sub.passMarks > sub.maxMarks)) throw new UserError(`Pass marks must be between 0 and the maximum (${sub.maxMarks}).`);
+    }
+    const newSubjectIds = fields.subjects.filter((sub) => !sub.examSubjectId).map((sub) => sub.subjectId);
+    const missing = await unassignedSubjects(sdb, exam.classId, newSubjectIds);
+    if (missing.length > 0) {
+      const cls = await sdb.class.findUniqueOrThrow({ where: { id: exam.classId }, select: { grade: true, section: true } });
+      throw new UserError(unassignedMessage(`${cls.grade}-${cls.section}`, missing));
+    }
 
     await sdb.exam.update({
       where: { id: examId },
@@ -215,6 +243,8 @@ export async function updateExam(examId: string, fields: UpdateExamFields) {
       }
     }
 
+    // Pass marks may have changed, so results are recalculated.
+    await calculateExamResults(examId);
     revalidatePath("/app/exams");
   }, "updateExam");
 }
