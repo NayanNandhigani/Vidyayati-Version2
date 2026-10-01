@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import Link from "next/link";
 import { createRoute, type FormState } from "../actions";
@@ -8,9 +9,10 @@ const initialState: FormState = {};
 
 export default function NewRouteForm({ vehicles }: { vehicles: { id: string; vehicleNo: string }[] }) {
   const [state, formAction, pending] = useActionState(createRoute, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 420 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 420 }}>
       <label className="field">
         Route name
         <input className="in" name="name" required placeholder="Route 7 · Sunrise Colony" />

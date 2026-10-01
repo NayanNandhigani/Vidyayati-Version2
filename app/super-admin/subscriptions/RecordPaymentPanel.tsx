@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import { formatINR } from "@/lib/format";
 import { recordSubscriptionPayment, type PaymentFormState } from "./actions";
@@ -10,6 +11,7 @@ const initialState: PaymentFormState = {};
 
 export default function RecordPaymentPanel({ invoice }: { invoice: Invoice }) {
   const [state, formAction, pending] = useActionState(recordSubscriptionPayment, initialState);
+  const keep = useKeepFormValues(state);
 
   const remaining = Math.max(0, invoice.amount - invoice.paidAmount);
   const isOverdue = invoice.status !== "PAID" && new Date(invoice.dueDate) < new Date();
@@ -31,7 +33,7 @@ export default function RecordPaymentPanel({ invoice }: { invoice: Invoice }) {
         <Row label="Due date" value={new Date(invoice.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} />
       </div>
 
-      <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", flex: 1, minHeight: 0 }}>
+      <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", flex: 1, minHeight: 0 }}>
         <input type="hidden" name="invoiceId" value={invoice.id} />
         <label className="field">
           Amount received (₹)

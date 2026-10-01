@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { runAction, UserError, type ActionResult } from "@/lib/action-result";
+import { parseMoney } from "@/lib/validation";
+import { UserError, requireMoney, runAction, type ActionResult } from "@/lib/action-result";
 
 export type FormState = { error?: string };
 
@@ -18,6 +19,8 @@ export async function createRoute(_prevState: FormState, formData: FormData): Pr
   const feeAmount = formData.get("feeAmount");
 
   if (typeof name !== "string" || !name.trim()) return { error: "Route name is required." };
+  const fee = parseMoney(feeAmount, "Route fee");
+  if (fee.error) return { error: fee.error };
 
   const vehicleIdValue = typeof vehicleId === "string" && vehicleId ? vehicleId : null;
   if (vehicleIdValue) {
@@ -29,7 +32,7 @@ export async function createRoute(_prevState: FormState, formData: FormData): Pr
     data: scopedCreateData<Prisma.TransportRouteUncheckedCreateInput>({
       name: name.trim(),
       vehicleId: vehicleIdValue,
-      feeAmount: typeof feeAmount === "string" && feeAmount ? Number(feeAmount) : null,
+      feeAmount: fee.value,
     }),
   });
 
@@ -38,11 +41,14 @@ export async function createRoute(_prevState: FormState, formData: FormData): Pr
 }
 
 export async function updateRouteVehicleAndFee(routeId: string, vehicleId: string | null, feeAmount: number | null) {
-  await requireModuleAccess("Transport", "EDIT");
-  const sdb = await getScopedDb();
-  if (vehicleId) await sdb.transportVehicle.findUniqueOrThrow({ where: { id: vehicleId }, select: { id: true } });
-  await sdb.transportRoute.update({ where: { id: routeId }, data: { vehicleId, feeAmount } });
-  revalidatePath("/app/transport");
+  return runAction(async () => {
+    await requireModuleAccess("Transport", "EDIT");
+    requireMoney(feeAmount, "Route fee");
+    const sdb = await getScopedDb();
+    if (vehicleId) await sdb.transportVehicle.findUniqueOrThrow({ where: { id: vehicleId }, select: { id: true } });
+    await sdb.transportRoute.update({ where: { id: routeId }, data: { vehicleId, feeAmount } });
+    revalidatePath("/app/transport");
+  }, "updateRouteVehicleAndFee");
 }
 
 export async function addStop(routeId: string, stopName: string, pickupTime: string) {

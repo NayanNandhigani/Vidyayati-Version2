@@ -1,5 +1,8 @@
 "use client";
 
+import { unwrap } from "@/lib/unwrap";
+import { toast } from "@/components/Toaster";
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { updateFeeSettings } from "./depth-actions";
 
@@ -25,9 +28,13 @@ export default function FeeSettingsPanel({
   const [gstRate, setGstRate] = useState(gstRatePercent?.toString() ?? "");
 
   function save() {
-    startTransition(() =>
-      updateFeeSettings(perDay ? Number(perDay) : null, grace ? Number(grace) : null, gstNo, gstRate ? Number(gstRate) : null)
-    );
+    startTransition(async () => {
+      try {
+        unwrap(await updateFeeSettings(perDay ? Number(perDay) : null, grace ? Number(grace) : null, gstNo, gstRate ? Number(gstRate) : null));
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
+    });
   }
 
   return (

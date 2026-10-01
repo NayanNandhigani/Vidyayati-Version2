@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import { loginAction, type LoginState } from "./actions";
 
@@ -7,9 +8,10 @@ const initialState: LoginState = {};
 
 export default function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <label className="field">
         Username
         <input className="in" type="text" name="username" required autoComplete="username" placeholder="e.g. VIDYAYATI" />

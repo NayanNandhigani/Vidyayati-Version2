@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import { createAcademicYear, setCurrentYear, type FormState } from "./actions";
 
@@ -10,6 +11,7 @@ const initialState: FormState = {};
 export default function AcademicYearsPanel({ years }: { years: Year[] }) {
   const [showForm, setShowForm] = useState(false);
   const [state, formAction, pending] = useActionState(createAcademicYear, initialState);
+  const keep = useKeepFormValues(state);
   const [, startTransition] = useTransition();
 
   function makeCurrent(id: string) {
@@ -56,7 +58,7 @@ export default function AcademicYearsPanel({ years }: { years: Year[] }) {
       </div>
 
       {showForm ? (
-        <form action={formAction} style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
+        <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
             <label className="field">
               Label

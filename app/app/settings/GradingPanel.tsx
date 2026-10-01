@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import { createGradeScale, setActiveGradeScale, createGradeBand, deleteGradeBand, type FormState } from "./actions";
 
@@ -12,7 +13,9 @@ export default function GradingPanel({ scales }: { scales: Scale[] }) {
   const [showScaleForm, setShowScaleForm] = useState(false);
   const [showBandForm, setShowBandForm] = useState(false);
   const [scaleState, scaleAction, scalePending] = useActionState(createGradeScale, initialState);
+  const keep1 = useKeepFormValues(scaleState);
   const [bandState, bandAction, bandPending] = useActionState(createGradeBand, initialState);
+  const keep2 = useKeepFormValues(bandState);
   const [, startTransition] = useTransition();
 
   const activeScale = scales.find((s) => s.isActive) ?? scales[0];
@@ -60,7 +63,7 @@ export default function GradingPanel({ scales }: { scales: Scale[] }) {
       </div>
 
       {showScaleForm ? (
-        <form action={scaleAction} style={{ display: "flex", flexDirection: "column", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+        <form ref={keep1.ref} onSubmit={keep1.capture} action={scaleAction} style={{ display: "flex", flexDirection: "column", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
           <label className="field">
             Scale name
             <input className="in" name="name" placeholder="e.g. CBSE 10-point" required />
@@ -104,7 +107,7 @@ export default function GradingPanel({ scales }: { scales: Scale[] }) {
           </div>
 
           {showBandForm ? (
-            <form action={bandAction} style={{ display: "flex", flexDirection: "column", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
+            <form ref={keep2.ref} onSubmit={keep2.capture} action={bandAction} style={{ display: "flex", flexDirection: "column", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
               <input type="hidden" name="scaleId" value={activeScale.id} />
               <div style={{ display: "grid", gridTemplateColumns: "0.7fr 1fr 1fr 1.5fr", gap: 10 }}>
                 <label className="field">

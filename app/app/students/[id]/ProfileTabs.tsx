@@ -26,6 +26,22 @@ type StudentDetail = {
   } | null;
   attendance: { date: Date; status: AttendanceStatus }[];
   feePayments: { amount: number; paidOn: Date }[];
+  details: {
+    fatherName: string | null;
+    motherName: string | null;
+    guardianName: string | null;
+    primaryMobile: string | null;
+    email: string | null;
+    address: string | null;
+    aadhaar: string | null; // already masked
+    apaarId: string | null;
+    category: string | null;
+    religion: string | null;
+    bloodGroup: string | null;
+    previousSchoolName: string | null;
+    admissionDate: Date | null;
+    rteQuota: boolean;
+  };
 };
 
 type ExamResult = { examName: string; date: Date; obtained: number; max: number };
@@ -166,7 +182,21 @@ export default function ProfileTabs({
               <Row label="Date of birth" value={student.dob ? formatDateIST(student.dob) : "—"} />
               <Row label="Gender" value={student.gender ? student.gender[0] + student.gender.slice(1).toLowerCase() : "—"} />
               <Row label="Admission number" value={student.admissionNo} mono />
-              <Row label="Class" value={`${student.class.grade}-${student.class.section}`} mono last />
+              <Row label="Class" value={`${student.class.grade}-${student.class.section}`} mono />
+              <Row label="Admission date" value={student.details.admissionDate ? formatDateIST(student.details.admissionDate) : "—"} />
+              <Row label="Father's name" value={student.details.fatherName ?? "—"} />
+              <Row label="Mother's name" value={student.details.motherName ?? "—"} />
+              {student.details.guardianName && <Row label="Guardian's name" value={student.details.guardianName} />}
+              <Row label="Primary mobile" value={student.details.primaryMobile ? `+91 ${student.details.primaryMobile}` : "—"} mono />
+              <Row label="Email" value={student.details.email ?? "—"} />
+              <Row label="Address" value={student.details.address ?? "—"} />
+              <Row label="Aadhaar" value={student.details.aadhaar ?? "—"} mono />
+              <Row label="APAAR ID" value={student.details.apaarId ?? "—"} mono />
+              <Row label="Category" value={student.details.category ?? "—"} />
+              {student.details.religion && <Row label="Religion" value={student.details.religion} />}
+              <Row label="Blood group" value={student.details.bloodGroup ?? "—"} />
+              <Row label="Previous school" value={student.details.previousSchoolName ?? "—"} />
+              <Row label="RTE quota" value={student.details.rteQuota ? "Yes" : "No"} last />
             </div>
 
             <div>

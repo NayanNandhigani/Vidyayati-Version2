@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import { createSubject, deleteSubject, setClassSubjectTeacher, type FormState } from "./actions";
 import { updateSubjectDetail } from "./depth-actions";
@@ -13,6 +14,7 @@ const initialState: FormState = {};
 export default function InstituteSubjectsPanel({ subjects, classes, staff, showCapacity }: { subjects: Subject[]; classes: ClassOption[]; staff: Staff[]; showCapacity: boolean }) {
   const [showForm, setShowForm] = useState(false);
   const [state, formAction, pending] = useActionState(createSubject, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
     <div style={{ maxWidth: 640, width: "100%" }}>
@@ -34,7 +36,7 @@ export default function InstituteSubjectsPanel({ subjects, classes, staff, showC
       </div>
 
       {showForm ? (
-        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
+        <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
           <label className="field">
             Subject name
             <input className="in" name="name" placeholder="Mathematics" required />

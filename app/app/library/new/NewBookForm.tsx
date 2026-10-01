@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
 import { createBook, type FormState } from "../actions";
@@ -9,6 +10,7 @@ const initialState: FormState = {};
 
 export default function NewBookForm({ showIsbnLookup }: { showIsbnLookup: boolean }) {
   const [state, formAction, pending] = useActionState(createBook, initialState);
+  const keep = useKeepFormValues(state);
   const [isbn, setIsbn] = useState("");
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
@@ -31,7 +33,7 @@ export default function NewBookForm({ showIsbnLookup }: { showIsbnLookup: boolea
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 440 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 440 }}>
       {showIsbnLookup && (
         <label className="field">
           ISBN <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional — auto-fills title/author)</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import {
   updateCertificateTemplate,
@@ -28,6 +29,7 @@ function assetUrl(path: string) {
 export default function CertificateBuilderPanel({ templates }: { templates: Template[] }) {
   const [showForm, setShowForm] = useState(false);
   const [state, formAction, pending] = useActionState(createCustomCertificateTemplate, initialState);
+  const keep1 = useKeepFormValues(state);
 
   return (
     <div style={{ maxWidth: 720, width: "100%" }}>
@@ -49,7 +51,7 @@ export default function CertificateBuilderPanel({ templates }: { templates: Temp
       </div>
 
       {showForm ? (
-        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
+        <form ref={keep1.ref} onSubmit={keep1.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
           <label className="field">
             Certificate name
             <input className="in" name="label" placeholder="e.g. Sports Excellence Certificate" required />
@@ -76,6 +78,7 @@ export default function CertificateBuilderPanel({ templates }: { templates: Temp
 function TemplateCard({ template }: { template: Template }) {
   const [expanded, setExpanded] = useState(false);
   const [state, formAction, pending] = useActionState(updateCertificateTemplate, initialState);
+  const keep1 = useKeepFormValues(state);
   const [, startTransition] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -111,7 +114,7 @@ function TemplateCard({ template }: { template: Template }) {
       {deleteError && <div style={{ color: "var(--critical)", fontSize: 12, padding: "0 16px 10px" }}>{deleteError}</div>}
 
       {expanded && (
-        <form action={formAction} style={{ borderTop: "1px solid var(--line)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        <form ref={keep1.ref} onSubmit={keep1.capture} action={formAction} style={{ borderTop: "1px solid var(--line)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           <input type="hidden" name="id" value={template.id} />
 
           <div>

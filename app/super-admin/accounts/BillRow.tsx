@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { recordBillPayment, type AccountsFormState } from "./actions";
 import { formatINR } from "@/lib/format";
@@ -33,6 +34,7 @@ export default function BillRow({ bill }: { bill: BillRowData }) {
   const formatAmount = formatINR;
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(recordBillPayment, initialState);
+  const keep = useKeepFormValues(state);
 
   useEffect(() => {
     if (state.success) setOpen(false);
@@ -77,7 +79,7 @@ export default function BillRow({ bill }: { bill: BillRowData }) {
       </div>
 
       {open && (
-        <form action={formAction} style={{ display: "flex", gap: 8, alignItems: "flex-end", background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+        <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", gap: 8, alignItems: "flex-end", background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <input type="hidden" name="billId" value={bill.id} />
           <label className="field" style={{ flex: 1 }}>
             Amount (balance {formatAmount(balance)})

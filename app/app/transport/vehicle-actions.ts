@@ -6,8 +6,8 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { deleteUploadedFile, saveUploadedFile } from "@/lib/storage";
-import { validateOptionalPhone } from "@/lib/validation";
-import { runAction, UserError } from "@/lib/action-result";
+import { validateOptionalPhone, normalizeIndianMobile } from "@/lib/validation";
+import { UserError, requireMoney, runAction } from "@/lib/action-result";
 
 export type VehicleFields = {
   vehicleNo: string;
@@ -50,7 +50,7 @@ export async function createVehicle(fields: VehicleFields) {
         make: fields.make,
         model: fields.model,
         driverName: fields.driverName,
-        driverPhone: fields.driverPhone,
+        driverPhone: fields.driverPhone ? normalizeIndianMobile(fields.driverPhone) : null,
         driverLicenseNo: fields.driverLicenseNo,
         driverLicenseExpiry: fields.driverLicenseExpiry ? new Date(fields.driverLicenseExpiry) : null,
         insurancePolicyNo: fields.insurancePolicyNo,
@@ -79,7 +79,7 @@ export async function updateVehicle(vehicleId: string, fields: VehicleFields) {
         make: fields.make,
         model: fields.model,
         driverName: fields.driverName,
-        driverPhone: fields.driverPhone,
+        driverPhone: fields.driverPhone ? normalizeIndianMobile(fields.driverPhone) : null,
         driverLicenseNo: fields.driverLicenseNo,
         driverLicenseExpiry: fields.driverLicenseExpiry ? new Date(fields.driverLicenseExpiry) : null,
         insurancePolicyNo: fields.insurancePolicyNo,
@@ -115,6 +115,8 @@ export async function updateVehicleLocation(vehicleId: string, lat: number, lng:
 
 export async function addVehicleLog(vehicleId: string, type: VehicleLogType, date: string, description: string, cost: number | null, odometerReading: number | null) {
   return runAction(async () => {
+    requireMoney(cost, "Cost");
+    if (odometerReading != null && !(odometerReading >= 0)) throw new UserError("Odometer reading can't be negative.");
     await requireModuleAccess("Transport", "EDIT");
     if (!date || !description.trim()) throw new UserError("Date and description are required.");
     const sdb = await getScopedDb();

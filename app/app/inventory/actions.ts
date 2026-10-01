@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
-import { runAction, UserError } from "@/lib/action-result";
+import { UserError, requireMoney, runAction } from "@/lib/action-result";
 
 async function schoolId() {
   const session = await auth();
@@ -29,22 +29,26 @@ export async function createAsset(data: {
   purchaseCost: number;
   usefulLifeYears: number;
   notes: string | null;
-}) {
-  await guard();
-  const sdb = await getScopedDb();
-  await sdb.inventoryAsset.create({
-    data: scopedCreateData<Prisma.InventoryAssetUncheckedCreateInput>({
-      name: data.name.trim(),
-      category: data.category,
-      serialNo: data.serialNo,
-      location: data.location,
-      purchaseDate: new Date(data.purchaseDate),
-      purchaseCost: data.purchaseCost,
-      usefulLifeYears: data.usefulLifeYears,
-      notes: data.notes,
-    }),
-  });
-  revalidatePath("/app/inventory");
+}) {  return runAction(async () => {
+    if (!data.name.trim()) throw new UserError("Enter the asset name.");
+    requireMoney(data.purchaseCost, "Purchase cost", { required: true });
+
+    await guard();
+    const sdb = await getScopedDb();
+    await sdb.inventoryAsset.create({
+      data: scopedCreateData<Prisma.InventoryAssetUncheckedCreateInput>({
+        name: data.name.trim(),
+        category: data.category,
+        serialNo: data.serialNo,
+        location: data.location,
+        purchaseDate: new Date(data.purchaseDate),
+        purchaseCost: data.purchaseCost,
+        usefulLifeYears: data.usefulLifeYears,
+        notes: data.notes,
+      }),
+    });
+    revalidatePath("/app/inventory");
+  }, "createAsset");
 }
 
 export async function updateAssetStatus(assetId: string, status: AssetStatus) {
@@ -129,50 +133,60 @@ export async function createPurchaseOrder(data: {
   quantity: number;
   unitCost: number;
   orderDate: string;
-}) {
-  await guard();
-  const sdb = await getScopedDb();
-  await sdb.schoolVendor.findUniqueOrThrow({ where: { id: data.vendorId }, select: { id: true } });
-  if (data.consumableId) await sdb.inventoryConsumable.findUniqueOrThrow({ where: { id: data.consumableId }, select: { id: true } });
-  await sdb.purchaseOrder.create({
-    data: scopedCreateData<Prisma.PurchaseOrderUncheckedCreateInput>({
-      poNumber: data.poNumber.trim(),
-      vendorId: data.vendorId,
-      consumableId: data.consumableId,
-      itemDescription: data.itemDescription.trim(),
-      quantity: data.quantity,
-      unitCost: data.unitCost,
-      orderDate: new Date(data.orderDate),
-      status: "DRAFT",
-    }),
-  });
-  revalidatePath("/app/inventory");
+}) {  return runAction(async () => {
+    if (!(data.quantity > 0)) throw new UserError("Quantity must be more than 0.");
+    requireMoney(data.unitCost, "Unit cost", { required: true });
+
+    await guard();
+    const sdb = await getScopedDb();
+    await sdb.schoolVendor.findUniqueOrThrow({ where: { id: data.vendorId }, select: { id: true } });
+    if (data.consumableId) await sdb.inventoryConsumable.findUniqueOrThrow({ where: { id: data.consumableId }, select: { id: true } });
+    await sdb.purchaseOrder.create({
+      data: scopedCreateData<Prisma.PurchaseOrderUncheckedCreateInput>({
+        poNumber: data.poNumber.trim(),
+        vendorId: data.vendorId,
+        consumableId: data.consumableId,
+        itemDescription: data.itemDescription.trim(),
+        quantity: data.quantity,
+        unitCost: data.unitCost,
+        orderDate: new Date(data.orderDate),
+        status: "DRAFT",
+      }),
+    });
+    revalidatePath("/app/inventory");
+  }, "createPurchaseOrder");
 }
 
 // ------------------------------------------------------------- Stock items
 
-export async function createStockItem(data: { name: string; itemType: string | null; itemCode: string | null; costPrice: number; sellPrice: number; openingQuantity: number }) {
-  await guard();
-  const sdb = await getScopedDb();
-  const item = await sdb.inventoryStockItem.create({
-    data: scopedCreateData<Prisma.InventoryStockItemUncheckedCreateInput>({
-      name: data.name.trim(),
-      itemType: data.itemType,
-      itemCode: data.itemCode,
-      costPrice: data.costPrice,
-      sellPrice: data.sellPrice,
-      quantityOnHand: 0,
-    }),
-  });
-  if (data.openingQuantity > 0) {
-    await sdb.$transaction([
-      sdb.inventoryStockItemMovement.create({
-        data: scopedCreateData<Prisma.InventoryStockItemMovementUncheckedCreateInput>({ stockItemId: item.id, type: "IN", quantity: data.openingQuantity, note: "Opening stock" }),
+export async function createStockItem(data: { name: string; itemType: string | null; itemCode: string | null; costPrice: number; sellPrice: number; openingQuantity: number }) {  return runAction(async () => {
+    if (!data.name.trim()) throw new UserError("Enter the item name.");
+    requireMoney(data.costPrice, "Cost price", { required: true });
+    requireMoney(data.sellPrice, "Selling price", { required: true });
+    if (!(data.openingQuantity >= 0)) throw new UserError("Opening quantity can't be negative.");
+
+    await guard();
+    const sdb = await getScopedDb();
+    const item = await sdb.inventoryStockItem.create({
+      data: scopedCreateData<Prisma.InventoryStockItemUncheckedCreateInput>({
+        name: data.name.trim(),
+        itemType: data.itemType,
+        itemCode: data.itemCode,
+        costPrice: data.costPrice,
+        sellPrice: data.sellPrice,
+        quantityOnHand: 0,
       }),
-      sdb.inventoryStockItem.update({ where: { id: item.id }, data: { quantityOnHand: data.openingQuantity } }),
-    ]);
-  }
-  revalidatePath("/app/inventory");
+    });
+    if (data.openingQuantity > 0) {
+      await sdb.$transaction([
+        sdb.inventoryStockItemMovement.create({
+          data: scopedCreateData<Prisma.InventoryStockItemMovementUncheckedCreateInput>({ stockItemId: item.id, type: "IN", quantity: data.openingQuantity, note: "Opening stock" }),
+        }),
+        sdb.inventoryStockItem.update({ where: { id: item.id }, data: { quantityOnHand: data.openingQuantity } }),
+      ]);
+    }
+    revalidatePath("/app/inventory");
+  }, "createStockItem");
 }
 
 /** Add/remove stock for an existing item — same IN/OUT movement-log pattern as adjustStock for Consumables. */
@@ -201,7 +215,8 @@ export async function adjustStockItem(stockItemId: string, type: "IN" | "OUT", q
 export async function updateStockItemPricing(stockItemId: string, costPrice: number, sellPrice: number) {
   return runAction(async () => {
     await guard();
-    if (costPrice < 0 || sellPrice < 0) throw new UserError("Prices can't be negative.");
+    requireMoney(costPrice, "Cost price", { required: true });
+    requireMoney(sellPrice, "Selling price", { required: true });
     const sdb = await getScopedDb();
     await sdb.inventoryStockItem.update({ where: { id: stockItemId }, data: { costPrice, sellPrice } });
     revalidatePath("/app/inventory");

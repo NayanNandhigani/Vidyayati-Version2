@@ -32,7 +32,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
   const [attendanceGroups, recentAttendance, payrollRuns, permissions, classes, documents, salaryComponents, allLeaveTypes, leaveRequests, pendingLeaveRequestsRaw, leaveSummary, schoolForAttendance] = await Promise.all([
     sdb.staffAttendance.groupBy({ by: ["status"], where: { staffId: selected.id }, _count: true }),
     sdb.staffAttendance.findMany({ where: { staffId: selected.id }, orderBy: { date: "desc" }, take: 10 }),
-    sdb.payrollRun.findMany({ where: { staffId: selected.id }, orderBy: { month: "desc" } }),
+    sdb.payrollRun.findMany({ where: { staffId: selected.id }, orderBy: { month: "desc" }, include: { adjustments: { orderBy: { createdAt: "asc" } } } }),
     sdb.staffPermission.findMany({ where: { staffId: selected.id } }),
     sdb.class.findMany({ orderBy: [{ grade: "asc" }, { section: "asc" }] }),
     showDocuments ? sdb.personDocument.findMany({ where: { staffId: selected.id, subjectType: "STAFF" }, orderBy: { uploadedAt: "desc" } }) : Promise.resolve([]),
@@ -133,6 +133,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
           amount: Number(p.amount),
           status: p.status,
           paidOn: p.paidOn?.toISOString() ?? null,
+          adjustments: p.adjustments.map((a) => ({ id: a.id, kind: a.kind, amount: Number(a.amount), reason: a.reason, createdAt: a.createdAt.toISOString() })),
           grossAmount: p.grossAmount ? Number(p.grossAmount) : null,
           pfAmount: p.pfAmount ? Number(p.pfAmount) : null,
           esiAmount: p.esiAmount ? Number(p.esiAmount) : null,

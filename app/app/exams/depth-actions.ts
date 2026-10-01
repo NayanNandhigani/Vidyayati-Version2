@@ -79,7 +79,7 @@ export async function bulkImportMarks(examId: string, csvText: string): Promise<
   const students = await sdb.student.findMany({ where: { classId: exam.classId } });
   const studentByAdmissionNo = new Map(students.map((s) => [s.admissionNo, s]));
 
-  type Row = { studentId: string; examSubjectId: string; marksObtained: number };
+  type Row = { studentId: string; examSubjectId: string; marksObtained: number | null };
   const rows: Row[] = [];
   const errors: string[] = [];
 
@@ -97,9 +97,13 @@ export async function bulkImportMarks(examId: string, csvText: string): Promise<
       if (!examSubject) return; // an unrecognized column is just ignored, not an error — lets the export include extra reference columns
       const raw = cells[colIdx];
       if (raw === undefined || raw === "") return;
+      if (raw.trim().toUpperCase() === "AB") {
+        rows.push({ studentId: student.id, examSubjectId: examSubject.id, marksObtained: null });
+        return;
+      }
       const value = Number(raw);
       if (Number.isNaN(value) || value < 0 || value > examSubject.maxMarks) {
-        errors.push(`Row ${i + 1}: "${header}" value "${raw}" is not a valid mark out of ${examSubject.maxMarks}.`);
+        errors.push(`Row ${i + 1}: "${header}" value "${raw}" is not a valid mark out of ${examSubject.maxMarks} (use a number from 0 to ${examSubject.maxMarks}, or AB for absent).`);
         return;
       }
       rows.push({ studentId: student.id, examSubjectId: examSubject.id, marksObtained: value });
@@ -116,8 +120,8 @@ export async function bulkImportMarks(examId: string, csvText: string): Promise<
         // isAbsent: false on both branches — a re-import with a real score
         // for a previously-absent student should clear that flag, not
         // leave a stale "absent" marker alongside a new numeric mark.
-        update: { marksObtained: r.marksObtained, isAbsent: false },
-        create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId: r.examSubjectId, studentId: r.studentId, marksObtained: r.marksObtained, isAbsent: false }),
+        update: { marksObtained: r.marksObtained, isAbsent: r.marksObtained === null },
+        create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId: r.examSubjectId, studentId: r.studentId, marksObtained: r.marksObtained, isAbsent: r.marksObtained === null }),
       })
     )
   );

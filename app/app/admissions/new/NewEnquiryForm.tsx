@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import Link from "next/link";
 import { createEnquiry, type EnquiryFormState } from "../actions";
@@ -9,6 +10,7 @@ const initialState: EnquiryFormState = {};
 
 export default function NewEnquiryForm({ grades, today }: { grades: string[]; today: string }) {
   const [state, formAction, pending] = useActionState(createEnquiry, initialState);
+  const keep = useKeepFormValues(state);
   // React clears a form after each submit. Remounting it (key) with the
   // submitted values as defaults keeps everything the user typed —
   // including dropdowns — when the server rejects it.
@@ -16,7 +18,7 @@ export default function NewEnquiryForm({ grades, today }: { grades: string[]; to
   const fe = state.fieldErrors ?? {};
 
   return (
-    <form key={state.attempt ?? 0} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 420 }}>
+    <form key={state.attempt ?? 0} ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 420 }}>
       <label className="field">
         Applicant name
         <input className="in" name="applicantName" required maxLength={120} placeholder="Priya Nair" defaultValue={v?.applicantName} aria-invalid={!!fe.applicantName} />

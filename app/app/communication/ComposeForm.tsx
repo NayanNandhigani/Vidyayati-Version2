@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { studentName } from "@/lib/format";
 import { publishAnnouncement, type AnnouncementFormState } from "./actions";
@@ -17,6 +18,7 @@ export default function ComposeForm({ classes, students }: { classes: { id: stri
   const [audience, setAudience] = useState<(typeof AUDIENCES)[number]["key"]>("ALL_PARENTS");
   const [scheduled, setScheduled] = useState(false);
   const [state, formAction, pending] = useActionState(publishAnnouncement, initialState);
+  const keep = useKeepFormValues(state);
   const [key, setKey] = useState(0);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function ComposeForm({ classes, students }: { classes: { id: stri
   }, [state.success]);
 
   return (
-    <form key={key} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <form key={key} ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ fontSize: 14.5, fontWeight: 700 }}>New announcement</div>
 
       <div>

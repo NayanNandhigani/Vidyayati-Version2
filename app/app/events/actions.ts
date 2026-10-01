@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
+import { parseMoney } from "@/lib/validation";
 
 export type FormState = { error?: string };
 
@@ -22,10 +23,9 @@ export async function createEvent(_prevState: FormState, formData: FormData): Pr
   if (typeof title !== "string" || !title.trim() || typeof date !== "string" || !date) {
     return { error: "Title and date are required." };
   }
-  const budgetValue = typeof budgetEstimate === "string" && budgetEstimate ? Number(budgetEstimate) : null;
-  if (budgetValue != null && (!Number.isFinite(budgetValue) || budgetValue < 0)) {
-    return { error: "Estimated cost must be ≥ 0." };
-  }
+  const budget = parseMoney(budgetEstimate, "Estimated cost");
+  if (budget.error) return { error: budget.error };
+  const budgetValue = budget.value;
 
   const event = await sdb.event.create({
     data: scopedCreateData<Prisma.EventUncheckedCreateInput>({
@@ -47,8 +47,9 @@ export type EventFields = { title: string; type: string; date: string; venue: st
 export async function updateEvent(eventId: string, fields: EventFields): Promise<{ error?: string }> {
   await requireModuleAccess("Events", "EDIT");
   if (!fields.title.trim() || !fields.date) return { error: "Title and date are required." };
-  const budgetValue = fields.budgetEstimate ? Number(fields.budgetEstimate) : null;
-  if (budgetValue != null && (!Number.isFinite(budgetValue) || budgetValue < 0)) return { error: "Estimated cost must be ≥ 0." };
+  const budget = parseMoney(fields.budgetEstimate, "Estimated cost");
+  if (budget.error) return { error: budget.error };
+  const budgetValue = budget.value;
   const attendanceValue = fields.expectedAttendance ? Number(fields.expectedAttendance) : null;
 
   const sdb = await getScopedDb();

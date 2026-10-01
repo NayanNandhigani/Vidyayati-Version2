@@ -3,14 +3,17 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { createEvent, type FormState } from "../actions";
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
+import { FormError } from "@/components/form/FormMessages";
 
 const initialState: FormState = {};
 
 export default function NewEventForm() {
   const [state, formAction, pending] = useActionState(createEvent, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 460 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} noValidate style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 460 }}>
       <label className="field">
         Title
         <input className="in" name="title" required placeholder="Sports Day" />
@@ -36,14 +39,10 @@ export default function NewEventForm() {
         </label>
         <label className="field">
           Estimated cost (₹)
-          <input className="in mono" type="number" name="budgetEstimate" placeholder="45000" />
+          <input className="in mono" type="number" name="budgetEstimate" min={0} step="0.01" placeholder="45000" />
         </label>
       </div>
-      {state.error && (
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--critical)", background: "var(--critical-tint)", border: "1px solid var(--critical-border)", borderRadius: 8, padding: "8px 11px" }}>
-          {state.error}
-        </p>
-      )}
+      <FormError message={state.error} />
       <div style={{ display: "flex", gap: 10 }}>
         <button type="submit" disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
           {pending ? "Saving…" : "Create event"}

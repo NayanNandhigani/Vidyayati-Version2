@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { updateSchoolStatus, type ManageFormState } from "./actions";
 
@@ -16,6 +17,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 export default function StatusForm({ school }: { school: { id: string; status: string } }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState(updateSchoolStatus, initialState);
+  const keep = useKeepFormValues(state);
 
   useEffect(() => {
     if (state.success) setEditing(false);
@@ -35,7 +37,7 @@ export default function StatusForm({ school }: { school: { id: string; status: s
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <input type="hidden" name="id" value={school.id} />
       <label className="field">
         Status

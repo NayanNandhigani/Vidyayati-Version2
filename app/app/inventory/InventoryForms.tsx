@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/components/Toaster";
 import { friendlyError } from "@/lib/friendly-error";
 import { unwrap } from "@/lib/unwrap";
 import { useState, useTransition } from "react";
@@ -44,17 +45,21 @@ export function AssetForm() {
     }
     setError(null);
     startTransition(async () => {
-      await createAsset({
-        name: form.name,
-        category: form.category || null,
-        serialNo: form.serialNo || null,
-        location: form.location || null,
-        purchaseDate: form.purchaseDate,
-        purchaseCost: Number(form.purchaseCost),
-        usefulLifeYears: Number(form.usefulLifeYears),
-        notes: null,
-      });
-      setForm({ name: "", category: "", serialNo: "", location: "", purchaseDate: "", purchaseCost: "", usefulLifeYears: "" });
+      try {
+        unwrap(await createAsset({
+          name: form.name,
+          category: form.category || null,
+          serialNo: form.serialNo || null,
+          location: form.location || null,
+          purchaseDate: form.purchaseDate,
+          purchaseCost: Number(form.purchaseCost),
+          usefulLifeYears: Number(form.usefulLifeYears),
+          notes: null,
+        }));
+        setForm({ name: "", category: "", serialNo: "", location: "", purchaseDate: "", purchaseCost: "", usefulLifeYears: "" });
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 
@@ -237,15 +242,19 @@ export function StockItemForm() {
     }
     setError(null);
     startTransition(async () => {
-      await createStockItem({
-        name: form.name,
-        itemType: form.itemType || null,
-        itemCode: form.itemCode || null,
-        costPrice: Number(form.costPrice),
-        sellPrice: Number(form.sellPrice),
-        openingQuantity: form.openingQuantity ? Number(form.openingQuantity) : 0,
-      });
-      setForm({ name: "", itemType: "", itemCode: "", costPrice: "", sellPrice: "", openingQuantity: "" });
+      try {
+        unwrap(await createStockItem({
+          name: form.name,
+          itemType: form.itemType || null,
+          itemCode: form.itemCode || null,
+          costPrice: Number(form.costPrice),
+          sellPrice: Number(form.sellPrice),
+          openingQuantity: form.openingQuantity ? Number(form.openingQuantity) : 0,
+        }));
+        setForm({ name: "", itemType: "", itemCode: "", costPrice: "", sellPrice: "", openingQuantity: "" });
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 
@@ -548,16 +557,20 @@ export function PurchaseOrderForm({ vendors, consumables }: { vendors: { id: str
     }
     setError(null);
     startTransition(async () => {
-      await createPurchaseOrder({
-        poNumber: form.poNumber,
-        vendorId: form.vendorId,
-        consumableId: form.consumableId || null,
-        itemDescription: form.itemDescription,
-        quantity: Number(form.quantity),
-        unitCost: Number(form.unitCost),
-        orderDate: form.orderDate,
-      });
-      setForm({ poNumber: "", vendorId: "", consumableId: "", itemDescription: "", quantity: "", unitCost: "", orderDate: "" });
+      try {
+        unwrap(await createPurchaseOrder({
+          poNumber: form.poNumber,
+          vendorId: form.vendorId,
+          consumableId: form.consumableId || null,
+          itemDescription: form.itemDescription,
+          quantity: Number(form.quantity),
+          unitCost: Number(form.unitCost),
+          orderDate: form.orderDate,
+        }));
+        setForm({ poNumber: "", vendorId: "", consumableId: "", itemDescription: "", quantity: "", unitCost: "", orderDate: "" });
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 

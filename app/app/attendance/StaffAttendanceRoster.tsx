@@ -18,7 +18,8 @@ const MARK_STYLE: Record<AttendanceStatus, { bg: string; fg: string }> = {
   HALF_DAY: { bg: "var(--warn-tint)", fg: "var(--warn)" },
 };
 
-export default function StaffAttendanceRoster({ date, staff, initialMarks }: { date: string; staff: Staff[]; initialMarks: Record<string, AttendanceStatus> }) {
+export default function StaffAttendanceRoster({ date, today, staff, initialMarks }: { date: string; today: string; staff: Staff[]; initialMarks: Record<string, AttendanceStatus> }) {
+  const isFuture = date > today;
   const [marks, setMarks] = useState(initialMarks);
   const [pending, startTransition] = useTransition();
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -47,13 +48,14 @@ export default function StaffAttendanceRoster({ date, staff, initialMarks }: { d
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 20px", borderBottom: "1px solid var(--line)" }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700 }}>Staff attendance · {date}</div>
+          {isFuture && <div style={{ fontSize: 12, color: "var(--warn)", fontWeight: 600 }}>Attendance can&apos;t be marked for a future date.</div>}
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>{staff.length} staff members</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span onClick={() => setAll("PRESENT")} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
             Mark all present
           </span>
-          <button onClick={save} disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+          <button onClick={save} disabled={pending || isFuture} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
             {pending ? "Saving…" : savedAt ? "Saved ✓" : "Save Attendance"}
           </button>
         </div>

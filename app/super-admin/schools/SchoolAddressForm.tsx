@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { updateSchoolAddress, type ManageFormState } from "./actions";
 import AddressFields from "@/components/AddressFields";
@@ -21,6 +22,7 @@ type School = {
 export default function SchoolAddressForm({ school, canManage }: { school: School; canManage: boolean }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState(updateSchoolAddress, initialState);
+  const keep = useKeepFormValues(state);
 
   useEffect(() => {
     if (state.success) setEditing(false);
@@ -46,7 +48,7 @@ export default function SchoolAddressForm({ school, canManage }: { school: Schoo
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 14 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 14 }}>
       <input type="hidden" name="id" value={school.id} />
       <label className="field">
         Registration number

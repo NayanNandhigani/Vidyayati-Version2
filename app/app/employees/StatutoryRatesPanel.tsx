@@ -1,5 +1,8 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
+import { unwrap } from "@/lib/unwrap";
 import { useState, useTransition } from "react";
 import { updateStatutoryRates } from "./payroll-depth-actions";
 
@@ -21,7 +24,13 @@ export default function StatutoryRatesPanel({
   const [tds, setTds] = useState(tdsPercent?.toString() ?? "");
 
   function save() {
-    startTransition(() => updateStatutoryRates(pf ? Number(pf) : null, esi ? Number(esi) : null, pt ? Number(pt) : null, tds ? Number(tds) : null));
+    startTransition(async () => {
+      try {
+        unwrap(await updateStatutoryRates(pf ? Number(pf) : null, esi ? Number(esi) : null, pt ? Number(pt) : null, tds ? Number(tds) : null));
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
+    });
   }
 
   return (

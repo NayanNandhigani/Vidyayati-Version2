@@ -6,9 +6,10 @@ type Props = {
   classes: { id: string; grade: string; section: string }[];
   classId: string;
   date: string;
+  today: string; // IST "YYYY-MM-DD" — the latest date attendance can be marked for
 };
 
-export default function AttendanceFilters({ classes, classId, date }: Props) {
+export default function AttendanceFilters({ classes, classId, date, today }: Props) {
   const router = useRouter();
 
   function update(next: Partial<{ classId: string; date: string }>) {
@@ -34,7 +35,8 @@ export default function AttendanceFilters({ classes, classId, date }: Props) {
         className="in mono"
         type="date"
         value={date}
-        onChange={(e) => update({ date: e.target.value })}
+        max={today}
+        onChange={(e) => e.target.value && update({ date: e.target.value })}
         style={{ width: "auto", background: "var(--card)", fontWeight: 600 }}
       />
     </div>

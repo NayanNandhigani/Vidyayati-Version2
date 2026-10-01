@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import Link from "next/link";
 import { createPlatformStaff, type StaffFormState } from "./actions";
@@ -8,9 +9,10 @@ const initialState: StaffFormState = {};
 
 export default function NewPlatformStaffForm() {
   const [state, formAction, pending] = useActionState(createPlatformStaff, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 460 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 460 }}>
       <label className="field">
         Full name
         <input className="in" name="name" required placeholder="Arjun Malhotra" />

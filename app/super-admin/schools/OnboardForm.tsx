@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import Link from "next/link";
 import { onboardSchool, type SchoolFormState } from "./actions";
@@ -10,6 +11,7 @@ const initialState: SchoolFormState = {};
 
 export default function OnboardForm() {
   const [state, formAction, pending] = useActionState(onboardSchool, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
@@ -21,7 +23,7 @@ export default function OnboardForm() {
       </div>
       <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>New schools start on a 30-day trial by default.</div>
 
-      <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", flex: 1, minHeight: 0 }}>
+      <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", flex: 1, minHeight: 0 }}>
         <label className="field">
           School name
           <input className="in" name="name" required placeholder="e.g. Riverdale Public School" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { setSchoolLoginBlock, updateSchoolAdminAccount, resetSchoolAdminPassword, type ManageFormState } from "../actions";
 
@@ -17,6 +18,7 @@ export default function AccessControlPanel({
   const [blockPending, startBlockTransition] = useTransition();
   const [editingAccount, setEditingAccount] = useState(false);
   const [state, formAction, pending] = useActionState(updateSchoolAdminAccount, initialState);
+  const keep1 = useKeepFormValues(state);
   const [resetState, resetAction, resetPending] = useActionState(resetSchoolAdminPassword, initialState);
   const [resetDone, setResetDone] = useState(false);
 
@@ -116,7 +118,7 @@ export default function AccessControlPanel({
             )}
           </div>
         ) : (
-          <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <form ref={keep1.ref} onSubmit={keep1.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <input type="hidden" name="userId" value={admin.id} />
             <input type="hidden" name="schoolId" value={schoolId} />
             <label className="field">

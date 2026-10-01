@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState } from "react";
 import { createLead, type LeadFormState } from "./actions";
 import AddressFields from "@/components/AddressFields";
@@ -9,6 +10,7 @@ const initialState: LeadFormState = {};
 export default function NewLeadForm() {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(createLead, initialState);
+  const keep = useKeepFormValues(state);
 
   if (!open) {
     return (
@@ -19,7 +21,7 @@ export default function NewLeadForm() {
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, padding: 18, marginBottom: 4 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, padding: 18, marginBottom: 4 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 12 }}>
         <label className="field">
           Proposed school name

@@ -7,7 +7,7 @@ import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature, hasFeature } from "@/lib/feature-flags";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 import { findOrLinkGuardian } from "@/lib/guardian";
-import { validatePhone, validateOptionalEmail } from "@/lib/validation";
+import { validatePhone, validateOptionalEmail, normalizeIndianMobile } from "@/lib/validation";
 import { nextAdmissionNumber } from "@/lib/admission-number";
 import type { ParentRelation } from "@prisma/client";
 
@@ -38,7 +38,7 @@ export async function addEmergencyContact(studentId: string, data: { name: strin
   await requireModuleAccess("Students", "EDIT", student.classId);
   await requireFeature(await schoolId(), "students.medicalInfo");
 
-  await sdb.studentEmergencyContact.create({ data: { ...data, studentId, schoolId: await schoolId() } });
+  await sdb.studentEmergencyContact.create({ data: { ...data, phone: normalizeIndianMobile(data.phone)!, studentId, schoolId: await schoolId() } });
   revalidatePath(`/app/students/${studentId}`);
   return {};
 }
@@ -100,7 +100,7 @@ export async function addGuardianToStudent(
   const emailErr = validateOptionalEmail(fields.email);
   if (emailErr) return { error: emailErr };
 
-  const result = await findOrLinkGuardian(sdb, studentId, { name: fields.name, phone: fields.phone, email: fields.email || null, relation: fields.relation });
+  const result = await findOrLinkGuardian(sdb, studentId, { name: fields.name, phone: normalizeIndianMobile(fields.phone)!, email: fields.email || null, relation: fields.relation });
   revalidatePath(`/app/students/${studentId}`);
   return { setupToken: result?.setupToken };
 }

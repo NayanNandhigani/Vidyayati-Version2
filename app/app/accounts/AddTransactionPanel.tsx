@@ -1,7 +1,10 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { addTransaction, type TransactionFormState } from "./actions";
+import { FieldError, FormError, SuccessBanner } from "@/components/form/FormMessages";
+import { todayIST } from "@/lib/ist";
 
 const initialState: TransactionFormState = {};
 
@@ -11,7 +14,8 @@ const INCOME_CATEGORIES = ["Fees", "Donations", "Grants", "Rent", "Other income"
 export default function AddTransactionPanel() {
   const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   const [state, formAction, pending] = useActionState(addTransaction, initialState);
-  const [key, setKey] = useState(0);
+  const keep = useKeepFormValues(state);
+
   const categories = type === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const [category, setCategory] = useState(categories[0]);
 
@@ -20,13 +24,14 @@ export default function AddTransactionPanel() {
     setCategory((next === "INCOME" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES)[0]);
   }
 
+  const v = state.success ? undefined : state.values;
+  const fe = state.fieldErrors ?? {};
   useEffect(() => {
     if (state.success) {
-      setKey((k) => k + 1); // reset uncontrolled fields after a successful submit
       setCategory(EXPENSE_CATEGORIES[0]);
       setType("EXPENSE");
     }
-  }, [state.success]);
+  }, [state.success, state.attempt]);
 
   return (
     <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 15 }}>
@@ -50,15 +55,21 @@ export default function AddTransactionPanel() {
         </span>
       </div>
 
-      <form key={key} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <SuccessBanner message={state.success ? state.savedMessage : null} />
+      {/* Remounted after every submit: a success starts a fresh form; a
+          rejection refills it with what was typed (server messages below
+          each field — the browser's own checks are off so they always show). */}
+      <form key={state.attempt ?? 0} ref={keep.ref} onSubmit={keep.capture} action={formAction} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <input type="hidden" name="type" value={type} />
         <label className="field">
           Date
-          <input className="in mono" name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+          <input className="in mono" name="date" type="date" defaultValue={v?.date ?? todayIST()} aria-invalid={!!fe.date} />
+          <FieldError message={fe.date} />
         </label>
         <label className="field">
           Description
-          <input className="in" name="description" type="text" placeholder="Generator fuel — August" required />
+          <input className="in" name="description" type="text" maxLength={200} placeholder="Generator fuel — August" defaultValue={v?.description} aria-invalid={!!fe.description} />
+          <FieldError message={fe.description} />
         </label>
         <label className="field">
           Category
@@ -70,14 +81,11 @@ export default function AddTransactionPanel() {
         </label>
         <label className="field">
           Amount
-          <input className="in mono" name="amount" type="number" min={0} step={1} placeholder="0" required />
+          <input className="in mono" name="amount" type="text" inputMode="decimal" placeholder="0" defaultValue={v?.amount} aria-invalid={!!fe.amount} />
+          <FieldError message={fe.amount} />
         </label>
 
-        {state.error && (
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--critical)", background: "var(--critical-tint)", border: "1px solid var(--critical-border)", borderRadius: 8, padding: "8px 11px" }}>
-            {state.error}
-          </p>
-        )}
+        <FormError message={state.error} />
 
         <button
           type="submit"

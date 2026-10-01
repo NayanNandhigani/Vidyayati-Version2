@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import { advanceStage, markLeadLost, type FormState } from "./actions";
 
@@ -23,6 +24,7 @@ export default function LeadStageControls({ leadId, stage, canEdit }: { leadId: 
   const [pending, startTransition] = useTransition();
   const [showLostForm, setShowLostForm] = useState(false);
   const [lostState, lostAction, lostPending] = useActionState(markLeadLost, lostInitial);
+  const keep = useKeepFormValues(lostState);
   const style = STAGE_STYLE[stage];
 
   function move() {
@@ -53,7 +55,7 @@ export default function LeadStageControls({ leadId, stage, canEdit }: { leadId: 
       )}
 
       {showLostForm && (
-        <form action={lostAction} style={{ marginTop: 10, background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8, maxWidth: 380 }}>
+        <form ref={keep.ref} onSubmit={keep.capture} action={lostAction} style={{ marginTop: 10, background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8, maxWidth: 380 }}>
           <input type="hidden" name="leadId" value={leadId} />
           <label className="field">
             Reason (optional)

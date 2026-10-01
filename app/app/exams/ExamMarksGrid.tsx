@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { initials, studentName } from "@/lib/format";
 import { avatarColorFor, gradeFor, gradeForScale, gradeColor, type GradeBand } from "@/lib/academic";
 import { saveMarks } from "./actions";
+import { friendlyError } from "@/lib/friendly-error";
 
 type Student = { id: string; firstName: string; surname: string };
 type ExamSubject = { id: string; maxMarks: number; passMarks: number | null; subject: { id: string; name: string } };
@@ -30,15 +31,72 @@ export default function ExamMarksGrid({
 }) {
   const gradeForPct = (pct: number) => gradeForScale(pct, gradeBands) ?? gradeFor(pct);
   const [marks, setMarks] = useState(initialMarks);
+  // Raw text of cells being typed in, and per-cell problems. A bad value
+  // (over the maximum, negative, not a number) is shown as an error and
+  // kept out of `marks` — it's never silently clamped.
+  const [text, setText] = useState<Record<string, string>>({});
+  const [cellErrors, setCellErrors] = useState<Record<string, string>>({});
+  const [cleared, setCleared] = useState<Set<string>>(new Set());
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState(students[0]?.id ?? null);
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [sortField, setSortField] = useState<"name" | "total">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  function setMark(studentId: string, examSubjectId: string, value: MarkValue) {
-    setMarks((prev) => ({ ...prev, [studentId]: { ...prev[studentId], [examSubjectId]: value } }));
+  function setMark(studentId: string, examSubjectId: string, value: MarkValue | undefined) {
+    setMarks((prev) => {
+      const row = { ...prev[studentId] };
+      if (value === undefined) delete row[examSubjectId];
+      else row[examSubjectId] = value;
+      return { ...prev, [studentId]: row };
+    });
+    setCleared((prev) => {
+      const next = new Set(prev);
+      if (value === undefined) next.add(`${studentId}:${examSubjectId}`);
+      else next.delete(`${studentId}:${examSubjectId}`);
+      return next;
+    });
     setSaved(false);
+  }
+
+  function typeMark(studentId: string, es: ExamSubject, raw: string) {
+    const key = `${studentId}:${es.id}`;
+    setSaveError(null);
+    setText((prev) => ({ ...prev, [key]: raw }));
+    const trimmed = raw.trim();
+    let problem: string | null = null;
+    if (trimmed === "") {
+      setMark(studentId, es.id, undefined);
+    } else {
+      const n = Number(trimmed);
+      if (!Number.isFinite(n)) problem = "Not a number";
+      else if (n < 0) problem = "Can't be negative";
+      else if (n > es.maxMarks) problem = `Max is ${es.maxMarks}`;
+      else if (Math.round(n * 100) !== n * 100) problem = "At most 2 decimals";
+      else setMark(studentId, es.id, n);
+    }
+    setCellErrors((prev) => {
+      const next = { ...prev };
+      if (problem) next[key] = problem;
+      else delete next[key];
+      return next;
+    });
+  }
+
+  function toggleAbsent(studentId: string, es: ExamSubject, isAbsent: boolean) {
+    const key = `${studentId}:${es.id}`;
+    setText((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setCellErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setMark(studentId, es.id, isAbsent ? undefined : "AB");
   }
 
   // Entered-only total/max, same rule the server uses: a subject with no
@@ -78,10 +136,33 @@ export default function ExamMarksGrid({
     return sortDir === "asc" ? sorted : sorted.reverse();
   }, [students, sortField, sortDir, marks]);
 
+  const errorCount = Object.keys(cellErrors).length;
+
   function save() {
+    if (errorCount > 0) {
+      setSaveError(`${errorCount} mark${errorCount === 1 ? " is" : "s are"} invalid (shown in red). Fix ${errorCount === 1 ? "it" : "them"} before saving.`);
+      return;
+    }
+    setSaveError(null);
+    const payload: Record<string, Record<string, number | "AB" | null>> = {};
+    for (const [studentId, row] of Object.entries(marks)) payload[studentId] = { ...row };
+    for (const key of cleared) {
+      const [studentId, esId] = key.split(":") as [string, string];
+      payload[studentId] = { ...payload[studentId], [esId]: null };
+    }
     startTransition(async () => {
-      await saveMarks(examId, marks);
-      setSaved(true);
+      try {
+        const res = await saveMarks(examId, payload);
+        if (res.error) {
+          setSaveError(res.error);
+          if (res.invalid) setCellErrors(Object.fromEntries(res.invalid.map((i) => [`${i.studentId}:${i.examSubjectId}`, "Invalid"])));
+          return;
+        }
+        setCleared(new Set());
+        setSaved(true);
+      } catch (e) {
+        setSaveError(friendlyError(e, "Marks weren't saved. Please try again."));
+      }
     });
   }
 
@@ -119,6 +200,11 @@ export default function ExamMarksGrid({
             </button>
           )}
         </div>
+        {(saveError || errorCount > 0) && (
+          <div role="alert" style={{ padding: "8px 20px", fontSize: 12.5, fontWeight: 600, color: "var(--critical)", background: "var(--critical-tint)", borderBottom: "1px solid var(--line)" }}>
+            {saveError ?? `${errorCount} mark${errorCount === 1 ? " is" : "s are"} invalid: ${Object.entries(cellErrors).slice(0, 3).map(([k, m]) => `${studentName(students.find((st) => st.id === k.split(":")[0]) ?? { firstName: "", surname: "" })} — ${m}`).join("; ")}. Invalid marks aren't saved.`}
+          </div>
+        )}
 
         <div
           style={{
@@ -175,22 +261,28 @@ export default function ExamMarksGrid({
                 {examSubjects.map((es) => {
                   const v = marks[s.id]?.[es.id];
                   const isAbsent = v === "AB";
-                  const failing = typeof v === "number" && es.passMarks != null && v < es.passMarks;
+                  const key = `${s.id}:${es.id}`;
+                  const cellError = cellErrors[key];
+                  const failing = !cellError && typeof v === "number" && es.passMarks != null && v < es.passMarks;
                   return (
                     <div key={es.id} onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 2, margin: "1px 0" }}>
                       <input
                         type="number"
                         min={0}
                         max={es.maxMarks}
-                        value={typeof v === "number" ? v : ""}
+                        step="any"
+                        value={text[key] ?? (typeof v === "number" ? String(v) : "")}
+                        placeholder={isAbsent ? "AB" : "—"}
+                        title={cellError ?? (isAbsent ? "Absent" : undefined)}
+                        aria-invalid={!!cellError}
                         disabled={!canEdit || isAbsent}
-                        onChange={(e) => setMark(s.id, es.id, Math.max(0, Math.min(es.maxMarks, Number(e.target.value))))}
+                        onChange={(e) => typeMark(s.id, es, e.target.value)}
                         className="mono"
                         style={{
                           width: "100%",
                           textAlign: "center",
-                          border: canEdit ? `1px solid ${failing ? "var(--critical-border)" : "var(--marigold-tint)"}` : "none",
-                          background: isAbsent ? "var(--line)" : failing ? "var(--critical-tint)" : canEdit ? "var(--marigold-tint)" : "transparent",
+                          border: cellError ? "2px solid var(--critical)" : canEdit ? `1px solid ${failing ? "var(--critical-border)" : "var(--marigold-tint)"}` : "none",
+                          background: isAbsent ? "var(--line)" : cellError ? "#fff" : failing ? "var(--critical-tint)" : canEdit ? "var(--marigold-tint)" : "transparent",
                           color: failing ? "var(--critical)" : "var(--ink)",
                           fontWeight: 700,
                           fontSize: 12,
@@ -200,7 +292,7 @@ export default function ExamMarksGrid({
                       />
                       {canEdit && (
                         <span
-                          onClick={() => setMark(s.id, es.id, isAbsent ? Math.max(0, Math.min(es.maxMarks, Number(marks[s.id]?.[es.id]) || 0)) : "AB")}
+                          onClick={() => toggleAbsent(s.id, es, isAbsent)}
                           title="Mark absent"
                           style={{ fontSize: 8.5, fontWeight: 700, color: isAbsent ? "#fff" : "var(--faint)", background: isAbsent ? "var(--critical)" : "transparent", borderRadius: 3, padding: "1px 3px", cursor: "pointer", flex: "none" }}
                         >

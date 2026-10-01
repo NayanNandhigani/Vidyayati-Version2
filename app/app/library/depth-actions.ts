@@ -9,7 +9,7 @@ import { requireFeature } from "@/lib/feature-flags";
 import { studentName } from "@/lib/format";
 import { computeLibraryFine } from "@/lib/library";
 import { issueBook } from "./actions";
-import { runAction, UserError } from "@/lib/action-result";
+import { UserError, requireMoney, runAction } from "@/lib/action-result";
 
 async function schoolId() {
   const session = await auth();
@@ -118,10 +118,14 @@ export async function lookupIsbn(isbn: string): Promise<{ title?: string; author
 }
 
 export async function updateLibraryFineSettings(ratePerDay: number | null, graceDays: number | null) {
-  await requireModuleAccess("Library", "EDIT");
-  const sid = await schoolId();
-  await requireFeature(sid, "library.barcodesAndFines");
-  const sdb = await getScopedDb();
-  await sdb.school.update({ where: { id: sid }, data: { libraryFineRatePerDay: ratePerDay, libraryFineGraceDays: graceDays } });
-  revalidatePath("/app/library");
+  return runAction(async () => {
+    await requireModuleAccess("Library", "EDIT");
+    const sid = await schoolId();
+    await requireFeature(sid, "library.barcodesAndFines");
+    requireMoney(ratePerDay, "Fine per day");
+    if (graceDays != null && (!Number.isInteger(graceDays) || graceDays < 0)) throw new UserError("Grace days must be a whole number of 0 or more.");
+    const sdb = await getScopedDb();
+    await sdb.school.update({ where: { id: sid }, data: { libraryFineRatePerDay: ratePerDay, libraryFineGraceDays: graceDays } });
+    revalidatePath("/app/library");
+  }, "updateLibraryFineSettings");
 }

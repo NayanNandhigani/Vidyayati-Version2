@@ -5,6 +5,8 @@ import { initials, studentName } from "@/lib/format";
 import { avatarColorFor } from "@/lib/academic";
 import type { AttendanceStatus } from "@prisma/client";
 import { saveAttendance } from "./actions";
+import { friendlyError } from "@/lib/friendly-error";
+import { FormError, FormWarning } from "@/components/form/FormMessages";
 
 type Student = { id: string; firstName: string; surname: string; admissionNo: string };
 
@@ -13,6 +15,7 @@ type Props = {
   date: string;
   students: Student[];
   initialMarks: Record<string, AttendanceStatus>;
+  today: string; // IST "YYYY-MM-DD"
   canEdit: boolean;
 };
 
@@ -24,7 +27,11 @@ const MARKS: { key: AttendanceStatus; label: string; className: string }[] = [
 
 type SortField = "name" | "admissionNo";
 
-export default function AttendanceRoster({ classId, date, students, initialMarks, canEdit }: Props) {
+export default function AttendanceRoster({ classId, date, today, students, initialMarks, canEdit: canEditClass }: Props) {
+  // Attendance can't be marked ahead of time; a future date is view-only.
+  const isFuture = date > today;
+  const canEdit = canEditClass && !isFuture;
+  const [error, setError] = useState<string | null>(null);
   const [marks, setMarks] = useState<Record<string, AttendanceStatus>>(initialMarks);
   const [savedMarks, setSavedMarks] = useState<Record<string, AttendanceStatus>>(initialMarks);
   const [pending, startTransition] = useTransition();
@@ -95,10 +102,19 @@ export default function AttendanceRoster({ classId, date, students, initialMarks
 
   function save() {
     const toSave = marks;
+    setError(null);
     startTransition(async () => {
-      await saveAttendance(classId, date, toSave);
-      setSavedMarks(toSave);
-      setSavedAt(Date.now());
+      try {
+        const res = await saveAttendance(classId, date, toSave);
+        if (res.error) {
+          setError(res.error);
+          return;
+        }
+        setSavedMarks(toSave);
+        setSavedAt(Date.now());
+      } catch (e) {
+        setError(friendlyError(e, "Attendance wasn't saved. Please try again."));
+      }
     });
   }
 
@@ -127,6 +143,11 @@ export default function AttendanceRoster({ classId, date, students, initialMarks
             </>
           )}
         </div>
+      {isFuture && <FormWarning message={`Attendance can't be marked for a future date. Pick today (${today}) or an earlier date.`} />}
+      {!isFuture && students.length > 0 && Object.keys(initialMarks).length === 0 && !savedAt && (
+        <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No attendance has been saved for this date yet.</div>
+      )}
+      <FormError message={error} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>

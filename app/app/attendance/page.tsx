@@ -4,6 +4,7 @@ import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
 import { studentName } from "@/lib/format";
 import { hasFeature } from "@/lib/feature-flags";
 import { attendancePercent } from "@/lib/attendance";
+import { parseDateOnly, todayIST } from "@/lib/ist";
 import { getAttendanceFlags } from "./depth-actions";
 import AttendanceFilters from "./AttendanceFilters";
 import AttendanceRoster from "./AttendanceRoster";
@@ -13,10 +14,6 @@ import LeaveRequestsPanel from "./LeaveRequestsPanel";
 import AttendanceFlagsPanel from "./AttendanceFlagsPanel";
 import ParentLeaveForm from "./ParentLeaveForm";
 
-function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ classId?: string; date?: string; view?: string }> }) {
   const session = await auth();
@@ -28,7 +25,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   }
 
   const isAdmin = session!.user.role === "SCHOOL_ADMIN";
-  const date = params.date ?? todayISO();
+  const today = todayIST();
+  const date = params.date && parseDateOnly(params.date) ? params.date : today;
+  const dateValue = parseDateOnly(date)!;
 
   // Staff attendance is its own admin-only roster, entirely separate from
   // the per-class student view below — feeds the Dashboard staff tiles,
@@ -37,7 +36,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   if (params.view === "staff" && isAdmin) {
     const [staff, existingStaffAttendance] = await Promise.all([
       sdb.staffProfile.findMany({ include: { user: true }, orderBy: { user: { name: "asc" } } }),
-      sdb.staffAttendance.findMany({ where: { date: new Date(`${date}T00:00:00`) } }),
+      sdb.staffAttendance.findMany({ where: { date: dateValue } }),
     ]);
     const initialStaffMarks: Record<string, "PRESENT" | "ABSENT" | "HALF_DAY"> = {};
     for (const a of existingStaffAttendance) initialStaffMarks[a.staffId] = a.status;
@@ -48,7 +47,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
           <AttendanceViewToggle view="staff" date={date} />
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          <StaffAttendanceRoster date={date} staff={staff.map((s) => ({ id: s.id, name: s.user.name }))} initialMarks={initialStaffMarks} />
+          <StaffAttendanceRoster key={date} date={date} today={today} staff={staff.map((s) => ({ id: s.id, name: s.user.name }))} initialMarks={initialStaffMarks} />
         </div>
       </div>
     );
@@ -97,7 +96,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     : [];
 
   const existing = classId
-    ? await sdb.attendance.findMany({ where: { date: new Date(`${date}T00:00:00`), studentId: { in: students.map((s) => s.id) } } })
+    ? await sdb.attendance.findMany({ where: { date: dateValue, studentId: { in: students.map((s) => s.id) } } })
     : [];
   const initialMarks: Record<string, "PRESENT" | "ABSENT" | "HALF_DAY"> = {};
   for (const a of existing) initialMarks[a.studentId] = a.status;
@@ -134,10 +133,10 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         {isAdmin ? <AttendanceViewToggle view="students" date={date} /> : <div />}
-        <AttendanceFilters classes={classes} classId={classId} date={date} />
+        <AttendanceFilters classes={classes} classId={classId} date={date} today={today} />
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
-        <AttendanceRoster classId={classId} date={date} students={students} initialMarks={initialMarks} canEdit={canEdit} />
+        <AttendanceRoster key={`${classId}:${date}`} classId={classId} date={date} today={today} students={students} initialMarks={initialMarks} canEdit={canEdit} />
         {showLeaveWorkflow && <LeaveRequestsPanel requests={leaveRequests} isAdmin={isAdmin} canActAsClassTeacher={canEdit} />}
         {showFlags && (
           <AttendanceFlagsPanel

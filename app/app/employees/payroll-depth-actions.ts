@@ -6,6 +6,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
 import type { Prisma } from "@prisma/client";
+import { runAction, UserError, requireMoney, requirePercent } from "@/lib/action-result";
 
 async function schoolId() {
   const session = await auth();
@@ -13,12 +14,16 @@ async function schoolId() {
 }
 
 export async function addSalaryComponent(staffId: string, name: string, amount: number) {
-  const sid = await schoolId();
-  await requireModuleAccess("Employees", "EDIT");
-  await requireFeature(sid, "payroll.structuredSalary");
-  const sdb = await getScopedDb();
-  await sdb.salaryComponent.create({ data: scopedCreateData<Prisma.SalaryComponentUncheckedCreateInput>({ staffId, name: name.trim(), amount }) });
-  revalidatePath(`/app/employees/${staffId}`);
+  return runAction(async () => {
+    const sid = await schoolId();
+    await requireModuleAccess("Employees", "EDIT");
+    await requireFeature(sid, "payroll.structuredSalary");
+    if (!name.trim()) throw new UserError("Name the component, e.g. Basic or HRA.");
+    requireMoney(amount, `${name.trim()} amount`, { required: true, allowZero: false });
+    const sdb = await getScopedDb();
+    await sdb.salaryComponent.create({ data: scopedCreateData<Prisma.SalaryComponentUncheckedCreateInput>({ staffId, name: name.trim(), amount }) });
+    revalidatePath(`/app/employees/${staffId}`);
+  }, "addSalaryComponent");
 }
 
 export async function removeSalaryComponent(id: string) {
@@ -29,11 +34,17 @@ export async function removeSalaryComponent(id: string) {
 }
 
 export async function updateStatutoryRates(pfPercent: number | null, esiPercent: number | null, ptFixedAmount: number | null, tdsPercent: number | null) {
-  const sid = await schoolId();
-  await requireModuleAccess("Employees", "EDIT");
-  const sdb = await getScopedDb();
-  await sdb.school.update({ where: { id: sid }, data: { pfPercent, esiPercent, ptFixedAmount, tdsPercent } });
-  revalidatePath("/app/employees");
+  return runAction(async () => {
+    const sid = await schoolId();
+    await requireModuleAccess("Employees", "EDIT");
+    requirePercent(pfPercent, "PF rate");
+    requirePercent(esiPercent, "ESI rate");
+    requirePercent(tdsPercent, "TDS rate");
+    requireMoney(ptFixedAmount, "Professional tax");
+    const sdb = await getScopedDb();
+    await sdb.school.update({ where: { id: sid }, data: { pfPercent, esiPercent, ptFixedAmount, tdsPercent } });
+    revalidatePath("/app/employees");
+  }, "updateStatutoryRates");
 }
 
 /**
@@ -69,15 +80,19 @@ export async function runStructuredPayroll(staffId: string, month: string) {
 
   const net = Math.max(0, gross - pf - esi - tds - pt - lop);
 
+  const existing = await sdb.payrollRun.findUnique({ where: { staffId_month: { staffId, month } }, select: { id: true } });
+  if (existing) {
+    return { error: `Payroll for ${month} has already been run for ${staff.user.name}. To correct it, add an adjustment instead of running payroll again.` };
+  }
+  if (gross <= 0) return { error: "Add salary components first — the gross salary is ₹0." };
+
   // See employees/actions.ts's runPayroll for why this is an interactive
   // transaction keyed by payrollRunId rather than two independent creates —
   // a same-month re-run must edit the one linked Accounts row, not add a
   // second one.
   await sdb.$transaction(async (tx) => {
-    const run = await tx.payrollRun.upsert({
-      where: { staffId_month: { staffId, month } },
-      update: { amount: net, status: "PAID", paidOn: new Date(), grossAmount: gross, pfAmount: pf, esiAmount: esi, tdsAmount: tds, ptAmount: pt, lopAmount: lop || null },
-      create: scopedCreateData<Prisma.PayrollRunUncheckedCreateInput>({
+    const run = await tx.payrollRun.create({
+      data: scopedCreateData<Prisma.PayrollRunUncheckedCreateInput>({
         staffId,
         month,
         amount: net,
@@ -91,10 +106,8 @@ export async function runStructuredPayroll(staffId: string, month: string) {
         lopAmount: lop || null,
       }),
     });
-    await tx.accountsTransaction.upsert({
-      where: { payrollRunId: run.id },
-      update: { date: new Date(), description: `Staff salary — ${staff.user.name} (${month})`, amount: net },
-      create: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
+    await tx.accountsTransaction.create({
+      data: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
         date: new Date(),
         description: `Staff salary — ${staff.user.name} (${month})`,
         category: "Payroll",

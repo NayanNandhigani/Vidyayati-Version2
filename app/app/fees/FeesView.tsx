@@ -1,5 +1,7 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
+import { toast } from "@/components/Toaster";
 import { unwrap } from "@/lib/unwrap";
 import { friendlyError } from "@/lib/friendly-error";
 import { useActionState, useEffect, useState, useTransition } from "react";
@@ -72,6 +74,7 @@ export default function FeesView({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = rows.find((r) => r.id === selectedId) ?? null;
   const [state, formAction, pending] = useActionState(recordPayment, initialState);
+  const keep = useKeepFormValues(state);
   const [, startTransition] = useTransition();
   const [discountKind, setDiscountKind] = useState<DiscountKind>("SCHOLARSHIP" as DiscountKind);
   const [discountType, setDiscountType] = useState<DiscountValueType>("PERCENT" as DiscountValueType);
@@ -88,7 +91,13 @@ export default function FeesView({
 
   function addDiscount() {
     if (!selected || !discountValue) return;
-    startTransition(() => addFeeDiscount(selected.id, discountKind, discountType, Number(discountValue), ""));
+    startTransition(async () => {
+      try {
+        unwrap(await addFeeDiscount(selected.id, discountKind, discountType, Number(discountValue), ""));
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
+    });
     setDiscountValue("");
   }
 
@@ -283,7 +292,7 @@ export default function FeesView({
                 </div>
               )}
 
-              <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <input type="hidden" name="studentId" value={selected.id} />
                 <label className="field">
                   Amount received

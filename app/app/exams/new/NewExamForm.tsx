@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createExam, type ExamFormState } from "../actions";
@@ -14,6 +15,7 @@ export default function NewExamForm({
   subjects: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState(createExam, initialState);
+  const keep = useKeepFormValues(state);
   const [selectedSubjects, setSelectedSubjects] = useState<Set<string>>(new Set(subjects.map((s) => s.id)));
   const [selectedClasses, setSelectedClasses] = useState<Set<string>>(new Set());
 
@@ -36,7 +38,7 @@ export default function NewExamForm({
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 520 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 520 }}>
       <label className="field">
         Exam name
         <input className="in" name="name" required placeholder="Mid-Term Examination" />

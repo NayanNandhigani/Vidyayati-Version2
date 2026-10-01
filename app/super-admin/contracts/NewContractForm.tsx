@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import { buildContractTemplate } from "@/lib/contract-template";
@@ -9,6 +10,7 @@ const initialState: ContractFormState = {};
 
 export default function NewContractForm({ schools, defaultSchoolId }: { schools: { id: string; name: string }[]; defaultSchoolId?: string }) {
   const [state, formAction, pending] = useActionState(createContract, initialState);
+  const keep = useKeepFormValues(state);
   const [schoolId, setSchoolId] = useState(defaultSchoolId ?? "");
   const [billingCycle, setBillingCycle] = useState("YEARLY");
   const [annualFee, setAnnualFee] = useState("");
@@ -31,7 +33,7 @@ export default function NewContractForm({ schools, defaultSchoolId }: { schools:
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1, minHeight: 0, overflow: "hidden" }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1, minHeight: 0, overflow: "hidden" }}>
       <div style={{ overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 16, paddingRight: 2 }}>
         <label className="field">
           School

@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { updateRelationshipManager, type ManageFormState } from "./actions";
 
@@ -8,6 +9,7 @@ const initialState: ManageFormState = {};
 export default function RelationshipManagerField({ schoolId, relationshipManager }: { schoolId: string; relationshipManager: string | null }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState(updateRelationshipManager, initialState);
+  const keep = useKeepFormValues(state);
 
   useEffect(() => {
     if (state.success) setEditing(false);
@@ -25,7 +27,7 @@ export default function RelationshipManagerField({ schoolId, relationshipManager
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", gap: 8 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", gap: 8 }}>
       <input type="hidden" name="id" value={schoolId} />
       <input className="in" name="relationshipManager" defaultValue={relationshipManager ?? ""} placeholder="e.g. Radhika Menon" autoFocus style={{ flex: 1 }} />
       <button type="submit" disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "0 14px", fontSize: 12.5, fontWeight: 700, cursor: pending ? "default" : "pointer" }}>

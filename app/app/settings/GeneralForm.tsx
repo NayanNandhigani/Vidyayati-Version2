@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import { saveGeneral, type FormState } from "./actions";
 import { updateAdmissionNoPrefix } from "../students/depth-actions";
@@ -8,6 +9,7 @@ const initialState: FormState = {};
 
 export default function GeneralForm({ school }: { school: { name: string; city: string | null; state: string | null; admissionNoPrefix: string | null } }) {
   const [state, formAction, pending] = useActionState(saveGeneral, initialState);
+  const keep = useKeepFormValues(state);
   const [prefix, setPrefix] = useState(school.admissionNoPrefix ?? "");
   const [, startPrefixTransition] = useTransition();
 
@@ -19,7 +21,7 @@ export default function GeneralForm({ school }: { school: { name: string; city: 
         </div>
         <div style={{ fontSize: 13, color: "var(--muted)" }}>Basic details used across report cards, ID cards and communication.</div>
       </div>
-      <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <label className="field">
             School name

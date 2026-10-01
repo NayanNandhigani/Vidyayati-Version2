@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import Link from "next/link";
 import { updateAccount, type FormState } from "./actions";
@@ -8,6 +9,7 @@ const initialState: FormState = {};
 
 export default function AccountForms({ name, username }: { name: string; username: string }) {
   const [profileState, profileAction, profilePending] = useActionState(updateAccount, initialState);
+  const keep = useKeepFormValues(profileState);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28, maxWidth: 460 }}>
@@ -15,7 +17,7 @@ export default function AccountForms({ name, username }: { name: string; usernam
         <div className="mono" style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 10 }}>
           Profile
         </div>
-        <form action={profileAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <form ref={keep.ref} onSubmit={keep.capture} action={profileAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <label className="field">
             Name
             <input className="in" name="name" defaultValue={name} required />

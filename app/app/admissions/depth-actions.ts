@@ -8,9 +8,9 @@ import { requireModuleAccess } from "@/lib/permissions";
 import { enrollStudent } from "@/lib/domain/enrollment";
 import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
 import { nextAdmissionNumber } from "@/lib/admission-number";
-import { validateDob } from "@/lib/validation";
+import { validateDob, validateOptionalPhone, validateOptionalEmail, normalizeIndianMobile } from "@/lib/validation";
 import { createGuardianAccountForEnquiry } from "./guardian";
-import { runAction, UserError } from "@/lib/action-result";
+import { UserError, requireMoney, runAction } from "@/lib/action-result";
 
 export type ApplicationFields = {
   photoPath: string | null;
@@ -44,13 +44,26 @@ export type ApplicationFields = {
 
 export async function updateApplicationDetails(enquiryId: string, fields: ApplicationFields): Promise<{ error?: string }> {
   await requireModuleAccess("Admissions", "EDIT");
-  const dobError = fields.dob ? validateDob(fields.dob) : null;
+  const dobError = fields.dob ? validateDob(fields.dob, 2, 20) : null;
   if (dobError) return { error: dobError };
+  for (const [value, label] of [[fields.contactNumber2, "Contact number 2"], [fields.emergencyContactNumber, "Emergency contact number"], [fields.familyDoctorContact, "Family doctor's contact"]] as const) {
+    const err = value ? validateOptionalPhone(value, label) : null;
+    if (err) return { error: err };
+  }
+  const emailErr = fields.email ? validateOptionalEmail(fields.email) : null;
+  if (emailErr) return { error: emailErr };
+  const phone = (v: string | null) => (v ? normalizeIndianMobile(v) : null);
 
   const sdb = await getScopedDb();
   await sdb.admissionEnquiry.update({
     where: { id: enquiryId },
-    data: { ...fields, dob: fields.dob ? new Date(fields.dob) : null },
+    data: {
+      ...fields,
+      contactNumber2: phone(fields.contactNumber2),
+      emergencyContactNumber: phone(fields.emergencyContactNumber),
+      familyDoctorContact: phone(fields.familyDoctorContact),
+      dob: fields.dob ? new Date(fields.dob) : null,
+    },
   });
   revalidatePath("/app/admissions");
   revalidatePath(`/app/admissions/${enquiryId}`);
@@ -90,6 +103,8 @@ export async function approveAdmissionWithFee(
     if (session!.user.role !== "SCHOOL_ADMIN") throw new UserError("Only a School Admin can approve an admission.");
     const sdb = await getScopedDb();
 
+    requireMoney(openingFeeAmount, "Opening fee amount");
+    requireMoney(chargedFee, "Charged fee");
     const enquiry = await sdb.admissionEnquiry.findUniqueOrThrow({ where: { id: enquiryId } });
     if (enquiry.approvalStatus !== "PENDING") throw new UserError("This application isn't pending approval.");
 

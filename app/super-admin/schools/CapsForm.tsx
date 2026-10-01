@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { updateSchoolCaps, type ManageFormState } from "./actions";
 
@@ -8,6 +9,7 @@ const initialState: ManageFormState = {};
 export default function CapsForm({ school }: { school: { id: string; maxStudents: number | null; maxStaff: number | null; studentCount: number; staffCount: number } }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState(updateSchoolCaps, initialState);
+  const keep = useKeepFormValues(state);
 
   useEffect(() => {
     if (state.success) setEditing(false);
@@ -35,7 +37,7 @@ export default function CapsForm({ school }: { school: { id: string; maxStudents
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <input type="hidden" name="id" value={school.id} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <label className="field">

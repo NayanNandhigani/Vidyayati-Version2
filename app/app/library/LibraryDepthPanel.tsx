@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/components/Toaster";
 import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { updateLibraryFineSettings, issueBookByAccession, returnBookByAccession } from "./depth-actions";
@@ -11,7 +12,13 @@ export function LibraryFineSettings({ ratePerDay, graceDays }: { ratePerDay: num
   const [grace, setGrace] = useState(graceDays?.toString() ?? "");
 
   function save() {
-    startTransition(() => updateLibraryFineSettings(rate ? Number(rate) : null, grace ? Number(grace) : null));
+    startTransition(async () => {
+      try {
+        unwrap(await updateLibraryFineSettings(rate ? Number(rate) : null, grace ? Number(grace) : null));
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
+    });
   }
 
   return (

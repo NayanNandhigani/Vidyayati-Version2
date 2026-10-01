@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import { createClass, setClassTeacher, deleteClass, type FormState } from "./actions";
 import { updateClassCapacityAndBoard, addCoTeacher, removeCoTeacher } from "./depth-actions";
@@ -24,6 +25,7 @@ const initialState: FormState = {};
 export default function InstituteClassesPanel({ classes, staff, showCapacity, showCoTeacher, showRte }: { classes: ClassRow[]; staff: Staff[]; showCapacity: boolean; showCoTeacher: boolean; showRte: boolean }) {
   const [showForm, setShowForm] = useState(false);
   const [state, formAction, pending] = useActionState(createClass, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
     <div style={{ width: "100%" }}>
@@ -46,7 +48,7 @@ export default function InstituteClassesPanel({ classes, staff, showCapacity, sh
       </div>
 
       {showForm && (
-        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16, marginBottom: 20, maxWidth: 620 }}>
+        <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16, marginBottom: 20, maxWidth: 620 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.6fr", gap: 12 }}>
             <label className="field">
               Grade

@@ -97,55 +97,73 @@ export async function createExam(_prevState: ExamFormState, formData: FormData):
   redirect(`/app/exams?exam=${firstExamId}&classId=${classIds[0]}`);
 }
 
-export async function saveMarks(examId: string, marks: Record<string, Record<string, number | "AB">>) {
+export type MarkInput = number | "AB" | null; // null = clear (back to "not entered")
+
+/** Why a typed mark can't be saved, or null if it's fine. Shared with the marks grid. */
+function markProblem(value: number, maxMarks: number): string | null {
+  if (!Number.isFinite(value)) return "isn't a number";
+  if (value < 0) return "can't be negative";
+  if (value > maxMarks) return `is more than the maximum (${maxMarks})`;
+  if (Math.round(value * 100) !== value * 100) return "can have at most 2 decimal places";
+  return null;
+}
+
+/**
+ * Saves a class's marks for an exam. Every value is checked here: a mark
+ * above the subject's maximum, below 0, or not a number is refused with an
+ * explanation — nothing is saved until it's corrected (it used to be
+ * silently skipped, so 150/100 looked saved but wasn't).
+ */
+export async function saveMarks(examId: string, marks: Record<string, Record<string, MarkInput>>): Promise<{ success?: boolean; error?: string; invalid?: { studentId: string; examSubjectId: string; message: string }[] }> {
   const sdb = await getScopedDb();
   // An Exam belongs to exactly one Class, so every mark in this batch is
   // for that same class — one lookup covers the whole call.
-  const exam = await sdb.exam.findUniqueOrThrow({ where: { id: examId }, select: { classId: true } });
+  const exam = await sdb.exam.findUnique({ where: { id: examId }, select: { classId: true } });
+  if (!exam) return { error: "This exam no longer exists. Please refresh the page." };
   await requireModuleAccess("Exams", "EDIT", exam.classId);
 
-  // examSubjectId/studentId keys come straight from client-submitted marks —
-  // restrict writes to ids that actually belong to this exam/school so a
-  // tampered payload can't attach a Mark to another school's data. Also
-  // carries maxMarks per subject, used below to reject out-of-range marks
-  // (Phase 10 items 97/98: no negative marks, none over the subject's max).
-  const validExamSubjects = await sdb.examSubject.findMany({ where: { examId }, select: { id: true, maxMarks: true } });
-  const maxMarksByExamSubject = new Map(validExamSubjects.map((s) => [s.id, s.maxMarks]));
-  const studentIds = Object.keys(marks);
-  const validStudents = await sdb.student.findMany({ where: { id: { in: studentIds } }, select: { id: true } });
-  const validStudentIds = new Set(validStudents.map((s) => s.id));
+  // Keys come from the browser — only ids that belong to this exam/class
+  // are written.
+  const validExamSubjects = await sdb.examSubject.findMany({ where: { examId }, select: { id: true, maxMarks: true, subject: { select: { name: true } } } });
+  const subjectById = new Map(validExamSubjects.map((s) => [s.id, s]));
+  const validStudents = await sdb.student.findMany({ where: { id: { in: Object.keys(marks) }, classId: exam.classId }, select: { id: true, firstName: true, surname: true } });
+  const studentById = new Map(validStudents.map((s) => [s.id, s]));
 
-  const ops = [];
+  const invalid: { studentId: string; examSubjectId: string; message: string }[] = [];
+  const writes: { studentId: string; examSubjectId: string; value: MarkInput }[] = [];
   for (const [studentId, bySubject] of Object.entries(marks)) {
-    if (!validStudentIds.has(studentId)) continue;
+    const student = studentById.get(studentId);
+    if (!student) continue;
     for (const [examSubjectId, value] of Object.entries(bySubject)) {
-      const maxMarks = maxMarksByExamSubject.get(examSubjectId);
-      if (maxMarks === undefined) continue;
-
-      if (value === "AB") {
-        ops.push(
-          sdb.mark.upsert({
-            where: { examSubjectId_studentId: { examSubjectId, studentId } },
-            update: { marksObtained: null, isAbsent: true },
-            create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId, studentId, marksObtained: null, isAbsent: true }),
-          })
-        );
-        continue;
+      const es = subjectById.get(examSubjectId);
+      if (!es) continue;
+      if (value !== "AB" && value !== null) {
+        const problem = markProblem(Number(value), es.maxMarks);
+        if (problem) {
+          invalid.push({ studentId, examSubjectId, message: `${student.firstName} ${student.surname}, ${es.subject.name}: ${value} ${problem}.` });
+          continue;
+        }
       }
-
-      if (value < 0 || value > maxMarks) continue;
-      ops.push(
-        sdb.mark.upsert({
-          where: { examSubjectId_studentId: { examSubjectId, studentId } },
-          update: { marksObtained: value, isAbsent: false },
-          create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId, studentId, marksObtained: value, isAbsent: false }),
-        })
-      );
+      writes.push({ studentId, examSubjectId, value });
     }
   }
+  if (invalid.length > 0) {
+    return { error: `${invalid.length} mark${invalid.length === 1 ? "" : "s"} can't be saved. Fix ${invalid.length === 1 ? "it" : "them"} and save again: ${invalid.slice(0, 3).map((i) => i.message).join(" ")}${invalid.length > 3 ? " …" : ""}`, invalid };
+  }
 
-  if (ops.length > 0) await sdb.$transaction(ops);
-  await calculateExamResults(examId);
+  const result = await runAction(async () => {
+    const ops = writes.map(({ studentId, examSubjectId, value }) => {
+      const where = { examSubjectId_studentId: { examSubjectId, studentId } };
+      if (value === null) return sdb.mark.deleteMany({ where: { examSubjectId, studentId } });
+      const data = value === "AB" ? { marksObtained: null, isAbsent: true } : { marksObtained: value, isAbsent: false };
+      return sdb.mark.upsert({ where, update: data, create: scopedCreateData<Prisma.MarkUncheckedCreateInput>({ examSubjectId, studentId, ...data }) });
+    });
+    if (ops.length > 0) await sdb.$transaction(ops);
+    await calculateExamResults(examId);
+    return {};
+  }, "saveMarks");
+  if (result.ok !== true) return { error: result.error };
+
   revalidatePath("/app/exams");
   return { success: true };
 }

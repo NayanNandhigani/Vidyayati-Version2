@@ -1,5 +1,8 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
+import { unwrap } from "@/lib/unwrap";
 import { useState, useTransition } from "react";
 import { updateRouteVehicleAndFee } from "./actions";
 
@@ -9,7 +12,13 @@ export default function RouteDetailForm({ routeId, vehicleId, feeAmount, vehicle
   const [fee, setFee] = useState(feeAmount?.toString() ?? "");
 
   function save(nextVehicle: string, nextFee: string) {
-    startTransition(() => updateRouteVehicleAndFee(routeId, nextVehicle || null, nextFee ? Number(nextFee) : null));
+    startTransition(async () => {
+      try {
+        unwrap(await updateRouteVehicleAndFee(routeId, nextVehicle || null, nextFee ? Number(nextFee) : null));
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
+    });
   }
 
   return (

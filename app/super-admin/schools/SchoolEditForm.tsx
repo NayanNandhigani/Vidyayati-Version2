@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { updateSchool, type ManageFormState } from "./actions";
 
@@ -16,6 +17,7 @@ type School = {
 export default function SchoolEditForm({ school }: { school: School }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState(updateSchool, initialState);
+  const keep = useKeepFormValues(state);
 
   useEffect(() => {
     if (state.success) setEditing(false);
@@ -30,7 +32,7 @@ export default function SchoolEditForm({ school }: { school: School }) {
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 14, marginTop: 10 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 14, marginTop: 10 }}>
       <input type="hidden" name="id" value={school.id} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <label className="field">

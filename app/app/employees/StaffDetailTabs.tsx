@@ -1,8 +1,13 @@
 "use client";
 
+import { toast } from "@/components/Toaster";
+import { unwrap } from "@/lib/unwrap";
 import { useState, useTransition } from "react";
 import type { AccessLevel } from "@prisma/client";
-import { cyclePermission, removeClassPermission, runPayroll } from "./actions";
+import { cyclePermission, removeClassPermission, runPayroll, addPayrollAdjustment } from "./actions";
+import { formatINR } from "@/lib/format";
+import { todayIST } from "@/lib/ist";
+import { friendlyError } from "@/lib/friendly-error";
 import { addStaffDocument } from "./depth-actions";
 import { addSalaryComponent, removeSalaryComponent, runStructuredPayroll } from "./payroll-depth-actions";
 import { updateStaffProfileDetails, createLeaveType, deleteLeaveType, applyForStaffLeave, actOnStaffLeave } from "./hr-depth-actions";
@@ -46,7 +51,7 @@ type Props = {
   attendanceTotals: { PRESENT: number; ABSENT: number; HALF_DAY: number };
   halfDayWeight: number;
   recentAttendance: { date: string; status: "PRESENT" | "ABSENT" | "HALF_DAY"; checkInTime: string | null }[];
-  payrollRuns: { month: string; amount: number; status: "PENDING" | "PAID"; paidOn: string | null; grossAmount: number | null; pfAmount: number | null; esiAmount: number | null; tdsAmount: number | null; ptAmount: number | null; lopAmount: number | null }[];
+  payrollRuns: { month: string; amount: number; status: "PENDING" | "PAID"; paidOn: string | null; adjustments: { id: string; kind: "ADDITION" | "DEDUCTION"; amount: number; reason: string; createdAt: string }[]; grossAmount: number | null; pfAmount: number | null; esiAmount: number | null; tdsAmount: number | null; ptAmount: number | null; lopAmount: number | null }[];
   permissions: PermRow[];
   classes: ClassOption[];
   showDocuments: boolean;
@@ -126,23 +131,26 @@ export default function StaffDetailTabs({
   function addComponent() {
     if (!componentName.trim() || !componentAmount) return;
     startTransition(async () => {
-      await addSalaryComponent(staff.id, componentName, Number(componentAmount));
-      setComponentName("");
-      setComponentAmount("");
+      try {
+        unwrap(await addSalaryComponent(staff.id, componentName, Number(componentAmount)));
+        setComponentName("");
+        setComponentAmount("");
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 
-  const [confirmingStructuredRun, setConfirmingStructuredRun] = useState(false);
-
   function runStructured() {
-    if (existingRunForMonth && !confirmingStructuredRun) {
-      setConfirmingStructuredRun(true);
-      return;
-    }
-    setConfirmingStructuredRun(false);
+    setPayError(null);
     startTransition(async () => {
-      const res = await runStructuredPayroll(staff.id, currentMonth);
-      setStructuredResult(res);
+      try {
+        const res = await runStructuredPayroll(staff.id, currentMonth);
+        if (res.error) setPayError(res.error);
+        else setStructuredResult(res as NonNullable<typeof structuredResult>);
+      } catch (e) {
+        setPayError(friendlyError(e, "Payroll wasn't run. Please try again."));
+      }
     });
   }
   const TABS = [...BASE_TABS, ...(showLeave ? (["Leave"] as const) : []), ...(showDocuments ? (["Documents"] as const) : [])];
@@ -153,7 +161,7 @@ export default function StaffDetailTabs({
   const [payAmount, setPayAmount] = useState("");
 
   const attendancePct = attendancePercent(attendanceTotals, halfDayWeight);
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = todayIST().slice(0, 7);
   const latestPay = payrollRuns[0];
 
   function togglePerm(moduleName: string, classId: string | null) {
@@ -184,19 +192,40 @@ export default function StaffDetailTabs({
   }
 
   const existingRunForMonth = payrollRuns.find((p) => p.month === currentMonth);
-  const [confirmingPay, setConfirmingPay] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [adjKind, setAdjKind] = useState<"ADDITION" | "DEDUCTION">("ADDITION");
+  const [adjAmount, setAdjAmount] = useState("");
+  const [adjReason, setAdjReason] = useState("");
+  const [adjNotice, setAdjNotice] = useState<string | null>(null);
 
   function pay() {
-    const amount = Number(payAmount);
-    if (!amount || amount <= 0) return;
-    if (existingRunForMonth && !confirmingPay) {
-      setConfirmingPay(true);
-      return;
-    }
-    setConfirmingPay(false);
+    setPayError(null);
     startTransition(async () => {
-      await runPayroll(staff.id, currentMonth, amount);
-      setPayAmount("");
+      try {
+        const res = await runPayroll(staff.id, currentMonth, Number(payAmount));
+        if (res.error) setPayError(res.error);
+        else setPayAmount("");
+      } catch (e) {
+        setPayError(friendlyError(e, "Payroll wasn't run. Please try again."));
+      }
+    });
+  }
+
+  function addAdjustment() {
+    setPayError(null);
+    setAdjNotice(null);
+    startTransition(async () => {
+      try {
+        const res = await addPayrollAdjustment(staff.id, currentMonth, adjKind, Number(adjAmount), adjReason);
+        if (res.error) setPayError(res.error);
+        else {
+          setAdjAmount("");
+          setAdjReason("");
+          setAdjNotice("Adjustment saved and added to Accounts.");
+        }
+      } catch (e) {
+        setPayError(friendlyError(e, "The adjustment wasn't saved. Please try again."));
+      }
     });
   }
 
@@ -389,43 +418,41 @@ export default function StaffDetailTabs({
         {tab === "Payroll" && (
           <>
             <SectionTitle>Run payroll — {currentMonth}</SectionTitle>
-            {isAdmin && (
+            {isAdmin && !existingRunForMonth && (
               <div style={{ marginBottom: 18 }}>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    className="in mono"
-                    type="number"
-                    placeholder="Amount"
-                    value={payAmount}
-                    onChange={(e) => {
-                      setPayAmount(e.target.value);
-                      setConfirmingPay(false);
-                    }}
-                    style={{ flex: 1 }}
-                  />
+                  <input className="in mono" type="number" min={1} step="0.01" placeholder="Net salary amount (₹)" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} style={{ flex: 1 }} />
                   <button onClick={pay} disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "0 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                    {existingRunForMonth ? "Update payslip" : "Pay"}
+                    Pay
                   </button>
                 </div>
-                {confirmingPay && existingRunForMonth && (
-                  <div style={{ marginTop: 8, background: "var(--warn-tint)", border: "1px solid var(--warn)", borderRadius: 8, padding: "10px 12px", fontSize: 12.5 }}>
-                    This replaces the {currentMonth} payslip (currently ₹{existingRunForMonth.amount.toLocaleString("en-IN")}) and its linked Accounts entry with ₹{(Number(payAmount) || 0).toLocaleString("en-IN")}.{" "}
-                    <span onClick={pay} style={{ fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
-                      Confirm update
-                    </span>{" "}
-                    ·{" "}
-                    <span onClick={() => setConfirmingPay(false)} style={{ fontWeight: 700, cursor: "pointer" }}>
-                      Cancel
-                    </span>
-                  </div>
-                )}
               </div>
             )}
+            {isAdmin && existingRunForMonth && (
+              <div style={{ marginBottom: 18, background: "var(--paper)", borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 12.5 }}>
+                  Payroll for {currentMonth} has been run ({formatINR(existingRunForMonth.amount)}). Payroll runs once a month — to correct it, add an adjustment:
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <select className="in" value={adjKind} onChange={(e) => setAdjKind(e.target.value as "ADDITION" | "DEDUCTION")} style={{ width: "auto", fontSize: 12 }}>
+                    <option value="ADDITION">Add to pay</option>
+                    <option value="DEDUCTION">Deduct / recover</option>
+                  </select>
+                  <input className="in mono" type="number" min={1} step="0.01" placeholder="Amount (₹)" value={adjAmount} onChange={(e) => setAdjAmount(e.target.value)} style={{ width: 120, fontSize: 12 }} />
+                  <input className="in" placeholder="Reason, e.g. Arrears for August" value={adjReason} onChange={(e) => setAdjReason(e.target.value)} style={{ flex: 1, minWidth: 160, fontSize: 12 }} />
+                  <button onClick={addAdjustment} disabled={pending} style={{ background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 8, padding: "0 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+                    Add adjustment
+                  </button>
+                </div>
+                {adjNotice && <div style={{ fontSize: 12, fontWeight: 600, color: "var(--good)" }}>{adjNotice}</div>}
+              </div>
+            )}
+            {payError && <div role="alert" style={{ margin: "-8px 0 14px", fontSize: 12.5, fontWeight: 600, color: "var(--critical)" }}>{payError}</div>}
             {latestPay && (
               <div style={{ background: "var(--good-tint)", borderRadius: 8, padding: "12px 14px", margin: "0 0 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "var(--good)" }}>Latest — {latestPay.month}</span>
                 <span className="mono" style={{ fontSize: 19, fontWeight: 700, color: "var(--good)" }}>
-                  ₹{latestPay.amount.toLocaleString("en-IN")}
+                  {formatINR(latestPay.amount)}
                 </span>
               </div>
             )}
@@ -440,7 +467,7 @@ export default function StaffDetailTabs({
                       <div key={c.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
                         <span>{c.name}</span>
                         <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                          <span className="mono">₹{c.amount.toLocaleString("en-IN")}</span>
+                          <span className="mono">{formatINR(c.amount)}</span>
                           {isAdmin && (
                             <span onClick={() => startTransition(() => removeSalaryComponent(c.id))} style={{ color: "var(--critical)", cursor: "pointer", fontWeight: 700 }}>
                               ×
@@ -451,7 +478,7 @@ export default function StaffDetailTabs({
                     ))}
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, fontWeight: 700, borderTop: "1px solid var(--line)", paddingTop: 6 }}>
                       <span>Gross</span>
-                      <span className="mono">₹{salaryComponents.reduce((s, c) => s + c.amount, 0).toLocaleString("en-IN")}</span>
+                      <span className="mono">{formatINR(salaryComponents.reduce((s, c) => s + c.amount, 0))}</span>
                     </div>
                   </div>
                 )}
@@ -464,40 +491,26 @@ export default function StaffDetailTabs({
                     </button>
                   </div>
                 )}
-                {isAdmin && salaryComponents.length > 0 && (
-                  <>
-                    <button
-                      onClick={runStructured}
-                      disabled={pending}
-                      style={{ background: "var(--teal)", color: "#fff", border: "none", borderRadius: 8, padding: 10, textAlign: "center", fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%", marginBottom: confirmingStructuredRun ? 8 : 14 }}
-                    >
-                      {existingRunForMonth ? `Update structured payslip — ${currentMonth}` : `Run structured payroll — ${currentMonth}`}
-                    </button>
-                    {confirmingStructuredRun && (
-                      <div style={{ marginBottom: 14, background: "var(--warn-tint)", border: "1px solid var(--warn)", borderRadius: 8, padding: "10px 12px", fontSize: 12.5 }}>
-                        This replaces the {currentMonth} payslip and its linked Accounts entry.{" "}
-                        <span onClick={runStructured} style={{ fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
-                          Confirm update
-                        </span>{" "}
-                        ·{" "}
-                        <span onClick={() => setConfirmingStructuredRun(false)} style={{ fontWeight: 700, cursor: "pointer" }}>
-                          Cancel
-                        </span>
-                      </div>
-                    )}
-                  </>
+                {isAdmin && salaryComponents.length > 0 && !existingRunForMonth && (
+                  <button
+                    onClick={runStructured}
+                    disabled={pending}
+                    style={{ background: "var(--teal)", color: "#fff", border: "none", borderRadius: 8, padding: 10, textAlign: "center", fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%", marginBottom: 14 }}
+                  >
+                    Run structured payroll — {currentMonth}
+                  </button>
                 )}
                 {structuredResult && (
                   <div style={{ background: "var(--paper)", borderRadius: 8, padding: 12, marginBottom: 18, fontSize: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}><span>Gross</span><span className="mono">₹{structuredResult.gross.toLocaleString("en-IN")}</span></div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>PF</span><span className="mono">−₹{structuredResult.pf.toLocaleString("en-IN")}</span></div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>ESI</span><span className="mono">−₹{structuredResult.esi.toLocaleString("en-IN")}</span></div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>TDS</span><span className="mono">−₹{structuredResult.tds.toLocaleString("en-IN")}</span></div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>Professional Tax</span><span className="mono">−₹{structuredResult.pt.toLocaleString("en-IN")}</span></div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}><span>Gross</span><span className="mono">{formatINR(structuredResult.gross)}</span></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>PF</span><span className="mono">−{formatINR(structuredResult.pf)}</span></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>ESI</span><span className="mono">−{formatINR(structuredResult.esi)}</span></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>TDS</span><span className="mono">−{formatINR(structuredResult.tds)}</span></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>Professional Tax</span><span className="mono">−{formatINR(structuredResult.pt)}</span></div>
                     {structuredResult.lop > 0 && (
-                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>Loss of Pay</span><span className="mono">−₹{Math.round(structuredResult.lop).toLocaleString("en-IN")}</span></div>
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--critical)" }}><span>Loss of Pay</span><span className="mono">−{formatINR(Math.round(structuredResult.lop))}</span></div>
                     )}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 4 }}><span>Net pay</span><span className="mono">₹{Math.round(structuredResult.net).toLocaleString("en-IN")}</span></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 4 }}><span>Net pay</span><span className="mono">{formatINR(Math.round(structuredResult.net))}</span></div>
                   </div>
                 )}
               </>
@@ -512,17 +525,22 @@ export default function StaffDetailTabs({
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{p.month}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span className="mono" style={{ fontSize: 12.5, color: "var(--muted)" }}>
-                        ₹{p.amount.toLocaleString("en-IN")}
+                        {formatINR(p.amount)}
                       </span>
                       <span className="pill" style={{ background: p.status === "PAID" ? "var(--good-tint)" : "var(--warn-tint)", color: p.status === "PAID" ? "var(--good)" : "var(--warn)" }}>
                         {p.status === "PAID" ? "Paid" : "Pending"}
                       </span>
                     </div>
                   </div>
+                  {p.adjustments.map((a) => (
+                    <div key={a.id} style={{ fontSize: 11.5, color: a.kind === "ADDITION" ? "var(--ink2)" : "var(--critical)", marginTop: 3 }}>
+                      {a.kind === "ADDITION" ? "+" : "−"} {formatINR(a.amount)} adjustment · {a.reason}
+                    </div>
+                  ))}
                   {p.grossAmount != null && (
                     <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 2 }}>
-                      Gross ₹{p.grossAmount.toLocaleString("en-IN")} · PF ₹{(p.pfAmount ?? 0).toLocaleString("en-IN")} · ESI ₹{(p.esiAmount ?? 0).toLocaleString("en-IN")} · TDS ₹{(p.tdsAmount ?? 0).toLocaleString("en-IN")} · PT ₹{(p.ptAmount ?? 0).toLocaleString("en-IN")}
-                      {p.lopAmount != null && p.lopAmount > 0 && ` · LOP ₹${Math.round(p.lopAmount).toLocaleString("en-IN")}`}
+                      Gross {formatINR(p.grossAmount)} · PF {formatINR((p.pfAmount ?? 0))} · ESI {formatINR((p.esiAmount ?? 0))} · TDS {formatINR((p.tdsAmount ?? 0))} · PT {formatINR((p.ptAmount ?? 0))}
+                      {p.lopAmount != null && p.lopAmount > 0 && ` · LOP ${formatINR(Math.round(p.lopAmount))}`}
                     </div>
                   )}
                 </div>

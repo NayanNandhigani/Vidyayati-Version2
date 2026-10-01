@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { parseMoney } from "./validation";
 
 // How server actions report problems to the person using the form.
 //
@@ -51,4 +52,20 @@ export async function runAction<R>(fn: () => Promise<R>, context?: string): Prom
   } catch (err) {
     return toActionError(err, context);
   }
+}
+
+/** Server-side money guard for actions wrapped in runAction(): returns the amount, or throws a UserError saying why it was refused (negative, not a number, …). */
+export function requireMoney(value: unknown, label: string, opts: { required?: boolean; allowZero?: boolean } = {}): number | null {
+  const parsed = parseMoney(value as string | number | null | undefined, label, opts);
+  if (parsed.error) throw new UserError(parsed.error);
+  return parsed.value ?? null;
+}
+
+/** A percentage between 0 and 100 (or null when empty and optional). */
+export function requirePercent(value: number | null | undefined, label: string): number | null {
+  if (value == null || (typeof value === "number" && Number.isNaN(value))) return null;
+  if (!Number.isFinite(value)) throw new UserError(`${label} must be a number.`);
+  if (value < 0) throw new UserError(`${label} can't be negative.`);
+  if (value > 100) throw new UserError(`${label} can't be more than 100%.`);
+  return value;
 }

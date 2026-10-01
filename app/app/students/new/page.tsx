@@ -1,6 +1,7 @@
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
 import NewStudentForm from "./NewStudentForm";
+import { todayIST } from "@/lib/ist";
 
 export default async function NewStudentPage() {
   // Module-level VIEW is enough to reach this page at all — a staffer with
@@ -19,8 +20,12 @@ export default async function NewStudentPage() {
         Add Student
       </div>
       <p style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 0, marginBottom: 22 }}>Enrol a new student into a class.</p>
-      <div className="card" style={{ padding: 24, maxWidth: 520 }}>
-        <NewStudentForm classes={classes} />
+      <div className="card" style={{ padding: 24, maxWidth: 700 }}>
+        {classes.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13.5, color: "var(--muted)" }}>Add a class first (Academic Management → Classes &amp; Sections), then you can enrol students into it.</p>
+        ) : (
+          <NewStudentForm classes={classes.map((c) => ({ id: c.id, grade: c.grade, section: c.section }))} today={todayIST()} />
+        )}
       </div>
     </div>
   );

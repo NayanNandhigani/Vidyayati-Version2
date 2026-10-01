@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import { convertToSchool, type FormState } from "./actions";
 import ContactPersonFields from "@/components/ContactPersonFields";
@@ -8,11 +9,12 @@ const initialState: FormState = {};
 
 export default function ConvertLeadForm({ leadId, plans }: { leadId: string; plans: { id: string; name: string; price: number }[] }) {
   const [state, formAction, pending] = useActionState(convertToSchool, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
     <div style={{ background: "var(--good-tint)", border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
       <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--good)", marginBottom: 10 }}>Convert to School</div>
-      <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <input type="hidden" name="leadId" value={leadId} />
         <label className="field">
           School Admin name

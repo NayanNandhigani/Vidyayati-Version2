@@ -2,8 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Gender, StudentStatus } from "@prisma/client";
-import { updateStudentProfile, changeStudentStatus, transferStudentSection, deleteStudent, type StudentProfileFields } from "../actions";
+import type { StudentStatus } from "@prisma/client";
+import { updateStudentProfile, changeStudentStatus, transferStudentSection, deleteStudent } from "../actions";
+import StudentDetailsFields from "@/components/students/StudentDetailsFields";
+import type { StudentDetails, StudentDetailErrors } from "@/lib/student-fields";
+import { friendlyError } from "@/lib/friendly-error";
 
 type ClassOption = { id: string; grade: string; section: string };
 
@@ -17,13 +20,19 @@ const STATUS_OPTIONS: { value: StudentStatus; label: string }[] = [
 export default function StudentActionsPanel({
   studentId,
   fields: initialFields,
+  aadhaarOnFile,
+  grade,
+  today,
   status,
   transferOutDate,
   currentClassId,
   classes,
 }: {
   studentId: string;
-  fields: StudentProfileFields;
+  fields: StudentDetails;
+  aadhaarOnFile: string | null; // masked
+  grade: string;
+  today: string;
   status: StudentStatus;
   transferOutDate: string | null;
   currentClassId: string;
@@ -32,7 +41,8 @@ export default function StudentActionsPanel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [mode, setMode] = useState<"none" | "edit" | "status" | "transfer">("none");
-  const [fields, setFields] = useState<StudentProfileFields>(initialFields);
+  const [fields, setFields] = useState<StudentDetails>(initialFields);
+  const [fieldErrors, setFieldErrors] = useState<StudentDetailErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -43,18 +53,22 @@ export default function StudentActionsPanel({
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  function set<K extends keyof StudentProfileFields>(key: K, value: StudentProfileFields[K]) {
-    setFields((f) => ({ ...f, [key]: value }));
-  }
-
   function saveProfile() {
     startTransition(async () => {
-      const res = await updateStudentProfile(studentId, fields);
-      if (res.error) setError(res.error);
-      else {
-        setError(null);
-        setMode("none");
-        router.refresh();
+      try {
+        const res = await updateStudentProfile(studentId, fields);
+        if (res.error) {
+          setError(res.error);
+          setFieldErrors(res.fieldErrors ?? {});
+        } else {
+          setError(null);
+          setFieldErrors({});
+          setFields((f) => ({ ...f, aadhaarNumber: "" }));
+          setMode("none");
+          router.refresh();
+        }
+      } catch (e) {
+        setError(friendlyError(e, "The changes weren't saved. Please try again."));
       }
     });
   }
@@ -122,45 +136,7 @@ export default function StudentActionsPanel({
 
       {mode === "edit" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <label className="field">
-              First name
-              <input className="in" value={fields.firstName} onChange={(e) => set("firstName", e.target.value)} style={{ fontSize: 12 }} />
-            </label>
-            <label className="field">
-              Surname
-              <input className="in" value={fields.surname} onChange={(e) => set("surname", e.target.value)} style={{ fontSize: 12 }} />
-            </label>
-            <label className="field">
-              Date of birth
-              <input className="in mono" type="date" value={fields.dob ?? ""} onChange={(e) => set("dob", e.target.value || null)} style={{ fontSize: 12 }} />
-            </label>
-            <label className="field">
-              Gender
-              <select className="in" value={fields.gender ?? ""} onChange={(e) => set("gender", (e.target.value || null) as Gender | null)} style={{ fontSize: 12 }}>
-                <option value="">—</option>
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </label>
-            <label className="field">
-              Roll number
-              <input className="in mono" value={fields.rollNumber ?? ""} onChange={(e) => set("rollNumber", e.target.value || null)} style={{ fontSize: 12 }} />
-            </label>
-            <label className="field">
-              Blood group
-              <input className="in" value={fields.bloodGroup ?? ""} onChange={(e) => set("bloodGroup", e.target.value || null)} style={{ fontSize: 12 }} />
-            </label>
-          </div>
-          <label className="field">
-            Address
-            <textarea className="in" rows={2} value={fields.address ?? ""} onChange={(e) => set("address", e.target.value || null)} style={{ fontSize: 12 }} />
-          </label>
-          <label className="field">
-            Medical notes
-            <textarea className="in" rows={2} value={fields.medicalNotes ?? ""} onChange={(e) => set("medicalNotes", e.target.value || null)} style={{ fontSize: 12 }} />
-          </label>
+          <StudentDetailsFields value={fields} onChange={setFields} errors={fieldErrors} today={today} grade={grade} aadhaarOnFile={aadhaarOnFile} compact />
           <div>
             <button type="button" onClick={saveProfile} disabled={pending} style={{ fontSize: 12, fontWeight: 700, background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 6, padding: "7px 14px", cursor: "pointer" }}>
               {pending ? "Saving…" : "Save profile"}

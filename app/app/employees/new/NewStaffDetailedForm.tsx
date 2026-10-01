@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { createStaffDetailed } from "../detailed-profile-actions";
@@ -25,6 +26,7 @@ function Row({ children }: { children: React.ReactNode }) {
 
 export default function NewStaffDetailedForm({ staff }: { staff: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState(createStaffDetailed, initialState);
+  const keep = useKeepFormValues(state);
   const [staffType, setStaffType] = useState<"teaching" | "nonTeaching">("teaching");
   const employeeIdRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
@@ -37,7 +39,7 @@ export default function NewStaffDetailedForm({ staff }: { staff: { id: string; n
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <input type="hidden" name="staffCategory" value={staffType === "teaching" ? "TEACHING" : "NON_TEACHING"} />
       <div style={{ display: "flex", gap: 8 }}>
         <span

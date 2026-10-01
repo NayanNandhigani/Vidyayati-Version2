@@ -10,7 +10,10 @@ import { auth } from "@/auth";
 import { createPendingAccount } from "@/lib/account-setup";
 import { setSetupTokenFlash } from "@/lib/setup-token-flash";
 import { resetPasswordToDefault } from "@/lib/account-reset";
-import { validatePhone, validateOptionalPhone } from "@/lib/validation";
+import { validatePhone, validateOptionalPhone, normalizeIndianMobile, parseMoney } from "@/lib/validation";
+import { runAction, UserError } from "@/lib/action-result";
+import { formatINR } from "@/lib/format";
+import { todayISTDate } from "@/lib/ist";
 
 export type StaffFormState = { error?: string };
 
@@ -52,7 +55,7 @@ export async function createStaff(_prevState: StaffFormState, formData: FormData
     data: scopedCreateData<Prisma.UserUncheckedCreateInput>({
       name: name.trim(),
       username: normalizedUsername,
-      phone: typeof phone === "string" && phone ? phone : null,
+      phone: typeof phone === "string" && phone ? normalizeIndianMobile(phone) : null,
       role: "STAFF",
       passwordHash: placeholderHash,
       setupTokenHash,
@@ -123,44 +126,101 @@ export async function removeClassPermission(staffId: string, moduleName: string,
   revalidatePath(`/app/employees/${staffId}`);
 }
 
-export async function runPayroll(staffId: string, month: string, amount: number) {
+/** "2026-09" → "September 2026" */
+function monthLabel(month: string): string {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+/**
+ * Pays an employee for a month. Payroll runs once per employee per month
+ * (also enforced by payroll_runs' UNIQUE (staff_id, month)); a correction
+ * afterwards is a payroll adjustment, never a second run, so the Accounts
+ * ledger can't end up with two salary entries for one month.
+ */
+export async function runPayroll(staffId: string, month: string, amountRaw: number): Promise<{ error?: string; runId?: string }> {
   await requireModuleAccess("Employees", "EDIT");
-  const sdb = await getScopedDb();
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { error: "Pick a valid month." };
+  const amount = parseMoney(amountRaw, "Salary amount", { required: true, allowZero: false });
+  if (amount.error) return { error: amount.error };
 
-  const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, include: { user: true } });
-
-  // One payroll run per staff/month (enforced by the staffId_month unique
-  // constraint) — a re-run for the same month EDITS this same run and its
-  // linked Accounts row (matched by payrollRunId, also unique) instead of
-  // creating a second ledger entry. Interactive transaction because the
-  // Accounts upsert needs the run's id, which only exists after the first
-  // write.
-  const run = await sdb.$transaction(async (tx) => {
-    const run = await tx.payrollRun.upsert({
-      where: { staffId_month: { staffId, month } },
-      update: { amount, status: "PAID", paidOn: new Date() },
-      create: scopedCreateData<Prisma.PayrollRunUncheckedCreateInput>({ staffId, month, amount, status: "PAID", paidOn: new Date() }),
+  const result = await runAction(async () => {
+    const sdb = await getScopedDb();
+    const staff = await sdb.staffProfile.findUnique({ where: { id: staffId }, include: { user: true } });
+    if (!staff) throw new UserError("This employee no longer exists. Please refresh the page.");
+    const existing = await sdb.payrollRun.findUnique({ where: { staffId_month: { staffId, month } } });
+    if (existing) {
+      throw new UserError(`Payroll for ${monthLabel(month)} has already been run for ${staff.user.name} (${formatINR(existing.amount)}). To correct it, add an adjustment instead of running payroll again.`);
+    }
+    const run = await sdb.$transaction(async (tx) => {
+      const run = await tx.payrollRun.create({
+        data: scopedCreateData<Prisma.PayrollRunUncheckedCreateInput>({ staffId, month, amount: amount.value!, status: "PAID", paidOn: new Date() }),
+      });
+      await tx.accountsTransaction.create({
+        data: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
+          date: todayISTDate(),
+          description: `Staff salary — ${staff.user.name} (${monthLabel(month)})`,
+          category: "Payroll",
+          source: "AUTO_PAYROLL",
+          type: "EXPENSE",
+          amount: amount.value!,
+          payrollRunId: run.id,
+        }),
+      });
+      return run;
     });
-    await tx.accountsTransaction.upsert({
-      where: { payrollRunId: run.id },
-      update: { date: new Date(), description: `Staff salary — ${staff.user.name} (${month})`, amount },
-      create: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
-        date: new Date(),
-        description: `Staff salary — ${staff.user.name} (${month})`,
-        category: "Payroll",
-        source: "AUTO_PAYROLL",
-        type: "EXPENSE",
-        amount,
-        payrollRunId: run.id,
-      }),
-    });
-    return run;
-  });
+    return { runId: run.id };
+  }, "runPayroll");
+  if (result.ok !== true) return { error: result.error };
 
   revalidatePath(`/app/employees/${staffId}`);
   revalidatePath("/app/accounts");
   revalidatePath("/app/dashboard");
-  return { runId: run.id };
+  return { runId: result.runId };
+}
+
+/**
+ * Corrects a month's pay after payroll has run: an addition (paid more) is
+ * an extra expense; a deduction (recovered an overpayment) is income. Each
+ * gets its own Accounts entry linked to the adjustment.
+ */
+export async function addPayrollAdjustment(staffId: string, month: string, kind: "ADDITION" | "DEDUCTION", amountRaw: number, reasonRaw: string): Promise<{ error?: string }> {
+  await requireModuleAccess("Employees", "EDIT");
+  const amount = parseMoney(amountRaw, "Adjustment amount", { required: true, allowZero: false });
+  if (amount.error) return { error: amount.error };
+  const reason = (reasonRaw ?? "").trim();
+  if (!reason) return { error: "Give a reason for the adjustment, e.g. \"Arrears for August\"." };
+  if (kind !== "ADDITION" && kind !== "DEDUCTION") return { error: "Choose whether this adds to or deducts from the pay." };
+
+  const result = await runAction(async () => {
+    const sdb = await getScopedDb();
+    const session = await auth();
+    const run = await sdb.payrollRun.findUnique({ where: { staffId_month: { staffId, month } }, include: { staff: { include: { user: true } } } });
+    if (!run) throw new UserError(`Payroll hasn't been run for ${monthLabel(month)} yet. Run payroll first; adjustments correct a run that already exists.`);
+    await sdb.$transaction(async (tx) => {
+      const adj = await tx.payrollAdjustment.create({
+        data: scopedCreateData<Prisma.PayrollAdjustmentUncheckedCreateInput>({ payrollRunId: run.id, kind, amount: amount.value!, reason, createdByUserId: session!.user.id }),
+      });
+      await tx.accountsTransaction.create({
+        data: scopedCreateData<Prisma.AccountsTransactionUncheckedCreateInput>({
+          date: todayISTDate(),
+          description: `Salary ${kind === "ADDITION" ? "adjustment" : "recovery"} — ${run.staff.user.name} (${monthLabel(month)}): ${reason}`,
+          category: "Payroll",
+          source: "AUTO_PAYROLL",
+          type: kind === "ADDITION" ? "EXPENSE" : "INCOME",
+          amount: amount.value!,
+          payrollAdjustmentId: adj.id,
+        }),
+      });
+    });
+    return {};
+  }, "addPayrollAdjustment");
+  if (result.ok !== true) return { error: result.error };
+
+  revalidatePath(`/app/employees/${staffId}`);
+  revalidatePath("/app/accounts");
+  revalidatePath("/app/dashboard");
+  return {};
 }
 
 export type StaffCoreFields = {
@@ -183,7 +243,7 @@ export async function updateStaffCore(staffId: string, fields: StaffCoreFields):
   const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
 
   await sdb.$transaction([
-    sdb.user.update({ where: { id: staff.userId }, data: { name: fields.name.trim(), phone: fields.phone.trim() } }),
+    sdb.user.update({ where: { id: staff.userId }, data: { name: fields.name.trim(), phone: normalizeIndianMobile(fields.phone) } }),
     sdb.staffProfile.update({
       where: { id: staffId },
       data: {

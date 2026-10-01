@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
 import { formatINR } from "@/lib/format";
@@ -34,6 +35,7 @@ export default function ContractDetail({ contract, canManage }: { contract: Cont
   const [pending, startTransition] = useTransition();
   const [showSignForm, setShowSignForm] = useState(false);
   const [signState, signAction, signPending] = useActionState(markContractSigned, signInitial);
+  const keep = useKeepFormValues(signState);
   const style = STATUS_STYLE[status];
 
   function send() {
@@ -96,7 +98,7 @@ export default function ContractDetail({ contract, canManage }: { contract: Cont
                 Record signature
               </button>
             ) : (
-              <form action={signAction} style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+              <form ref={keep.ref} onSubmit={keep.capture} action={signAction} style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                 <input type="hidden" name="contractId" value={contract.id} />
                 <label className="field">
                   Signed by

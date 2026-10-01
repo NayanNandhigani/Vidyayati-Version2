@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createHomework, type HomeworkFormState } from "../actions";
@@ -18,6 +19,7 @@ export default function NewHomeworkForm({
   staff: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState(createHomework, initialState);
+  const keep = useKeepFormValues(state);
   const [classId, setClassId] = useState("");
   const [staffId, setStaffId] = useState("");
 
@@ -31,7 +33,7 @@ export default function NewHomeworkForm({
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 480 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 480 }}>
       <label className="field">
         Title
         <input className="in" name="title" required placeholder="Chapter 4 — Algebra basics" />

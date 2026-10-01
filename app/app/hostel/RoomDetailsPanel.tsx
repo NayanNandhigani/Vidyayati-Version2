@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { friendlyError } from "@/lib/friendly-error";
 import { useActionState, useState, useTransition } from "react";
 import type { HostelFacilityType } from "@prisma/client";
@@ -10,9 +11,10 @@ const initialState: FormState = {};
 
 export function NewRoomInlineForm() {
   const [state, formAction, pending] = useActionState(createRoom, initialState);
+  const keep = useKeepFormValues(state);
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: 13.5, fontWeight: 700 }}>Add room</div>
       <label className="field">
         Room number / name

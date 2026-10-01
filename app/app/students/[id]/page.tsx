@@ -7,7 +7,8 @@ import { studentName } from "@/lib/format";
 import { feeStatusFor, FEE_STATUS_STYLE, gradeFor, gradeForScale } from "@/lib/academic";
 import { getSchoolFeatures } from "@/lib/feature-flags";
 import { attendancePercent } from "@/lib/attendance";
-import { todayISTDate, formatDateIST } from "@/lib/ist";
+import { todayISTDate, todayIST, formatDateIST, dateOnlyString } from "@/lib/ist";
+import { maskAadhaar } from "@/lib/indian";
 import { getSiblings } from "../depth-actions";
 import ProfileTabs from "./ProfileTabs";
 import StudentActionsPanel from "./StudentActionsPanel";
@@ -126,13 +127,30 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
           fields={{
             firstName: student.firstName,
             surname: student.surname,
-            dob: student.dob?.toISOString().slice(0, 10) ?? null,
-            gender: student.gender,
-            address: student.address,
-            bloodGroup: student.bloodGroup,
-            medicalNotes: student.medicalNotes,
-            rollNumber: enrollment?.rollNumber ?? null,
+            dob: student.dob ? dateOnlyString(student.dob) : "",
+            gender: student.gender ?? "",
+            fatherName: student.fatherName ?? "",
+            motherName: student.motherName ?? "",
+            guardianName: student.guardianName ?? "",
+            primaryMobile: student.primaryMobile ?? "",
+            email: student.email ?? "",
+            address: student.address ?? "",
+            state: student.state ?? "",
+            pinCode: student.pinCode ?? "",
+            aadhaarNumber: "", // never sent to the browser; blank keeps the saved number
+            apaarId: student.apaarId ?? "",
+            category: student.category ?? "",
+            religion: student.religion ?? "",
+            bloodGroup: student.bloodGroup ?? "",
+            previousSchoolName: student.previousSchoolName ?? "",
+            admissionDate: student.admissionDate ? dateOnlyString(student.admissionDate) : "",
+            rteQuota: student.rteQuota,
+            medicalNotes: student.medicalNotes ?? "",
+            rollNumber: enrollment?.rollNumber ?? "",
           }}
+          aadhaarOnFile={student.aadhaarNumber ? maskAadhaar(student.aadhaarNumber) : null}
+          grade={student.class.grade}
+          today={todayIST()}
           status={student.status}
           transferOutDate={student.transferOutDate?.toISOString().slice(0, 10) ?? null}
           currentClassId={student.classId}
@@ -171,6 +189,22 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
             : null,
           attendance: student.attendance.map((a) => ({ date: a.date, status: a.status })),
           feePayments: student.feePayments.map((p) => ({ amount: Number(p.amount), paidOn: p.paidOn })),
+          details: {
+            fatherName: student.fatherName,
+            motherName: student.motherName,
+            guardianName: student.guardianName,
+            primaryMobile: student.primaryMobile,
+            email: student.email,
+            address: [student.address, student.state, student.pinCode].filter(Boolean).join(", ") || null,
+            aadhaar: student.aadhaarNumber ? maskAadhaar(student.aadhaarNumber) : null,
+            apaarId: student.apaarId,
+            category: student.category,
+            religion: student.religion,
+            bloodGroup: student.bloodGroup,
+            previousSchoolName: student.previousSchoolName,
+            admissionDate: student.admissionDate,
+            rteQuota: student.rteQuota,
+          },
         }}
         attendancePct={attendancePct}
         attendanceTotals={attendanceTotals}
@@ -211,7 +245,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
                 caste: student.admissionEnquiry.caste,
                 religionCategory: student.admissionEnquiry.religionCategory,
                 motherTongue: student.admissionEnquiry.motherTongue,
-                studentAadhaarNumber: student.admissionEnquiry.studentAadhaarNumber,
+                studentAadhaarNumber: student.admissionEnquiry.studentAadhaarNumber ? maskAadhaar(student.admissionEnquiry.studentAadhaarNumber) : null,
                 fatherName: student.admissionEnquiry.fatherName,
                 motherName: student.admissionEnquiry.motherName,
                 guardianName: student.admissionEnquiry.guardianName,
@@ -221,7 +255,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
                 parentContact: student.admissionEnquiry.parentContact,
                 contactNumber2: student.admissionEnquiry.contactNumber2,
                 email: student.admissionEnquiry.email,
-                parentAadhaarNumber: student.admissionEnquiry.parentAadhaarNumber,
+                parentAadhaarNumber: student.admissionEnquiry.parentAadhaarNumber ? maskAadhaar(student.admissionEnquiry.parentAadhaarNumber) : null,
                 permanentAddress: student.admissionEnquiry.permanentAddress,
                 currentAddress: student.admissionEnquiry.currentAddress,
                 pincode: student.admissionEnquiry.pincode,

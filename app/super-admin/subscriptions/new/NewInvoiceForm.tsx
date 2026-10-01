@@ -1,5 +1,6 @@
 "use client";
 
+import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createInvoice, type InvoiceFormState } from "../actions";
@@ -8,6 +9,7 @@ const initialState: InvoiceFormState = {};
 
 export default function NewInvoiceForm({ schools, plans, defaultSchoolId }: { schools: { id: string; name: string }[]; plans: { id: string; name: string; price: number }[]; defaultSchoolId?: string }) {
   const [state, formAction, pending] = useActionState(createInvoice, initialState);
+  const keep = useKeepFormValues(state);
   const [planId, setPlanId] = useState("");
   const [amount, setAmount] = useState("");
 
@@ -19,7 +21,7 @@ export default function NewInvoiceForm({ schools, plans, defaultSchoolId }: { sc
   }
 
   return (
-    <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 440 }}>
+    <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 440 }}>
       <label className="field">
         School
         <select className="in" name="schoolId" required defaultValue={defaultSchoolId ?? ""}>

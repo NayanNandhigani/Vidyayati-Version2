@@ -10,7 +10,7 @@ import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
 import { createPendingAccount } from "@/lib/account-setup";
 import { setSetupTokenFlash } from "@/lib/setup-token-flash";
-import { validateOptionalPhone, validateDob } from "@/lib/validation";
+import { validateOptionalPhone, validateDob, normalizeIndianMobile } from "@/lib/validation";
 import type { StaffFormState } from "./actions";
 
 function str(formData: FormData, key: string): string | null {
@@ -29,6 +29,11 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
   const username = str(formData, "username");
   if (!name || !username) return { error: "Name and username are required." };
 
+  for (const [key, label] of [["mobileAlternate", "Alternate mobile"], ["emergencyContactPhone", "Emergency contact phone"]] as const) {
+    const value = str(formData, key);
+    const err = value ? validateOptionalPhone(value, label) : null;
+    if (err) return { error: err };
+  }
   const mobilePrimaryRaw = str(formData, "mobilePrimary");
   if (mobilePrimaryRaw) {
     const phoneErr = validateOptionalPhone(mobilePrimaryRaw);
@@ -59,7 +64,7 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
     data: scopedCreateData<Prisma.UserUncheckedCreateInput>({
       name,
       username: normalizedUsername,
-      phone: str(formData, "mobilePrimary"),
+      phone: phoneOrNull(str(formData, "mobilePrimary")),
       role: "STAFF",
       passwordHash: placeholderHash,
       setupTokenHash,
@@ -82,13 +87,13 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
       nationality: str(formData, "nationality"),
       aadhaarNumber: str(formData, "aadhaarNumber"),
       panNumber: str(formData, "panNumber"),
-      mobilePrimary: str(formData, "mobilePrimary"),
-      mobileAlternate: str(formData, "mobileAlternate"),
+      mobilePrimary: phoneOrNull(str(formData, "mobilePrimary")),
+      mobileAlternate: phoneOrNull(str(formData, "mobileAlternate")),
       personalEmail: str(formData, "personalEmail"),
       currentAddress: str(formData, "currentAddress"),
       permanentAddress: str(formData, "permanentAddress"),
       emergencyContactName: str(formData, "emergencyContactName"),
-      emergencyContactPhone: str(formData, "emergencyContactPhone"),
+      emergencyContactPhone: phoneOrNull(str(formData, "emergencyContactPhone")),
       employmentType: str(formData, "employmentType"),
       workLocation: str(formData, "workLocation"),
       reportingManagerId: str(formData, "reportingManagerId"),
@@ -155,15 +160,19 @@ export type DetailedProfileFields = {
   esiNumber: string | null;
 };
 
+function phoneOrNull(v: string | null | undefined): string | null {
+  return v ? normalizeIndianMobile(v) : null;
+}
+
 /** Editing the detailed profile after creation, from the staff detail view. */
 export async function updateStaffDetailedProfile(staffId: string, fields: DetailedProfileFields): Promise<{ error?: string }> {
   await requireModuleAccess("Employees", "EDIT");
   const session = await auth();
   await requireFeature(session!.user.schoolId, "employees.detailedProfile");
 
-  if (fields.mobilePrimary) {
-    const phoneErr = validateOptionalPhone(fields.mobilePrimary);
-    if (phoneErr) return { error: phoneErr };
+  for (const [value, label] of [[fields.mobilePrimary, "Mobile"], [fields.mobileAlternate, "Alternate mobile"], [fields.emergencyContactPhone, "Emergency contact phone"]] as const) {
+    const err = value ? validateOptionalPhone(value, label) : null;
+    if (err) return { error: err };
   }
   const dobErr = fields.dob ? validateDob(fields.dob, 18, 75, "Date of birth") : null;
   if (dobErr) return { error: dobErr };
@@ -173,6 +182,9 @@ export async function updateStaffDetailedProfile(staffId: string, fields: Detail
     where: { id: staffId },
     data: {
       ...fields,
+      mobilePrimary: phoneOrNull(fields.mobilePrimary),
+      mobileAlternate: phoneOrNull(fields.mobileAlternate),
+      emergencyContactPhone: phoneOrNull(fields.emergencyContactPhone),
       dob: fields.dob ? new Date(fields.dob) : null,
     },
   });
