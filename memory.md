@@ -568,3 +568,33 @@ term being refused. Logic now lives in lib/fee-instalments.ts
 (`applyFeePlan`, `regenerateInstalmentsForGrade`, `allocatePayment`,
 `splitProportionally`). The 22-scenario test script was not committed:
 it TRUNCATEs tables, so it must never run against a real DATABASE_URL.
+
+## 2026-10-01 — QA pass BUG-01..28 (branch main-branch-15kxi1)
+
+Five commits: P0 `1de9891`, P1 validation `d1febc5`, P1 results
+`57b9d04`, P2 `bd318de`, P3 `9fcf790`, plus the cleanup script
+`8a6e438`. Not merged to Main-branch yet; the user decides.
+
+Live crashes (BUG-01/02) were old production code running against a
+newer database schema. Production must deploy the current code;
+`scripts/migrate.sh` now skips migrations on Vercel previews.
+
+After deploying: `npm run recompute-exam-results`,
+`npm run dedupe-payroll-accounts -- --apply`, then
+`npm run qa-cleanup` (dry run) and `npm run qa-cleanup -- --apply`.
+New migrations (20261001000000..050000) only add columns or tidy data.
+
+Speed (BUG-28): live slowness is mostly distance and cold starts.
+There is no vercel.json, so functions run in Vercel's default region
+(US East). Put them in the same region as the Neon database, and use
+Neon's pooled connection string. Prisma `relationJoins` is on (preview
+feature); if a query ever misbehaves, that is the first thing to suspect.
+
+Dates: always use `formatIST` (lib/ist.ts) for display, never
+`toLocaleDateString` in client components (Node and Chromium format
+"en-IN" differently, which caused React hydration error #418).
+
+Deferred: phone layouts for Dashboard, Employees, Homework, Timetable,
+Fees, Transport, Hostel, Library, Inventory and Certificates (they
+scroll sideways at 390px; Accounts and Settings were fixed). Also the
+earlier on-hold list above.
