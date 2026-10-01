@@ -4,6 +4,10 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { studentName } from "@/lib/format";
 import { ReportCardDocument, type ReportCardStudent } from "@/lib/report-card-pdf";
+import { calculateExamResults } from "@/lib/domain/exam-results";
+import { resultLabel } from "@/lib/exam-rules";
+
+const EXAM_RULES_SINCE = new Date("2026-10-01T00:00:00Z");
 
 /**
  * GET /api/exams/[examId]/report-card/pdf            — every student in the exam's class
@@ -45,7 +49,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
   // lib/domain/exam-results.ts) rather than being re-derived here, so a
   // student with nothing entered shows "—" instead of silently scoring 0
   // — this used to be a third independent (and buggy) copy of that logic.
-  const results = await sdb.studentResult.findMany({ where: { examId } });
+  let results = await sdb.studentResult.findMany({ where: { examId } });
+  if (results.some((r) => r.computedAt < EXAM_RULES_SINCE)) {
+    await calculateExamResults(examId);
+    results = await sdb.studentResult.findMany({ where: { examId } });
+  }
+  const failLabel = exam.school.examFailLabel;
   const resultByStudent = new Map(results.map((r) => [r.studentId, r]));
   const outOf = results.length;
 
@@ -67,6 +76,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
       pct: result ? Number(result.percentage) : null,
       grade: result?.grade ?? null,
       resultStatus: result?.resultStatus ?? null,
+      resultLabel: result ? resultLabel(result.resultStatus !== "FAIL", failLabel) : null,
+      note: result ? null : map.size > 0 ? `Incomplete: ${map.size} of ${examSubjects.length} subjects entered` : "Marks not entered yet",
       rank: result?.rank ?? null,
       outOf,
     };

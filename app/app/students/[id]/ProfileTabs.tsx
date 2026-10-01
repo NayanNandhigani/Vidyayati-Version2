@@ -44,7 +44,7 @@ type StudentDetail = {
   };
 };
 
-type ExamResult = { examName: string; date: Date; obtained: number; max: number };
+type ExamResult = { examName: string; date: Date; total: number | null; max: number | null; pct: number | null; grade: string | null; result: string | null; rank: number | null; status: string | null };
 
 type Props = {
   student: StudentDetail;
@@ -258,35 +258,41 @@ export default function ProfileTabs({
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
               <StatBox label="Latest score" value={latestExamPct === null ? "—" : `${latestExamPct}%`} color="var(--teal)" />
               <StatBox label="Latest grade" value={latestExamGrade ?? "—"} />
-              <StatBox label="Exams recorded" value={examResults.length} />
+              <StatBox label="Exams recorded" value={examResults.filter((e) => e.pct !== null).length} />
             </div>
             <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 9 }}>Recent exams</div>
             {examResults.length === 0 ? (
               <div style={{ color: "var(--muted)", fontSize: 13, padding: "16px 0" }}>No exam results recorded yet.</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {examResults.map((e) => {
-                  const pct = Math.round((e.obtained / e.max) * 100);
-                  const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B+" : pct >= 60 ? "B" : pct >= 50 ? "C" : "D";
-                  return (
-                    <div key={e.examName + e.date.toISOString()} style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.6fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
-                      <div>
-                        <div style={{ fontSize: 12.5, fontWeight: 600 }}>{e.examName}</div>
-                        <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 1 }}>{e.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                {examResults.map((e) => (
+                  <div key={e.examName + e.date.toISOString()} style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.6fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600 }}>{e.examName}</div>
+                      <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 1 }}>
+                        {formatDateIST(e.date)}
+                        {e.result && ` · ${e.result}`}
+                        {e.rank != null && ` · Rank ${e.rank}`}
                       </div>
-                      <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, textAlign: "right" }}>
-                        {e.obtained}
-                        <span style={{ color: "var(--faint)", fontWeight: 500 }}> / {e.max}</span>
-                      </div>
-                      <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, textAlign: "right", color: gradeColor(grade) }}>
-                        {pct}%
-                      </div>
-                      <span className="pill" style={{ background: "var(--paper)", color: gradeColor(grade), border: "1px solid var(--line)" }}>
-                        {grade}
-                      </span>
                     </div>
-                  );
-                })}
+                    {e.pct === null ? (
+                      <div style={{ gridColumn: "2 / span 3", fontSize: 12, color: "var(--muted)", textAlign: "right" }}>{e.status}</div>
+                    ) : (
+                      <>
+                        <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, textAlign: "right" }}>
+                          {e.total}
+                          <span style={{ color: "var(--faint)", fontWeight: 500 }}> / {e.max}</span>
+                        </div>
+                        <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, textAlign: "right", color: gradeColor(e.grade!) }}>
+                          {Math.round(e.pct)}%
+                        </div>
+                        <span className="pill" style={{ background: "var(--paper)", color: gradeColor(e.grade!), border: "1px solid var(--line)" }}>
+                          {e.grade}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </>

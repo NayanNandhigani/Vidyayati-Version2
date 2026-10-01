@@ -1,30 +1,21 @@
+import { gradeForBands, type GradeBand as ScaleBand } from "./grade-scales";
+
+/** Grade on the built-in default scale (Simple A+ to E) — for screens with no year scale to hand. */
 export function gradeFor(pct: number): string {
-  if (pct >= 90) return "A+";
-  if (pct >= 80) return "A";
-  if (pct >= 70) return "B+";
-  if (pct >= 60) return "B";
-  if (pct >= 50) return "C";
-  return "D";
+  return gradeForBands(pct, []);
 }
 
 export function gradeColor(grade: string): string {
-  if (grade === "A+" || grade === "A") return "var(--good)";
-  if (grade === "B+" || grade === "B") return "var(--warn)";
+  if (/^(A\+?|A1|A2)$/.test(grade)) return "var(--good)";
+  if (/^(B\+?|B1|B2|C|C1|C2)$/.test(grade)) return "var(--warn)";
   return "var(--critical)";
 }
 
-export type GradeBand = { label: string; minPercent: number; maxPercent: number };
+export type GradeBand = ScaleBand;
 
-/**
- * Maps a percentage to a school's configured GradeScale, if it has one —
- * pure function, no storage (grade is never denormalized onto Mark). Returns
- * null when no band's range contains pct, so callers fall back to gradeFor()
- * for schools that haven't configured a scale, e.g. `gradeForScale(pct,
- * bands) ?? gradeFor(pct)`.
- */
+/** Grade from a school's own scale, matched by lower bound (see lib/grade-scales.ts); null when the school has no scale. */
 export function gradeForScale(pct: number, bands: GradeBand[]): string | null {
-  const band = bands.find((b) => pct >= b.minPercent && pct <= b.maxPercent);
-  return band?.label ?? null;
+  return bands.length > 0 ? gradeForBands(pct, bands) : null;
 }
 
 export type FeeStatus = "PAID" | "PENDING" | "OVERDUE" | "NONE";

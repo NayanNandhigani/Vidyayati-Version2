@@ -53,6 +53,7 @@ enum SalesStage {
 model School {
   id                  String       @id @default(cuid())
   code                String       @unique
+  examFailLabel String? @map("exam_fail_label") // overall result shown when a subject is failed; null = "Needs improvement" (lib/exam-rules.ts)
   name                String
   city                String?
   state               String?

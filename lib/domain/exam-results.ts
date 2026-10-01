@@ -1,102 +1,67 @@
 import { Prisma } from "@prisma/client";
-import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
-import { gradeFor, gradeForScale } from "@/lib/academic";
+import { getScopedDb, scopedCreateData, type ScopedDb } from "@/lib/tenant-db";
+import { competitionRanks, evaluateStudent, gradeForResult, type MarkCell } from "@/lib/exam-rules";
 
 /**
- * Computes and persists a StudentResult row per student for an exam —
- * total/percentage/grade/rank/pass-fail. A student with zero entered (and
- * non-absent) marks gets no StudentResult at all — excluded from rank,
- * grade and averages everywhere, rather than silently scoring 0 the way
- * this used to work. A student with marks for only some subjects is
- * scored over just those subjects' combined max (not the whole exam's),
- * so a partial entry doesn't drag them down as if the ungraded subjects
- * were zeros either. Raw Marks stay the source of truth; StudentResult is
- * a computed snapshot, safe to recompute and overwrite any time.
+ * Computes and stores a StudentResult per student for an exam, using the
+ * shared rules in lib/exam-rules.ts. Only students with a COMPLETE result
+ * (every subject entered, as a mark or AB) get a stored result — total,
+ * percentage, grade, pass/fail and a competition rank (ties share a rank).
+ * Students with nothing or only some subjects entered have no stored
+ * result, so they're left out of ranking and class averages everywhere
+ * and show as "Not entered" / "Incomplete". Raw Marks stay the source of
+ * truth; StudentResult is a snapshot, safe to recompute any time.
  */
-export async function calculateExamResults(examId: string) {
-  const sdb = await getScopedDb();
+export async function calculateExamResults(examId: string, scoped?: ScopedDb) {
+  const sdb = scoped ?? (await getScopedDb());
 
   const exam = await sdb.exam.findUniqueOrThrow({ where: { id: examId }, select: { classId: true, yearId: true } });
   const examSubjects = await sdb.examSubject.findMany({ where: { examId }, select: { id: true, maxMarks: true, passMarks: true } });
   const students = await sdb.student.findMany({ where: { classId: exam.classId, status: "ACTIVE" }, select: { id: true } });
 
-  if (examSubjects.length === 0 || students.length === 0) return { computed: 0 };
+  const marks = examSubjects.length && students.length
+    ? await sdb.mark.findMany({
+        where: { examSubjectId: { in: examSubjects.map((es) => es.id) }, studentId: { in: students.map((s) => s.id) } },
+        select: { studentId: true, examSubjectId: true, marksObtained: true, isAbsent: true },
+      })
+    : [];
 
-  const marks = await sdb.mark.findMany({
-    where: { examSubjectId: { in: examSubjects.map((es) => es.id) }, studentId: { in: students.map((s) => s.id) } },
-    select: { studentId: true, examSubjectId: true, marksObtained: true, isAbsent: true },
-  });
-
-  const marksByStudent = new Map<string, Map<string, { obtained: number | null; isAbsent: boolean }>>();
+  const cellsByStudent = new Map<string, Map<string, MarkCell>>();
   for (const m of marks) {
-    if (!marksByStudent.has(m.studentId)) marksByStudent.set(m.studentId, new Map());
-    marksByStudent.get(m.studentId)!.set(m.examSubjectId, { obtained: m.marksObtained !== null ? Number(m.marksObtained) : null, isAbsent: m.isAbsent });
-  }
-
-  const anyPassMarksConfigured = examSubjects.some((es) => es.passMarks != null);
-
-  type Row = { studentId: string; total: number; max: number; failed: boolean };
-  const rows: Row[] = [];
-
-  for (const s of students) {
-    const row = marksByStudent.get(s.id);
-    if (!row) continue; // nothing entered at all — no result
-
-    let total = 0;
-    let max = 0;
-    let enteredCount = 0;
-    let failed = false;
-    for (const es of examSubjects) {
-      const entry = row.get(es.id);
-      if (!entry) continue; // this subject not entered — excluded, not zero
-      enteredCount += 1;
-      if (entry.isAbsent) {
-        if (es.passMarks != null) failed = true; // absent counts as failing that subject when it's pass/fail-eligible
-        continue; // absent contributes no marks and no max — excluded like "not entered"
-      }
-      const obtained = entry.obtained ?? 0;
-      total += obtained;
-      max += es.maxMarks;
-      if (es.passMarks != null && obtained < es.passMarks) failed = true;
-    }
-    if (enteredCount === 0) continue; // every subject was absent, nothing to score
-
-    rows.push({ studentId: s.id, total, max, failed });
+    if (!cellsByStudent.has(m.studentId)) cellsByStudent.set(m.studentId, new Map());
+    cellsByStudent.get(m.studentId)!.set(m.examSubjectId, { obtained: m.marksObtained !== null ? Number(m.marksObtained) : null, absent: m.isAbsent });
   }
 
   const year = await sdb.academicYear.findUniqueOrThrow({ where: { id: exam.yearId }, include: { gradeScale: { include: { bands: true } } } });
-  const gradeBands = year.gradeScale?.bands.map((b) => ({ label: b.label, minPercent: Number(b.minPercent), maxPercent: Number(b.maxPercent) })) ?? [];
+  const bands = year.gradeScale?.bands.map((b) => ({ label: b.label, minPercent: Number(b.minPercent), maxPercent: Number(b.maxPercent) })) ?? [];
 
-  const ranked = [...rows].sort((a, b) => b.total / (b.max || 1) - a.total / (a.max || 1));
-
-  for (const { studentId, total, max, failed } of rows) {
-    const pct = max > 0 ? (total / max) * 100 : 0;
-    const rank = ranked.findIndex((r) => r.studentId === studentId) + 1;
-    // A subject fail caps the overall grade at the bottom band, same as a
-    // real school report card — the grading scale otherwise decides.
-    const grade = failed ? (gradeBands.length ? gradeBands[gradeBands.length - 1].label : "F") : (gradeForScale(pct, gradeBands) ?? gradeFor(pct));
-    const resultStatus = anyPassMarksConfigured ? (failed ? "FAIL" : "PASS") : null;
-
-    await sdb.studentResult.upsert({
-      where: { examId_studentId: { examId, studentId } },
-      update: { totalMarks: total, maxMarks: max, percentage: pct, grade, resultStatus, rank, computedAt: new Date() },
-      create: scopedCreateData<Prisma.StudentResultUncheckedCreateInput>({
-        examId,
-        studentId,
-        totalMarks: total,
-        maxMarks: max,
-        percentage: pct,
-        grade,
-        resultStatus,
-        rank,
-      }),
-    });
+  const complete: { studentId: string; total: number; max: number; percentage: number; passed: boolean }[] = [];
+  for (const s of students) {
+    const ev = evaluateStudent(examSubjects, cellsByStudent.get(s.id) ?? new Map());
+    if (ev.status === "COMPLETE") complete.push({ studentId: s.id, total: ev.total, max: ev.max, percentage: ev.percentage, passed: ev.passed });
   }
+  const ranks = competitionRanks(complete.map((c) => ({ id: c.studentId, total: c.total })));
 
-  // Students who dropped to "nothing entered / all absent" since the last
-  // computation shouldn't keep a stale result around.
-  const keepStudentIds = rows.map((r) => r.studentId);
-  await sdb.studentResult.deleteMany({ where: { examId, studentId: { notIn: keepStudentIds.length > 0 ? keepStudentIds : ["__none__"] } } });
+  await sdb.$transaction(async (tx) => {
+    for (const c of complete) {
+      const data = {
+        totalMarks: c.total,
+        maxMarks: c.max,
+        percentage: Math.round(c.percentage * 100) / 100,
+        grade: gradeForResult(c.percentage, bands),
+        resultStatus: c.passed ? ("PASS" as const) : ("FAIL" as const),
+        rank: ranks.get(c.studentId) ?? null,
+        computedAt: new Date(),
+      };
+      await tx.studentResult.upsert({
+        where: { examId_studentId: { examId, studentId: c.studentId } },
+        update: data,
+        create: scopedCreateData<Prisma.StudentResultUncheckedCreateInput>({ examId, studentId: c.studentId, ...data }),
+      });
+    }
+    // Students whose result is no longer complete lose any stale result.
+    await tx.studentResult.deleteMany({ where: { examId, studentId: { notIn: complete.length ? complete.map((c) => c.studentId) : ["__none__"] } } });
+  });
 
-  return { computed: rows.length };
+  return { computed: complete.length };
 }

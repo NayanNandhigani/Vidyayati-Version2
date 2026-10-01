@@ -4,6 +4,7 @@ import { getPermittedClassIds } from "@/lib/permissions";
 import { formatINR, formatDate, daysUntil, studentName } from "@/lib/format";
 import { RemindersPanel, StaffAvailabilityTile, PendingApprovalsPanel, NotesPanel } from "./DashboardWidgets";
 import { AttendanceByClassChart, ResultsByClassChart, CashFlowChart } from "./DashboardCharts";
+import { classAveragePercent, subjectAveragePercent, type MarkCell } from "@/lib/exam-rules";
 
 function StatTile({ label, value, color }: { label: string; value: React.ReactNode; color?: string }) {
   return (
@@ -182,48 +183,40 @@ async function AdminStaffDashboard() {
   };
 
   // --- Exam results by class, filterable by subject ---
+  // Same rules as report cards (lib/exam-rules.ts): "All subjects" is the
+  // mean percentage of complete results (StudentResult) per class; a single
+  // subject's average uses the marks actually entered for it — absent and
+  // not-entered marks are left out, never counted as zero.
   const examsThisYear = await sdb.exam.findMany({
     where: { startDate: { gte: yearStart }, endDate: { lt: now }, approvalStatus: "APPROVED" },
-    include: { class: true, examSubjects: { include: { subject: true, marks: true } } },
+    include: { class: true, examSubjects: { include: { subject: true, marks: true } }, results: { select: { percentage: true } } },
   });
-  type Agg = { obtained: number; max: number };
-  const perClassAll = new Map<string, Agg>();
-  const perClassSubject = new Map<string, Map<string, Agg>>();
+  const completePctByClass = new Map<string, number[]>();
+  const cellsByClassSubject = new Map<string, Map<string, { maxMarks: number; cells: MarkCell[] }[]>>();
   const subjectNamesSet = new Set<string>();
   for (const ex of examsThisYear) {
+    completePctByClass.set(ex.classId, [...(completePctByClass.get(ex.classId) ?? []), ...ex.results.map((r) => Number(r.percentage))]);
     for (const es of ex.examSubjects) {
       subjectNamesSet.add(es.subject.name);
-      for (const m of es.marks) {
-        if (m.isAbsent || m.marksObtained === null) continue; // excluded, not scored as 0 — same rule as report cards
-        const obtained = Number(m.marksObtained);
-        const max = es.maxMarks;
-        const all = perClassAll.get(ex.classId) ?? { obtained: 0, max: 0 };
-        all.obtained += obtained;
-        all.max += max;
-        perClassAll.set(ex.classId, all);
-        let subMap = perClassSubject.get(ex.classId);
-        if (!subMap) {
-          subMap = new Map();
-          perClassSubject.set(ex.classId, subMap);
-        }
-        const sub = subMap.get(es.subject.name) ?? { obtained: 0, max: 0 };
-        sub.obtained += obtained;
-        sub.max += max;
-        subMap.set(es.subject.name, sub);
-      }
+      const bySubject = cellsByClassSubject.get(ex.classId) ?? new Map();
+      bySubject.set(es.subject.name, [...(bySubject.get(es.subject.name) ?? []), { maxMarks: es.maxMarks, cells: es.marks.map((m) => ({ obtained: m.marksObtained !== null ? Number(m.marksObtained) : null, absent: m.isAbsent })) }]);
+      cellsByClassSubject.set(ex.classId, bySubject);
     }
   }
   const subjectNames = Array.from(subjectNamesSet).sort();
-  function pctFrom(agg: Agg | undefined): number | null {
-    if (!agg || agg.max === 0) return null;
-    return Math.round((agg.obtained / agg.max) * 100);
+  const round = (v: number | null) => (v === null ? null : Math.round(v));
+  function subjectPct(classId: string, subject: string): number | null {
+    const groups = cellsByClassSubject.get(classId)?.get(subject) ?? [];
+    const pcts = groups.map((g) => subjectAveragePercent(g.maxMarks, g.cells)).filter((p): p is number => p !== null);
+    return round(classAveragePercent(pcts));
   }
   const resultsByClassData: Record<string, { label: string; pct: number | null }[]> = {
-    "All subjects": classes.map((c) => ({ label: `${c.grade}-${c.section}`, pct: pctFrom(perClassAll.get(c.id)) })),
+    "All subjects": classes.map((c) => ({ label: `${c.grade}-${c.section}`, pct: round(classAveragePercent(completePctByClass.get(c.id) ?? [])) })),
   };
   for (const subj of subjectNames) {
-    resultsByClassData[subj] = classes.map((c) => ({ label: `${c.grade}-${c.section}`, pct: pctFrom(perClassSubject.get(c.id)?.get(subj)) }));
+    resultsByClassData[subj] = classes.map((c) => ({ label: `${c.grade}-${c.section}`, pct: subjectPct(c.id, subj) }));
   }
+
 
   // --- Accounts money flow, bucketed for day / week / month / year ---
   const fiveYearsAgo = new Date(now.getFullYear() - 4, 0, 1);

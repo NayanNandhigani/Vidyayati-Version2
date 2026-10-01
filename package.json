@@ -14,7 +14,8 @@
     "bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "dedupe-payroll-accounts": "tsx scripts/dedupe-payroll-accounts.ts",
     "vercel-build": "npx prisma generate && bash scripts/migrate.sh && next build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "recompute-exam-results": "tsx scripts/recompute-exam-results.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.700.0",

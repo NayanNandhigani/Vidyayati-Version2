@@ -1,6 +1,8 @@
 import { gradeColor } from "@/lib/academic";
 
-type Row = { id: string; name: string; total: number | null; maxTotal: number | null; pct: number | null; grade: string | null; resultStatus: "PASS" | "FAIL" | null; rank: number | null };
+// total/pct/grade/rank are null unless the student's result is complete
+// (lib/exam-rules.ts); `status` then says why ("Not entered", "Incomplete …").
+type Row = { id: string; name: string; total: number | null; maxTotal: number | null; pct: number | null; grade: string | null; resultStatus: "PASS" | "FAIL" | null; resultLabel: string | null; rank: number | null; status: string | null };
 
 export default function ReportCardPanel({ examId, examApproved, rows }: { examId: string; examApproved: boolean; rows: Row[] }) {
   if (!examApproved) {
@@ -41,7 +43,7 @@ export default function ReportCardPanel({ examId, examApproved, rows }: { examId
         <div key={r.id} style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 0.8fr 0.7fr 0.9fr auto", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
           <div style={{ fontWeight: 600 }}>{r.name}</div>
           <div className="mono" style={{ textAlign: "right" }}>
-            {r.total === null ? "—" : (
+            {r.total === null ? <span style={{ color: "var(--faint)", fontFamily: "inherit", fontSize: 12 }}>{r.status ?? "—"}</span> : (
               <>
                 {r.total} <span style={{ color: "var(--faint)", fontWeight: 500 }}>/ {r.maxTotal}</span>
               </>
@@ -60,7 +62,7 @@ export default function ReportCardPanel({ examId, examApproved, rows }: { examId
           <div style={{ textAlign: "center" }}>
             {r.resultStatus && (
               <span className="pill" style={{ background: r.resultStatus === "PASS" ? "var(--good-tint)" : "var(--critical-tint)", color: r.resultStatus === "PASS" ? "var(--good)" : "var(--critical)" }}>
-                {r.resultStatus === "PASS" ? "Pass" : "Fail"}
+                {r.resultLabel ?? (r.resultStatus === "PASS" ? "Pass" : "Fail")}
               </span>
             )}
           </div>

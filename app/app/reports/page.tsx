@@ -6,6 +6,7 @@ import { hasFeature } from "@/lib/feature-flags";
 import { formatINR } from "@/lib/format";
 import { attendancePercent } from "@/lib/attendance";
 import ReportBuilderPanel from "./ReportBuilderPanel";
+import { classAveragePercent } from "@/lib/exam-rules";
 
 export default async function ReportsPage() {
   await requireModuleAccess("Reports", "VIEW");
@@ -40,15 +41,12 @@ export default async function ReportsPage() {
   const overallAttendancePct = attendancePercent(countsFor(attendance), halfDayWeight) ?? 0;
   const feePct = billed ? Math.round((collected / billed) * 100) : 0;
 
-  const examAvg = exams.length
-    ? Math.round(
-        exams.reduce((sum, e) => {
-          const marks = e.examSubjects.flatMap((es) => es.marks.map((m) => ({ v: Number(m.marksObtained), max: es.maxMarks })));
-          const pct = marks.length ? (marks.reduce((s, m) => s + m.v, 0) / marks.reduce((s, m) => s + m.max, 0)) * 100 : 0;
-          return sum + pct;
-        }, 0) / exams.length
-      )
-    : 0;
+  // Mean percentage of complete exam results — the same rule as report
+  // cards and the dashboard (lib/exam-rules.ts); absent/not-entered marks
+  // are never counted as zero.
+  const completeResults = await sdb.studentResult.findMany({ where: { examId: { in: exams.map((e) => e.id) } }, select: { percentage: true } });
+  const examAvgValue = classAveragePercent(completeResults.map((r) => Number(r.percentage)));
+  const examAvg = examAvgValue === null ? null : Math.round(examAvgValue);
 
   const staffAttPct = attendancePercent(countsFor(staffAttendance), halfDayWeight) ?? 0;
 
@@ -64,7 +62,7 @@ export default async function ReportsPage() {
   const reportCards = [
     { key: "attendance", title: "Attendance Summary", desc: "Daily & monthly attendance by class", color: "var(--teal)", tint: "var(--teal-tint)", stat: `${overallAttendancePct}%`, href: "/app/reports/attendance" },
     { key: "fees", title: "Fee Collection", desc: "Collections, dues & defaulter list", color: "var(--marigold-deep)", tint: "var(--marigold-tint)", stat: `${feePct}% · ${formatINR(collected)}`, href: "/app/reports/fees" },
-    { key: "academic", title: "Academic Performance", desc: "Exam results & subject-wise trends", color: "var(--info)", tint: "var(--info-tint)", stat: `${examAvg}% avg`, href: "/app/reports/academic" },
+    { key: "academic", title: "Academic Performance", desc: "Exam results & subject-wise trends", color: "var(--info)", tint: "var(--info-tint)", stat: examAvg === null ? "No complete results yet" : `${examAvg}% avg`, href: "/app/reports/academic" },
     { key: "admissions", title: "Admissions Funnel", desc: "Enquiry-to-admission conversion", color: "var(--good)", tint: "var(--good-tint)", stat: `${conversionPct}% conversion`, href: "/app/reports/admissions" },
     { key: "staff", title: "Staff Attendance", desc: "Teaching & non-teaching attendance log", color: "var(--warn)", tint: "var(--warn-tint)", stat: `${staffAttPct}%`, href: "/app/reports/staff" },
     { key: "transport", title: "Transport Utilization", desc: "Route-wise ridership & seat occupancy", color: "var(--teal)", tint: "var(--teal-tint)", stat: `${transportUtil}%`, href: "/app/reports/transport" },

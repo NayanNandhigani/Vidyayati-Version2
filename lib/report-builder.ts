@@ -164,7 +164,7 @@ async function runExamMarks(sdb: ScopedDb, columns: string[], filters: BuilderFi
     class: (r) => `${r.student.class.grade}-${r.student.class.section}`,
     exam: (r) => r.examSubject.exam.name,
     subject: (r) => r.examSubject.subject.name,
-    marksObtained: (r) => Number(r.marksObtained),
+    marksObtained: (r) => (r.isAbsent || r.marksObtained === null ? "AB" : Number(r.marksObtained)),
     maxMarks: (r) => r.examSubject.maxMarks,
   };
   return { columns, rows: rows.map((r) => columns.map((c) => cell[c](r))) };

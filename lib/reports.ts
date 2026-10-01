@@ -52,9 +52,11 @@ async function getAcademicReportData(sdb: ScopedDb): Promise<ReportData> {
   return {
     columns: ["Student", "Class", "Exam", "Subject", "Marks Obtained", "Max Marks", "%"],
     rows: rows.map((r) => {
+      // Absent shows "AB" — never a 0 (lib/exam-rules.ts).
       const max = r.examSubject.maxMarks;
-      const obtained = Number(r.marksObtained);
-      const pct = max ? Math.round((obtained / max) * 100) : 0;
+      const absent = r.isAbsent || r.marksObtained === null;
+      const obtained = absent ? "AB" : Number(r.marksObtained);
+      const pct = absent || !max ? "—" : Math.round((Number(r.marksObtained) / max) * 100);
       return [studentName(r.student), `${r.student.class.grade}-${r.student.class.section}`, r.examSubject.exam.name, r.examSubject.subject.name, obtained, max, pct];
     }),
   };

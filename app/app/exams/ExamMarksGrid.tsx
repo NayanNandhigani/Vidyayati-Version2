@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { initials, studentName } from "@/lib/format";
 import { avatarColorFor, gradeFor, gradeForScale, gradeColor, type GradeBand } from "@/lib/academic";
 import { saveMarks } from "./actions";
+import { competitionRanks, evaluateStudent, passMarkFor, resultLabel, type MarkCell } from "@/lib/exam-rules";
 import { friendlyError } from "@/lib/friendly-error";
 
 type Student = { id: string; firstName: string; surname: string };
@@ -19,6 +20,7 @@ export default function ExamMarksGrid({
   initialMarks,
   canEdit,
   gradeBands,
+  failLabel,
 }: {
   examId: string;
   examName: string;
@@ -28,6 +30,7 @@ export default function ExamMarksGrid({
   initialMarks: Record<string, Record<string, MarkValue>>;
   canEdit: boolean;
   gradeBands: GradeBand[];
+  failLabel: string | null;
 }) {
   const gradeForPct = (pct: number) => gradeForScale(pct, gradeBands) ?? gradeFor(pct);
   const [marks, setMarks] = useState(initialMarks);
@@ -99,24 +102,20 @@ export default function ExamMarksGrid({
     setMark(studentId, es.id, isAbsent ? undefined : "AB");
   }
 
-  // Entered-only total/max, same rule the server uses: a subject with no
-  // mark (or marked absent) is excluded, not treated as zero.
-  function rowTotals(studentId: string) {
+  // Same rules as the stored results and report cards (lib/exam-rules.ts):
+  // a total only once every subject is entered; AB counts 0 and fails.
+  function evaluate(studentId: string) {
     const row = marks[studentId] ?? {};
-    let total = 0;
-    let max = 0;
-    let entered = 0;
+    const cells: Record<string, MarkCell> = {};
     for (const es of examSubjects) {
       const v = row[es.id];
-      if (v === undefined || v === "AB") continue;
-      total += v;
-      max += es.maxMarks;
-      entered += 1;
+      if (v !== undefined) cells[es.id] = v === "AB" ? { obtained: null, absent: true } : { obtained: v, absent: false };
     }
-    return { total, max, entered };
+    return evaluateStudent(examSubjects.map((es) => ({ id: es.id, maxMarks: es.maxMarks, passMarks: es.passMarks })), cells);
   }
   function rowTotal(studentId: string) {
-    return rowTotals(studentId).total;
+    const ev = evaluate(studentId);
+    return ev.status === "COMPLETE" ? ev.total : -1;
   }
 
   function toggleSort(field: "name" | "total") {
@@ -171,13 +170,11 @@ export default function ExamMarksGrid({
     const student = students.find((s) => s.id === previewId);
     if (!student) return null;
     const row = marks[previewId] ?? {};
-    const { total, max, entered } = rowTotals(previewId);
-    if (entered === 0) return { student, row, total: null, max: null, pct: null, rank: null };
-    const pct = max > 0 ? (total / max) * 100 : 0;
-    const ranked = students.map((s) => ({ id: s.id, ...rowTotals(s.id) })).filter((s) => s.entered > 0);
-    ranked.sort((a, b) => b.total / (b.max || 1) - a.total / (a.max || 1));
-    const rank = ranked.findIndex((s) => s.id === previewId) + 1;
-    return { student, row, total, max, pct, rank, rankOf: ranked.length };
+    const ev = evaluate(previewId);
+    if (ev.status !== "COMPLETE") return { student, row, ev, total: null, max: null, pct: null, rank: null, rankOf: 0, passed: null };
+    const complete = students.map((s) => ({ id: s.id, ev: evaluate(s.id) })).filter((x) => x.ev.status === "COMPLETE");
+    const ranks = competitionRanks(complete.map((x) => ({ id: x.id, total: x.ev.status === "COMPLETE" ? x.ev.total : 0 })));
+    return { student, row, ev, total: ev.total, max: ev.max, pct: ev.percentage, rank: ranks.get(previewId) ?? null, rankOf: complete.length, passed: ev.passed };
   }, [previewId, marks, students, examSubjects]);
 
   return (
@@ -235,8 +232,8 @@ export default function ExamMarksGrid({
         <div style={{ overflowY: "auto", flex: 1 }}>
           {students.length === 0 && <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>No students in this class.</div>}
           {sortedStudents.map((s) => {
-            const { total, max, entered } = rowTotals(s.id);
-            const pct = entered > 0 && max > 0 ? (total / max) * 100 : null;
+            const ev = evaluate(s.id);
+            const pct = ev.status === "COMPLETE" ? ev.percentage : null;
             const selected = s.id === previewId;
             return (
               <div
@@ -263,7 +260,7 @@ export default function ExamMarksGrid({
                   const isAbsent = v === "AB";
                   const key = `${s.id}:${es.id}`;
                   const cellError = cellErrors[key];
-                  const failing = !cellError && typeof v === "number" && es.passMarks != null && v < es.passMarks;
+                  const failing = !cellError && typeof v === "number" && v < passMarkFor(es);
                   return (
                     <div key={es.id} onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 2, margin: "1px 0" }}>
                       <input
@@ -303,7 +300,7 @@ export default function ExamMarksGrid({
                   );
                 })}
                 <div className="mono" style={{ textAlign: "center", fontWeight: 700 }}>
-                  {entered > 0 ? total : "—"}
+                  {ev.status === "COMPLETE" ? ev.total : ev.status === "INCOMPLETE" ? <span title="Not every subject is entered yet" style={{ fontSize: 10.5, color: "var(--faint)", fontWeight: 600 }}>{ev.entered}/{ev.of}</span> : "—"}
                 </div>
                 <div className="mono" style={{ textAlign: "center", fontWeight: 700, color: pct === null ? "var(--faint)" : pct >= 90 ? "var(--good)" : pct >= 33 ? "var(--marigold-deep)" : "var(--critical)" }}>
                   {pct === null ? "—" : pct.toFixed(1)}
@@ -353,7 +350,11 @@ export default function ExamMarksGrid({
 
             <div style={{ borderTop: "1px solid var(--line)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 9 }}>
               {preview.total === null ? (
-                <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No marks entered yet — total, grade and rank will show once at least one subject is scored.</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
+                  {preview.ev.status === "INCOMPLETE"
+                    ? `Incomplete — ${preview.ev.entered} of ${preview.ev.of} subjects entered. Total, grade and rank show once every subject has a mark or AB.`
+                    : "No marks entered yet. Total, grade and rank show once every subject has a mark or AB."}
+                </div>
               ) : (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
@@ -373,6 +374,10 @@ export default function ExamMarksGrid({
                     <span className="pill" style={{ background: "var(--paper)", color: gradeColor(gradeForPct(preview.pct!)), border: "1px solid var(--line)", fontSize: 13, padding: "4px 12px" }}>
                       {gradeForPct(preview.pct!)}
                     </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                    <span style={{ color: "var(--muted)" }}>Result</span>
+                    <span style={{ fontWeight: 700, color: preview.passed ? "var(--good)" : "var(--critical)" }}>{resultLabel(!!preview.passed, failLabel)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                     <span style={{ color: "var(--muted)" }}>Rank in class</span>

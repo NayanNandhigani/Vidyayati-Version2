@@ -5,6 +5,7 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
 import { studentName } from "@/lib/format";
 import { feeStatusFor, FEE_STATUS_STYLE, gradeFor, gradeForScale } from "@/lib/academic";
+import { resultLabel } from "@/lib/exam-rules";
 import { getSchoolFeatures } from "@/lib/feature-flags";
 import { attendancePercent } from "@/lib/attendance";
 import { todayISTDate, todayIST, formatDateIST, dateOnlyString } from "@/lib/ist";
@@ -80,18 +81,40 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   for (const row of allAttendance) attendanceTotals[row.status] = row._count;
   const attendancePct = attendancePercent(attendanceTotals, schoolForAttendance ? Number(schoolForAttendance.halfDayAttendanceWeight) : 0.5);
 
-  // Exam marks grouped by exam
-  const examGroups = new Map<string, { examName: string; date: Date; obtained: number; max: number }>();
+  // Exam results: complete results come from StudentResult (the shared
+  // rules in lib/exam-rules.ts); an exam with only some subjects entered
+  // shows as "Incomplete" rather than being scored over what's there.
+  const [storedResults, school] = await Promise.all([
+    sdb.studentResult.findMany({ where: { studentId: student.id }, include: { exam: true } }),
+    sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { examFailLabel: true } }),
+  ]);
+  const enteredByExam = new Map<string, { name: string; date: Date; entered: number }>();
   for (const mark of student.marks) {
     const exam = mark.examSubject.exam;
-    const entry = examGroups.get(exam.id) ?? { examName: exam.name, date: exam.startDate, obtained: 0, max: 0 };
-    entry.obtained += Number(mark.marksObtained);
-    entry.max += mark.examSubject.maxMarks;
-    examGroups.set(exam.id, entry);
+    const e = enteredByExam.get(exam.id) ?? { name: exam.name, date: exam.startDate, entered: 0 };
+    e.entered += 1;
+    enteredByExam.set(exam.id, e);
   }
-  const examResults = [...examGroups.values()].sort((a, b) => b.date.getTime() - a.date.getTime());
-  const latestExamPct = examResults[0] ? Math.round((examResults[0].obtained / examResults[0].max) * 100) : null;
-  const latestExamGrade = latestExamPct !== null ? gradeForPct(latestExamPct) : null;
+  const subjectCounts = enteredByExam.size
+    ? await sdb.examSubject.groupBy({ by: ["examId"], where: { examId: { in: [...enteredByExam.keys()] } }, _count: { _all: true } })
+    : [];
+  const subjectCountByExam = new Map(subjectCounts.map((c) => [c.examId, c._count._all]));
+  const resultByExam = new Map(storedResults.map((r) => [r.examId, r]));
+  const examIds = new Set([...enteredByExam.keys(), ...resultByExam.keys()]);
+  const examResults = [...examIds]
+    .map((examId) => {
+      const r = resultByExam.get(examId);
+      if (r) {
+        const pct = Number(r.percentage);
+        return { examName: r.exam.name, date: r.exam.startDate, total: Number(r.totalMarks), max: Number(r.maxMarks), pct, grade: r.grade ?? gradeForPct(pct), result: resultLabel(r.resultStatus !== "FAIL", school?.examFailLabel), rank: r.rank, status: null as string | null };
+      }
+      const e = enteredByExam.get(examId)!;
+      return { examName: e.name, date: e.date, total: null, max: null, pct: null, grade: null, result: null, rank: null, status: `Incomplete (${e.entered} of ${subjectCountByExam.get(examId) ?? "?"} subjects entered)` };
+    })
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
+  const latestComplete = examResults.find((e) => e.pct !== null);
+  const latestExamPct = latestComplete ? Math.round(latestComplete.pct!) : null;
+  const latestExamGrade = latestComplete?.grade ?? null;
 
   const totalFeeDue = feeInstalments.reduce((s, f) => s + f.amount, 0);
   const totalFeePaid = student.feePayments.reduce((s, p) => s + Number(p.amount), 0);

@@ -12,6 +12,12 @@ import ExamPicker from "./ExamPicker";
 import ScheduleExamPanel from "./ScheduleExamPanel";
 import ReportCardPanel from "./ReportCardPanel";
 import HallTicketPanel from "./HallTicketPanel";
+import { calculateExamResults } from "@/lib/domain/exam-results";
+import { evaluateStudent, resultLabel, type MarkCell } from "@/lib/exam-rules";
+
+// Results computed before this date used the old rules (partial entries
+// scored and ranked, ties ranked apart) and are recalculated on open.
+const EXAM_RULES_SINCE = new Date("2026-10-01T00:00:00Z");
 
 const TABS = ["schedule", "grades", "report-card", "hall-ticket"] as const;
 type Tab = (typeof TABS)[number];
@@ -104,13 +110,28 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   // used to get silently scored 0 and ranked/graded alongside everyone
   // else). A student with no StudentResult row — nothing entered for them
   // yet — shows "—" rather than being scored as zero or omitted.
-  const results = selectedExam ? await sdb.studentResult.findMany({ where: { examId: selectedExam.id } }) : [];
+  // Results calculated before the shared rules (lib/exam-rules.ts) existed
+  // are recalculated the first time the exam is opened.
+  let results = selectedExam ? await sdb.studentResult.findMany({ where: { examId: selectedExam.id } }) : [];
+  if (selectedExam && results.some((r) => r.computedAt < EXAM_RULES_SINCE)) {
+    await calculateExamResults(selectedExam.id);
+    results = await sdb.studentResult.findMany({ where: { examId: selectedExam.id } });
+  }
+  const failLabel = (await sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { examFailLabel: true } }))?.examFailLabel ?? null;
   const resultByStudent = new Map(results.map((r) => [r.studentId, r]));
+  const subjectSpecs = examSubjects.map((es) => ({ id: es.id, maxMarks: es.maxMarks, passMarks: es.passMarks }));
   const reportCardRows = students.map((s) => {
     const r = resultByStudent.get(s.id);
-    if (!r) return { id: s.id, name: studentName(s), total: null, maxTotal: null, pct: null, grade: null, resultStatus: null, rank: null };
+    if (!r) {
+      const cells: Record<string, MarkCell> = {};
+      for (const [esId, v] of Object.entries(initialMarks[s.id] ?? {})) cells[esId] = v === "AB" ? { obtained: null, absent: true } : { obtained: v, absent: false };
+      const ev = evaluateStudent(subjectSpecs, cells);
+      const status = ev.status === "INCOMPLETE" ? `Incomplete (${ev.entered} of ${ev.of})` : "Not entered";
+      return { id: s.id, name: studentName(s), total: null, maxTotal: null, pct: null, grade: null, resultStatus: null, resultLabel: null, rank: null, status };
+    }
     const pct = Number(r.percentage);
-    return { id: s.id, name: studentName(s), total: Number(r.totalMarks), maxTotal: Number(r.maxMarks), pct, grade: r.grade ?? gradeForPct(pct), resultStatus: r.resultStatus, rank: r.rank };
+    const passed = r.resultStatus !== "FAIL";
+    return { id: s.id, name: studentName(s), total: Number(r.totalMarks), maxTotal: Number(r.maxMarks), pct, grade: r.grade ?? gradeForPct(pct), resultStatus: r.resultStatus, resultLabel: resultLabel(passed, failLabel), rank: r.rank, status: null };
   });
 
   const hallTicketRows = students.map((s) => ({ id: s.id, name: studentName(s), admissionNo: s.admissionNo }));
@@ -233,6 +254,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
               initialMarks={initialMarks}
               canEdit={canEdit}
               gradeBands={gradeBands}
+              failLabel={failLabel}
             />
           ) : (
             <div className="card" style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
@@ -296,20 +318,26 @@ async function ParentExamsView() {
   // Precompute per-exam visibility (release date / fee lock) before
   // rendering — canViewExamResults is async, so this can't happen inline
   // inside a .map() callback in the JSX below.
+  // Same rules as everywhere else (lib/exam-rules.ts): a complete result
+  // comes from StudentResult; an exam with only some subjects entered is
+  // shown as incomplete, never scored over the subjects that happen to be in.
+  const failLabel = (await sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { examFailLabel: true } }))?.examFailLabel ?? null;
   const resultsByStudent = await Promise.all(
     students.map(async (s) => {
-      const byExam = new Map<string, { examId: string; name: string; date: Date; obtained: number; max: number }>();
-      for (const m of s.marks) {
-        const exam = m.examSubject.exam;
-        const entry = byExam.get(exam.id) ?? { examId: exam.id, name: exam.name, date: exam.startDate, obtained: 0, max: 0 };
-        entry.obtained += Number(m.marksObtained);
-        entry.max += m.examSubject.maxMarks;
-        byExam.set(exam.id, entry);
-      }
-      const raw = [...byExam.values()].sort((a, b) => b.date.getTime() - a.date.getTime());
-      const results = await Promise.all(
-        raw.map(async (r) => ({ ...r, ...(await canViewExamResults(r.examId, s.id)) }))
-      );
+      const stored = await sdb.studentResult.findMany({ where: { studentId: s.id }, include: { exam: true } });
+      const storedByExam = new Map(stored.map((r) => [r.examId, r]));
+      const examsWithMarks = new Map<string, { name: string; date: Date }>();
+      for (const m of s.marks) examsWithMarks.set(m.examSubject.exam.id, { name: m.examSubject.exam.name, date: m.examSubject.exam.startDate });
+      for (const r of stored) examsWithMarks.set(r.examId, { name: r.exam.name, date: r.exam.startDate });
+      const raw = [...examsWithMarks.entries()]
+        .map(([examId, e]) => {
+          const r = storedByExam.get(examId);
+          return r
+            ? { examId, name: e.name, date: e.date, total: Number(r.totalMarks), max: Number(r.maxMarks), pct: Number(r.percentage), grade: r.grade ?? gradeForPct(Number(r.percentage)), result: resultLabel(r.resultStatus !== "FAIL", failLabel) }
+            : { examId, name: e.name, date: e.date, total: null, max: null, pct: null, grade: null, result: null };
+        })
+        .sort((a, b) => b.date.getTime() - a.date.getTime());
+      const results = await Promise.all(raw.map(async (r) => ({ ...r, ...(await canViewExamResults(r.examId, s.id)) })));
       return { student: s, results };
     })
   );
@@ -338,19 +366,28 @@ async function ParentExamsView() {
                     </div>
                   );
                 }
-                const pct = Math.round((r.obtained / r.max) * 100);
-                const grade = gradeForPct(pct);
+                if (r.pct === null) {
+                  return (
+                    <div key={r.name + r.date.toISOString()} style={{ padding: "10px 12px", background: "var(--paper)", borderRadius: 8, display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
+                      <span style={{ fontWeight: 600 }}>{r.name}</span>
+                      <span style={{ color: "var(--muted)" }}>Results not complete yet</span>
+                    </div>
+                  );
+                }
                 return (
                   <div key={r.name + r.date.toISOString()} style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.6fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 600 }}>{r.name}</div>
+                    <div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600 }}>{r.name}</div>
+                      <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{r.result}</div>
+                    </div>
                     <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, textAlign: "right" }}>
-                      {r.obtained} / {r.max}
+                      {r.total} / {r.max}
                     </div>
-                    <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, textAlign: "right", color: gradeColor(grade) }}>
-                      {pct}%
+                    <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, textAlign: "right", color: gradeColor(r.grade!) }}>
+                      {Math.round(r.pct)}%
                     </div>
-                    <span className="pill" style={{ background: "var(--paper)", color: gradeColor(grade), border: "1px solid var(--line)" }}>
-                      {grade}
+                    <span className="pill" style={{ background: "var(--paper)", color: gradeColor(r.grade!), border: "1px solid var(--line)" }}>
+                      {r.grade}
                     </span>
                   </div>
                 );

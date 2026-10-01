@@ -8,6 +8,9 @@ import { auth, unstable_update } from "@/auth";
 import { db } from "@/lib/db";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { newPasswordSchema } from "@/lib/validation";
+import { calculateExamResults } from "@/lib/domain/exam-results";
+import { GRADE_SCALE_PRESETS } from "@/lib/grade-scales";
+import { runAction } from "@/lib/action-result";
 
 async function requireAdmin() {
   const session = await auth();
@@ -137,9 +140,56 @@ export async function setActiveGradeScale(scaleId: string) {
     sdb.gradeScale.update({ where: { id: scaleId }, data: { isActive: true } }),
     sdb.academicYear.updateMany({ where: { isCurrent: true }, data: { gradeScaleId: scaleId } }),
   ]);
+  await recalculateCurrentYearResults();
 
   revalidatePath("/app/settings");
   revalidatePath("/app/exams");
+}
+
+/** Stored results carry a grade, so changing the active scale recalculates this year's exams. */
+async function recalculateCurrentYearResults() {
+  const sdb = await getScopedDb();
+  const year = await sdb.academicYear.findFirst({ where: { isCurrent: true }, select: { id: true } });
+  if (!year) return;
+  const exams = await sdb.exam.findMany({ where: { yearId: year.id }, select: { id: true } });
+  for (const e of exams) await calculateExamResults(e.id);
+}
+
+/** Adds one of the built-in grade scales (CBSE 9-point, Simple A+ to E) and, by default, makes it the active scale. */
+export async function addPresetGradeScale(presetKey: string, makeActive = true): Promise<{ error?: string }> {
+  await requireAdmin();
+  const preset = GRADE_SCALE_PRESETS.find((p) => p.key === presetKey);
+  if (!preset) return { error: "Pick one of the built-in scales." };
+  const result = await runAction(async () => {
+    const sdb = await getScopedDb();
+    let scale = await sdb.gradeScale.findFirst({ where: { name: preset.name }, select: { id: true } });
+    if (!scale) {
+      scale = await sdb.$transaction(async (tx) => {
+        const created = await tx.gradeScale.create({ data: scopedCreateData<Prisma.GradeScaleUncheckedCreateInput>({ name: preset.name, isActive: false }), select: { id: true } });
+        await tx.gradeBand.createMany({
+          data: preset.bands.map((b) => scopedCreateData<Prisma.GradeBandCreateManyInput>({ scaleId: created.id, label: b.label, minPercent: b.minPercent, maxPercent: b.maxPercent, remark: b.remark ?? null })),
+        });
+        return created;
+      });
+    }
+    if (makeActive) await setActiveGradeScale(scale.id);
+    return {};
+  }, "addPresetGradeScale");
+  revalidatePath("/app/settings");
+  return result.ok === true ? {} : { error: result.error };
+}
+
+/** The overall result shown when a student fails a subject (default "Needs improvement"). */
+export async function saveExamFailLabel(label: string): Promise<{ error?: string }> {
+  await requireAdmin();
+  const trimmed = label.trim();
+  if (trimmed.length > 40) return { error: "Keep the label under 40 characters." };
+  const session = await auth();
+  const sdb = await getScopedDb();
+  await sdb.school.update({ where: { id: session!.user.schoolId! }, data: { examFailLabel: trimmed || null } });
+  revalidatePath("/app/settings");
+  revalidatePath("/app/exams");
+  return {};
 }
 
 export async function createGradeBand(_prevState: FormState, formData: FormData): Promise<FormState> {

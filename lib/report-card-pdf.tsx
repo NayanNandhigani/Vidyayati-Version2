@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { gradeFor } from "./academic";
 
 // Hardcoded to match app/globals.css's design tokens — PDF styles can't
 // read CSS custom properties, so these are copied values, not derived.
@@ -17,8 +18,8 @@ const LINE = "#e5e8ee";
 const PAPER = "#f7f6f2";
 
 function gradeColorHex(grade: string): string {
-  if (grade === "A+" || grade === "A") return GOOD;
-  if (grade === "B+" || grade === "B") return WARN;
+  if (/^(A\+?|A1|A2)$/.test(grade)) return GOOD;
+  if (/^(B\+?|B1|B2|C|C1|C2)$/.test(grade)) return WARN;
   return CRITICAL;
 }
 
@@ -57,6 +58,8 @@ export type ReportCardStudent = {
   pct: number | null;
   grade: string | null;
   resultStatus: "PASS" | "FAIL" | null;
+  resultLabel: string | null; // "Pass" or the school's fail label
+  note: string | null; // why there's no total yet, e.g. "Incomplete: 1 of 2 subjects entered"
   rank: number | null;
   outOf: number;
 };
@@ -115,7 +118,7 @@ export function ReportCardDocument({
                   <Text style={[styles.tCell, { flex: 2.2 }]}>{sub.name}</Text>
                   <Text style={[styles.tCell, { flex: 1, textAlign: "right" }]}>{sub.isAbsent ? "AB" : sub.obtained ?? "—"}</Text>
                   <Text style={[styles.tCell, { flex: 1, textAlign: "right", color: FAINT }]}>{sub.max}</Text>
-                  <Text style={[styles.tCell, { flex: 1, textAlign: "right", color: subPct === null ? FAINT : gradeColorHex(subPct >= 90 ? "A+" : subPct >= 80 ? "A" : subPct >= 70 ? "B+" : subPct >= 60 ? "B" : subPct >= 50 ? "C" : "D") }]}>{subPct === null ? "—" : `${subPct.toFixed(0)}%`}</Text>
+                  <Text style={[styles.tCell, { flex: 1, textAlign: "right", color: subPct === null ? FAINT : gradeColorHex(gradeFor(subPct)) }]}>{subPct === null ? "—" : `${subPct.toFixed(0)}%`}</Text>
                 </View>
               );
             })}
@@ -138,7 +141,7 @@ export function ReportCardDocument({
             </View>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>Result</Text>
-              <Text style={[styles.summaryValue, s.resultStatus ? { color: s.resultStatus === "PASS" ? GOOD : CRITICAL } : undefined]}>{s.resultStatus ?? "—"}</Text>
+              <Text style={[styles.summaryValue, s.resultStatus ? { color: s.resultStatus === "PASS" ? GOOD : CRITICAL } : undefined]}>{s.resultLabel ?? s.note ?? "—"}</Text>
             </View>
           </View>
 

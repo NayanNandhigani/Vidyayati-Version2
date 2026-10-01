@@ -95,7 +95,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
         {panel === "grading" && (
           <div className="card" style={{ flex: 1, padding: 26, overflowY: "auto" }}>
-            <GradingPanelData sdb={sdb} />
+            <GradingPanelData sdb={sdb} failLabel={school.examFailLabel ?? ""} />
           </div>
         )}
 
@@ -172,10 +172,11 @@ async function IdCardPanelData({ sdb }: { sdb: Awaited<ReturnType<typeof getScop
   );
 }
 
-async function GradingPanelData({ sdb }: { sdb: Awaited<ReturnType<typeof getScopedDb>> }) {
+async function GradingPanelData({ sdb, failLabel }: { sdb: Awaited<ReturnType<typeof getScopedDb>>; failLabel: string }) {
   const scales = await sdb.gradeScale.findMany({ orderBy: { name: "asc" }, include: { bands: true } });
   return (
     <GradingPanel
+      failLabel={failLabel}
       scales={scales.map((s) => ({
         id: s.id,
         name: s.name,

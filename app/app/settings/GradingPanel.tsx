@@ -2,14 +2,19 @@
 
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
-import { createGradeScale, setActiveGradeScale, createGradeBand, deleteGradeBand, type FormState } from "./actions";
+import { createGradeScale, setActiveGradeScale, createGradeBand, deleteGradeBand, addPresetGradeScale, saveExamFailLabel, type FormState } from "./actions";
+import { GRADE_SCALE_PRESETS } from "@/lib/grade-scales";
+import { DEFAULT_FAIL_LABEL } from "@/lib/exam-rules";
+import { toast } from "@/components/Toaster";
+import { friendlyError } from "@/lib/friendly-error";
 
 type Band = { id: string; label: string; minPercent: number; maxPercent: number; remark: string | null };
 type Scale = { id: string; name: string; isActive: boolean; bands: Band[] };
 
 const initialState: FormState = {};
 
-export default function GradingPanel({ scales }: { scales: Scale[] }) {
+export default function GradingPanel({ scales, failLabel: initialFailLabel }: { scales: Scale[]; failLabel: string }) {
+  const [failLabel, setFailLabel] = useState(initialFailLabel);
   const [showScaleForm, setShowScaleForm] = useState(false);
   const [showBandForm, setShowBandForm] = useState(false);
   const [scaleState, scaleAction, scalePending] = useActionState(createGradeScale, initialState);
@@ -26,6 +31,30 @@ export default function GradingPanel({ scales }: { scales: Scale[] }) {
     });
   }
 
+  function applyPreset(key: string) {
+    startTransition(async () => {
+      try {
+        const res = await addPresetGradeScale(key, true);
+        if (res.error) toast.error(res.error);
+        else toast.success("Grade scale is now active. This year's exam results were recalculated.");
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
+    });
+  }
+
+  function saveFailLabel() {
+    startTransition(async () => {
+      try {
+        const res = await saveExamFailLabel(failLabel);
+        if (res.error) toast.error(res.error);
+        else toast.success("Saved.");
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
+    });
+  }
+
   function removeBand(id: string) {
     startTransition(async () => {
       await deleteGradeBand(id);
@@ -39,8 +68,33 @@ export default function GradingPanel({ scales }: { scales: Scale[] }) {
           Grading
         </div>
         <div style={{ fontSize: 13, color: "var(--muted)" }}>
-          Configure letter/grade-band scales (e.g. CBSE-style A1, A2, B1…) for report cards. Schools without one configured see a default A+/A/B+/B/C/D scale.
+          Pick a built-in scale or build your own for report cards. Without one, the Simple A+ to E scale is used.
         </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, padding: "12px 14px", background: "var(--paper)", borderRadius: 10 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700 }}>Built-in scales</div>
+        {GRADE_SCALE_PRESETS.map((p) => (
+          <div key={p.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
+              <div className="mono" style={{ fontSize: 10.5, color: "var(--muted)" }}>{p.bands.map((b) => `${b.label} ${b.minPercent === 0 ? `below ${p.bands[p.bands.length - 2]!.minPercent}` : `${b.minPercent}–${b.maxPercent}`}`).join(" · ")}</div>
+            </div>
+            <button type="button" onClick={() => applyPreset(p.key)} style={{ flex: "none", fontSize: 12, fontWeight: 700, background: "var(--marigold)", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>
+              Use this scale
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 16 }}>
+        <label className="field" style={{ flex: 1 }}>
+          Result shown when a subject is failed
+          <input className="in" value={failLabel} onChange={(e) => setFailLabel(e.target.value)} placeholder={DEFAULT_FAIL_LABEL} maxLength={40} />
+        </label>
+        <button type="button" onClick={saveFailLabel} style={{ fontSize: 12, fontWeight: 700, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, padding: "8px 12px", cursor: "pointer" }}>
+          Save
+        </button>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
