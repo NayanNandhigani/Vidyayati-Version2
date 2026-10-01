@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import { formatIST } from "@/lib/ist";
 
 // Hardcoded to match app/globals.css's design tokens — PDF styles can't
 // read CSS custom properties, so these are copied values, not derived.
@@ -40,7 +41,7 @@ export function CertificateDocument({
   issuedDate: Date;
   logoDataUri?: string | null;
 }) {
-  const dateLabel = issuedDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const dateLabel = formatIST(issuedDate, { day: "2-digit", month: "short", year: "numeric" });
 
   return (
     <Document>

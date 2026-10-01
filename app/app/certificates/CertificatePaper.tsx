@@ -1,3 +1,4 @@
+import { formatIST } from "@/lib/ist";
 function assetUrl(path: string) {
   return `/api/certificate-assets/${path}`;
 }
@@ -33,7 +34,7 @@ export default function CertificatePaper({
             </div>
           </div>
           <div style={{ textAlign: "right", fontSize: 9.5, color: "var(--muted)" }}>
-            <div className="mono">Date: {issuedDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+            <div className="mono">Date: {formatIST(issuedDate, { day: "2-digit", month: "short", year: "numeric" })}</div>
           </div>
         </div>
         <div style={{ height: 2, background: "linear-gradient(90deg,var(--marigold),var(--marigold-tint))", margin: "15px 0 16px" }} />

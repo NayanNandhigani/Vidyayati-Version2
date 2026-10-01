@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { formatINR, studentName } from "@/lib/format";
-import { todayISTDate } from "@/lib/ist";
+import { todayISTDate, formatIST } from "@/lib/ist";
 import { feeStatusFor, FEE_STATUS_STYLE } from "@/lib/academic";
 import { hasFeature } from "@/lib/feature-flags";
 import { computeDiscountAmount, computeLateFine } from "@/lib/fees";
@@ -18,32 +18,36 @@ export default async function FeesPage() {
     return <ParentFeesView />;
   }
 
-  const accessLevel = await requireModuleAccess("Fees", "VIEW");
-  const canEdit = accessLevel === "EDIT";
-
-  const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
-  const feePlanCount = currentYear ? await sdb.feeStructure.count({ where: { yearId: currentYear.id } }) : 0;
-  if (!currentYear || feePlanCount === 0) {
-    return <FeesEmptyState hasYear={!!currentYear} yearLabel={currentYear?.label ?? null} />;
-  }
-
-  const students = await sdb.student.findMany({
-    where: { status: "ACTIVE" },
-    include: {
-      class: true,
-      feeInstalments: { include: { feeStructure: true, payments: true } },
-      feePayments: { orderBy: { paidOn: "desc" }, include: { feeInstalment: { include: { feeStructure: true } } } },
-      feeDiscounts: true,
-      feeAdjustments: { orderBy: { addedOn: "desc" } },
-    },
-    orderBy: [{ firstName: "asc" }, { surname: "asc" }],
-  });
-
-  const [showDiscounts, showGst, school] = await Promise.all([
+  // Independent reads run together (QA BUG-28).
+  const [accessLevel, currentYear, showDiscounts, showGst, school] = await Promise.all([
+    requireModuleAccess("Fees", "VIEW"),
+    sdb.academicYear.findFirst({ where: { isCurrent: true } }),
     hasFeature(session!.user.schoolId, "fees.discountsAndFines"),
     hasFeature(session!.user.schoolId, "fees.gstReceipts"),
     sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { feeLateFinePerDay: true, feeLateFineGraceDays: true, gstNumber: true, gstRatePercent: true } }),
   ]);
+  const canEdit = accessLevel === "EDIT";
+
+  if (!currentYear) {
+    return <FeesEmptyState hasYear={false} yearLabel={null} />;
+  }
+  const [feePlanCount, students] = await Promise.all([
+    sdb.feeStructure.count({ where: { yearId: currentYear.id } }),
+    sdb.student.findMany({
+      where: { status: "ACTIVE" },
+      include: {
+        class: true,
+        feeInstalments: { include: { feeStructure: true, payments: true } },
+        feePayments: { orderBy: { paidOn: "desc" }, include: { feeInstalment: { include: { feeStructure: true } } } },
+        feeDiscounts: true,
+        feeAdjustments: { orderBy: { addedOn: "desc" } },
+      },
+      orderBy: [{ firstName: "asc" }, { surname: "asc" }],
+    }),
+  ]);
+  if (feePlanCount === 0) {
+    return <FeesEmptyState hasYear yearLabel={currentYear.label} />;
+  }
 
   const rows = students.map((s) => {
     const instalments = s.feeInstalments;
@@ -242,7 +246,7 @@ async function ParentFeesView() {
                     <div key={fs.id} style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
                       <div>
                         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{fs.term}</div>
-                        <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{paidThis ? "Paid" : `Due ${fs.dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`}</div>
+                        <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{paidThis ? "Paid" : `Due ${formatIST(fs.dueDate, { day: "2-digit", month: "short" })}`}</div>
                       </div>
                       <div className="mono" style={{ fontWeight: 700, textAlign: "right" }}>
                         {formatINR(Number(fs.amount))}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { db } from "@/lib/db";
 import { formatINR } from "@/lib/format";
 import NewLedgerAccountForm from "./NewLedgerAccountForm";
@@ -142,7 +143,7 @@ async function OverviewTab({ ledgerAccounts }: { ledgerAccounts: Account[] }) {
                     <div>
                       <div style={{ fontWeight: 600 }}>{b.vendor.name}</div>
                       <div className="mono" style={{ fontSize: 11, color: overdue ? "var(--critical)" : "var(--muted)" }}>
-                        Due {b.dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        Due {formatIST(b.dueDate, { day: "2-digit", month: "short" })}
                         {overdue ? " · overdue" : ""}
                       </div>
                     </div>
@@ -173,7 +174,7 @@ async function OverviewTab({ ledgerAccounts }: { ledgerAccounts: Account[] }) {
               <div>{e.description}</div>
               <div style={{ color: "var(--muted)" }}>{e.ledgerAccount.name}</div>
               <div className="mono" style={{ color: "var(--muted)" }}>
-                {e.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                {formatIST(e.date, { day: "2-digit", month: "short", year: "numeric" })}
               </div>
               <div className="mono" style={{ textAlign: "right", fontWeight: 600, color: e.entryType === "INCOME" ? "var(--good)" : "var(--critical)" }}>
                 {e.entryType === "INCOME" ? "+" : "−"}
@@ -212,7 +213,7 @@ async function LedgerTab({ incomeAccounts, expenseAccounts, vendors }: { incomeA
           entries.map((e) => (
             <div key={e.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr 1fr 0.9fr 0.9fr", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
               <div className="mono" style={{ color: "var(--muted)" }}>
-                {e.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                {formatIST(e.date, { day: "2-digit", month: "short", year: "numeric" })}
               </div>
               <div>{e.description}</div>
               <div style={{ color: "var(--muted)" }}>{e.ledgerAccount.name}</div>
@@ -315,7 +316,7 @@ async function InvoicesTab() {
                 <div style={{ color: "var(--muted)" }}>{inv.billingPeriod}</div>
                 <div className="mono">{formatINR(Number(inv.amount))}</div>
                 <div className="mono" style={{ color: "var(--muted)" }}>
-                  {inv.dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  {formatIST(inv.dueDate, { day: "2-digit", month: "short", year: "numeric" })}
                 </div>
                 <div>
                   <span className="pill" style={{ background: style.bg, color: style.fg }}>

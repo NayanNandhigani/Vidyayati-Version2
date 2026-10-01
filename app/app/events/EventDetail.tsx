@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { formatINR } from "@/lib/format";
 import { addChecklistItem, toggleChecklistItem, sendEventReminder, updateEvent, deleteEvent, type EventFields } from "./actions";
 
@@ -129,7 +130,7 @@ export default function EventDetail({ event, canEdit }: { event: EventData; canE
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 12.5 }}>
-            <div>{new Date(event.date).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</div>
+            <div>{formatIST(event.date, { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}</div>
             {event.venue && <div style={{ color: "var(--muted)" }}>{event.venue}</div>}
             {event.expectedAttendance !== null && (
               <div style={{ color: "var(--muted)" }}>

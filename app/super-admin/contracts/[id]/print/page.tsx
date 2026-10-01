@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { formatIST } from "@/lib/ist";
 import { db } from "@/lib/db";
 import { formatINR } from "@/lib/format";
 import { requirePlatformModuleAccess } from "@/lib/permissions";
@@ -11,7 +12,7 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
   const contract = await db.contract.findUnique({ where: { id }, include: { school: true } });
   if (!contract) notFound();
 
-  const fmt = (d: Date) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+  const fmt = (d: Date) => formatIST(d, { day: "2-digit", month: "long", year: "numeric" });
 
   return (
     <div style={{ padding: "28px 36px", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh", boxSizing: "border-box", background: "var(--paper)" }}>

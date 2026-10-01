@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/friendly-error";
+import { formatIST } from "@/lib/ist";
 import { toast } from "@/components/Toaster";
 import { useRef, useState, useTransition } from "react";
 import { updateUdiseFields, uploadComplianceDocument, deleteComplianceDocument, exportUdiseCsv } from "./compliance-actions";
@@ -118,7 +119,7 @@ export default function CompliancePanel({
                     {d.documentType} {d.documentNo && <span style={{ color: "var(--muted)", fontWeight: 400 }}>· {d.documentNo}</span>}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--faint)" }}>
-                    {d.expiryDate ? `Expires ${new Date(d.expiryDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}` : "No expiry set"}
+                    {d.expiryDate ? `Expires ${formatIST(d.expiryDate, { day: "2-digit", month: "short", year: "numeric" })}` : "No expiry set"}
                     {d.filePath && (
                       <>
                         {" · "}

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { formatIST } from "@/lib/ist";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
@@ -102,7 +103,7 @@ export async function sendEventReminder(eventId: string) {
   await sdb.announcement.create({
     data: scopedCreateData<Prisma.AnnouncementUncheckedCreateInput>({
       title: `Reminder: ${event.title}`,
-      body: `This is a reminder about "${event.title}" on ${event.date.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}${event.venue ? ` at ${event.venue}` : ""}.`,
+      body: `This is a reminder about "${event.title}" on ${formatIST(event.date, { day: "2-digit", month: "long", year: "numeric" })}${event.venue ? ` at ${event.venue}` : ""}.`,
       audienceType: "ALL_PARENTS",
       publishedOn: new Date(),
     }),

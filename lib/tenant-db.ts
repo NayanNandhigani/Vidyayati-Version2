@@ -45,6 +45,7 @@ export const AUDITED_MODELS = new Set([
   "TransportVehicle",
   "TransportRoute",
   "StudentTransportAssignment",
+  "PayrollAdjustment",
 ]);
 
 export const AUDITED_MODEL_LABEL: Record<string, string> = {
@@ -74,6 +75,7 @@ export const AUDITED_MODEL_LABEL: Record<string, string> = {
   TransportVehicle: "Transport Vehicle",
   TransportRoute: "Transport Route",
   StudentTransportAssignment: "Transport Assignment",
+  PayrollAdjustment: "Payroll Adjustment",
 };
 
 // School itself isn't in AUDITED_MODELS: it has no schoolId column (it IS
@@ -202,7 +204,11 @@ export function scopedDb(schoolId: string, actorUserId?: string) {
           }
 
           const result = await query(args);
-          const entityId = (result as { id?: string } | null)?.id;
+          // Most audited models key on `id`; StudentTransportAssignment keys
+          // on `studentId` (one assignment per student), so fall back to it —
+          // otherwise those changes were silently never logged.
+          const row = result as { id?: string; studentId?: string } | null;
+          const entityId = row?.id ?? (model === "StudentTransportAssignment" ? row?.studentId : undefined);
           if (!entityId) return result;
 
           if (operation === "create") {

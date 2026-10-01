@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import Link from "next/link";
 import { initials } from "@/lib/format";
 import { avatarColorFor } from "@/lib/academic";
@@ -76,7 +77,7 @@ export default function PlatformStaffDetail({ staff, canManage }: { staff: Platf
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px", marginBottom: 4 }}>
           <Field label="Username" value={staff.username} mono />
           <Field label="Phone" value={staff.phone ?? "—"} mono />
-          <Field label="Date joined" value={staff.dateJoined ? new Date(staff.dateJoined).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
+          <Field label="Date joined" value={staff.dateJoined ? formatIST(staff.dateJoined, { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
         </div>
 
         <SectionTitle>Access &amp; permissions</SectionTitle>

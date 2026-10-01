@@ -56,6 +56,11 @@ export function isIndianState(value: string): boolean {
   return (INDIAN_STATES_AND_UTS as readonly string[]).includes(value);
 }
 
+/** UDISE+ school code: 11 digits. */
+export function isValidUdiseCode(value: string): boolean {
+  return /^\d{11}$/.test(value.trim());
+}
+
 /** 6-digit Indian PIN code; the first digit is 1–9. */
 export function isValidPinCode(value: string): boolean {
   return /^[1-9]\d{5}$/.test(value.trim());

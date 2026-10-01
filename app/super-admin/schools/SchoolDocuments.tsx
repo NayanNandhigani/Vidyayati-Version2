@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { IconPaperclip } from "@/components/icons";
 import { uploadSchoolDocument, deleteSchoolDocument, type ManageFormState } from "./actions";
 
@@ -59,7 +60,7 @@ export default function SchoolDocuments({ schoolId, documents, canManage }: { sc
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
               <div style={{ fontSize: 10.5, color: "var(--faint)" }}>
-                {CATEGORY_LABEL[d.category]} · {formatSize(d.sizeBytes)} · {new Date(d.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                {CATEGORY_LABEL[d.category]} · {formatSize(d.sizeBytes)} · {formatIST(d.createdAt, { day: "2-digit", month: "short", year: "numeric" })}
               </div>
             </div>
           </a>

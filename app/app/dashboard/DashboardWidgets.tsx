@@ -1,6 +1,6 @@
 "use client";
 
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "@/components/Toaster";
 import { useState, useTransition } from "react";
@@ -242,7 +242,7 @@ export function NotesPanel({ notes }: { notes: Note[] }) {
             </span>
             <div style={{ fontSize: 12.5, color: "var(--ink2)", paddingRight: 14, whiteSpace: "pre-wrap" }}>{n.content}</div>
             <div className="mono" style={{ fontSize: 9.5, color: "var(--faint)", marginTop: 4 }}>
-              {new Date(n.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+              {formatIST(n.createdAt, { day: "2-digit", month: "short" })}
             </div>
           </div>
         ))}

@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { formatIST } from "@/lib/ist";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { hasFeature } from "@/lib/feature-flags";
@@ -171,7 +172,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
                   <div style={{ fontWeight: 600 }}>{s.consumerName}</div>
                   <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{s.items.length} item{s.items.length === 1 ? "" : "s"}</div>
                   <div className="mono" style={{ fontWeight: 700 }}>{formatINR(Number(s.totalAmount))}</div>
-                  <div style={{ fontSize: 11, color: "var(--faint)" }}>{s.soldAt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+                  <div style={{ fontSize: 11, color: "var(--faint)" }}>{formatIST(s.soldAt, { day: "2-digit", month: "short", year: "numeric" })}</div>
                 </div>
               ))}
             </div>

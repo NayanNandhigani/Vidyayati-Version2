@@ -1,6 +1,7 @@
 "use client";
 
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
+import { formatIST } from "@/lib/ist";
 import { useActionState, useState, useTransition } from "react";
 import { createAcademicYear, setCurrentYear, type FormState } from "./actions";
 
@@ -39,7 +40,7 @@ export default function AcademicYearsPanel({ years }: { years: Year[] }) {
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14.5 }}>{y.label}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>
-                  {new Date(y.startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} – {new Date(y.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  {formatIST(y.startDate, { day: "2-digit", month: "short", year: "numeric" })} – {formatIST(y.endDate, { day: "2-digit", month: "short", year: "numeric" })}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 16 }}>

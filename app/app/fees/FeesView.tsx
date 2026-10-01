@@ -1,6 +1,6 @@
 "use client";
 
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { toast } from "@/components/Toaster";
 import { unwrap } from "@/lib/unwrap";
@@ -338,7 +338,7 @@ export default function FeesView({
                   selected.recentPayments.map((p, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 8 }}>
                       <span style={{ color: "var(--muted)" }}>
-                        {new Date(p.paidOn).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} · {p.method}
+                        {formatIST(p.paidOn, { day: "2-digit", month: "short" })} · {p.method}
                       </span>
                       <span className="mono" style={{ fontWeight: 600 }}>
                         {formatINR(p.amount)}

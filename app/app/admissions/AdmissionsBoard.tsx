@@ -1,6 +1,7 @@
 "use client";
 
 import { pipelineCounts, pipelineStage } from "@/lib/admissions";
+import { formatIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -243,7 +244,7 @@ function EnquiryCard({
           {e.parentContact}
         </span>
         {e.enquirySource && <div style={{ fontSize: 10.5, color: "var(--faint)" }}>Source: {e.enquirySource}</div>}
-        {e.followUpDate && <div style={{ fontSize: 10.5, color: "var(--faint)" }}>Follow up: {new Date(e.followUpDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</div>}
+        {e.followUpDate && <div style={{ fontSize: 10.5, color: "var(--faint)" }}>Follow up: {formatIST(e.followUpDate, { day: "2-digit", month: "short" })}</div>}
       </div>
 
       {canEdit && !expanded && (

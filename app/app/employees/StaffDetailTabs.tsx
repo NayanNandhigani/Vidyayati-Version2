@@ -6,15 +6,16 @@ import { useState, useTransition } from "react";
 import type { AccessLevel } from "@prisma/client";
 import { cyclePermission, removeClassPermission, runPayroll, addPayrollAdjustment } from "./actions";
 import { formatINR } from "@/lib/format";
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { addStaffDocument } from "./depth-actions";
 import { addSalaryComponent, removeSalaryComponent, runStructuredPayroll } from "./payroll-depth-actions";
 import { updateStaffProfileDetails, createLeaveType, deleteLeaveType, applyForStaffLeave, actOnStaffLeave } from "./hr-depth-actions";
 import PersonDocumentsPanel, { type PersonDocumentRow } from "@/components/PersonDocumentsPanel";
 import { attendancePercent } from "@/lib/attendance";
+import { MODULE_FLAGS } from "@/lib/module-flags";
 
-const MODULES = ["Students", "Employees", "Attendance", "Exams", "Homework", "Timetable", "Teaching", "Fees", "Accounts", "Admissions", "Transport", "Library", "Events", "Certificates", "Communication", "Reports"];
+const MODULES = ["Students", "Employees", "Attendance", "Exams", "Homework", "Timetable", ...(MODULE_FLAGS.teaching ? ["Teaching"] : []), "Fees", "Accounts", "Admissions", "Transport", "Library", "Events", "Certificates", "Communication", "Reports"];
 
 // Only these modules act on one class at a time — the rest (Fees, Accounts,
 // Admissions, etc.) don't have a per-class concept, so they only ever get
@@ -250,7 +251,7 @@ export default function StaffDetailTabs({
             <FieldGrid>
               <Field label="Designation" value={staff.designation ?? "—"} />
               <Field label="Department" value={staff.department ?? "—"} />
-              <Field label="Date of Joining" value={staff.dateJoined ? new Date(staff.dateJoined).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
+              <Field label="Date of Joining" value={staff.dateJoined ? formatIST(staff.dateJoined, { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
               <Field label="Status" value={staff.employmentStatus === "ACTIVE" ? "Active" : "On Leave"} />
             </FieldGrid>
             <SectionTitle>Contact</SectionTitle>
@@ -300,8 +301,8 @@ export default function StaffDetailTabs({
                 return (
                   <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
                     <div>
-                      <span style={{ color: "var(--ink2)", fontWeight: 600 }}>{d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
-                      <span style={{ color: "var(--faint)", fontSize: 11.5, marginLeft: 6 }}>{d.toLocaleDateString("en-IN", { weekday: "short" })}</span>
+                      <span style={{ color: "var(--ink2)", fontWeight: 600 }}>{formatIST(d, { day: "2-digit", month: "short" })}</span>
+                      <span style={{ color: "var(--faint)", fontSize: 11.5, marginLeft: 6 }}>{formatIST(d, { weekday: "short" })}</span>
                       {a.checkInTime && <span className="mono" style={{ fontSize: 11, color: isLate ? "var(--critical)" : "var(--muted)", marginLeft: 8 }}>{a.checkInTime}{isLate && " · Late"}</span>}
                     </div>
                     <span className="pill" style={{ background: style.bg, color: style.fg }}>
@@ -364,7 +365,7 @@ export default function StaffDetailTabs({
                       <span className="pill" style={{ background: style.bg, color: style.fg, fontSize: 10.5 }}>{r.status}</span>
                     </div>
                     <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                      {new Date(r.dateFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} – {new Date(r.dateTo).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} · {r.reason}
+                      {formatIST(r.dateFrom, { day: "2-digit", month: "short" })} – {formatIST(r.dateTo, { day: "2-digit", month: "short" })} · {r.reason}
                     </div>
                     {isAdmin && r.status === "PENDING" && (
                       <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
@@ -403,7 +404,7 @@ export default function StaffDetailTabs({
                 <SectionTitle>Pending approvals (all staff)</SectionTitle>
                 {pendingLeaveRequests.map((r) => (
                   <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 12 }}>
-                    <span>{r.staffName} — {r.leaveTypeName} ({new Date(r.dateFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })})</span>
+                    <span>{r.staffName} — {r.leaveTypeName} ({formatIST(r.dateFrom, { day: "2-digit", month: "short" })})</span>
                     <span style={{ display: "flex", gap: 8 }}>
                       <span onClick={() => startTransition(() => actOnStaffLeave(r.id, true))} style={{ color: "var(--good)", fontWeight: 700, cursor: "pointer" }}>Approve</span>
                       <span onClick={() => startTransition(() => actOnStaffLeave(r.id, false))} style={{ color: "var(--critical)", fontWeight: 700, cursor: "pointer" }}>Reject</span>

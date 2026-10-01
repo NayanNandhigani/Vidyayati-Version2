@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { formatIST } from "@/lib/ist";
 import { addSchoolNote, type ManageFormState } from "./actions";
 
 const initialState: ManageFormState = {};
@@ -27,7 +28,7 @@ export default function SchoolNotes({ schoolId, notes }: { schoolId: string; not
               <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 6 }}>
                 {note.authorName} ·{" "}
                 <span className="mono">
-                  {new Date(note.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  {formatIST(note.createdAt, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
             </div>

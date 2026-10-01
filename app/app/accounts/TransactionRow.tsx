@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { useRouter } from "next/navigation";
 import { formatINR } from "@/lib/format";
 import { updateManualTransaction, deleteManualTransaction, type ManualTransactionFields } from "./depth-actions";
@@ -70,9 +71,9 @@ export default function TransactionRow({ t, canEdit }: { t: Txn; canEdit: boolea
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "56px 2fr 78px 168px 92px 108px", alignItems: "center", padding: "8px 20px", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
+    <div className="acc-ledger-row" style={{ alignItems: "center", padding: "8px 20px", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
       <div className="mono" style={{ color: "var(--faint)" }}>
-        {new Date(t.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+        {formatIST(t.date, { day: "2-digit", month: "short" })}
       </div>
       <div>
         {t.description}

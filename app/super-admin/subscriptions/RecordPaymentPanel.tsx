@@ -1,6 +1,6 @@
 "use client";
 
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState } from "react";
 import { formatINR } from "@/lib/format";
@@ -31,7 +31,7 @@ export default function RecordPaymentPanel({ invoice }: { invoice: Invoice }) {
         </div>
         <Row label="Billing period" value={invoice.billingPeriod} />
         <Row label="Amount due" value={formatINR(remaining)} bold />
-        <Row label="Due date" value={new Date(invoice.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} />
+        <Row label="Due date" value={formatIST(invoice.dueDate, { day: "2-digit", month: "short", year: "numeric" })} />
       </div>
 
       <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", flex: 1, minHeight: 0 }}>

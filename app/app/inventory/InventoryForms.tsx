@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "@/components/Toaster";
+import { formatIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { unwrap } from "@/lib/unwrap";
 import { useState, useTransition } from "react";
@@ -119,7 +120,7 @@ export function AssetRow({ asset }: { asset: { id: string; name: string; categor
       <div style={{ color: "var(--muted)" }}>{asset.location ?? "—"}</div>
       <div className="mono" style={{ color: "var(--muted)" }}>{formatINR(asset.purchaseCost)}</div>
       <div className="mono" style={{ fontWeight: 600 }}>{formatINR(value)}</div>
-      <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{new Date(asset.purchaseDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+      <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{formatIST(asset.purchaseDate, { day: "2-digit", month: "short", year: "numeric" })}</div>
       <select
         className="in"
         value={asset.status}
@@ -645,7 +646,7 @@ export function PurchaseOrderRow({ po }: { po: { id: string; poNumber: string; v
         <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{po.vendorName} · Qty {po.quantity}</div>
       </div>
       <div className="mono" style={{ color: "var(--muted)" }}>{formatINR(total)}</div>
-      <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{new Date(po.orderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</div>
+      <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{formatIST(po.orderDate, { day: "2-digit", month: "short" })}</div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span className="pill" style={{ background: "transparent", border: `1px solid ${PO_STATUS_COLOR[po.status]}`, color: PO_STATUS_COLOR[po.status] }}>
           {po.status}

@@ -1,4 +1,4 @@
-import { daysFromTodayIST } from "./ist";
+import { daysFromTodayIST, formatIST } from "./ist";
 
 const INR = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
 
@@ -28,7 +28,7 @@ export function formatINRCompact(amount: number): string {
 
 /** "Thursday, 1 October 2026" — in IST, so "today" in a page heading is India's today whatever the server's time zone. */
 export function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
+  return formatIST(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
 export function initials(name: string): string {

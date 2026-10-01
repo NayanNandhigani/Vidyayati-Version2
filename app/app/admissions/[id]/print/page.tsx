@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { formatIST } from "@/lib/ist";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
@@ -33,7 +34,7 @@ export default async function ApplicationPrintPage({ params }: { params: Promise
   ]);
   if (!e) notFound();
 
-  const fmt = (d: Date | null) => (d ? d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }) : null);
+  const fmt = (d: Date | null) => (d ? formatIST(d, { day: "2-digit", month: "long", year: "numeric" }) : null);
 
   return (
     <div style={{ padding: "28px 36px", display: "flex", flexDirection: "column", gap: 16, minHeight: "100dvh", boxSizing: "border-box", background: "var(--paper)" }}>

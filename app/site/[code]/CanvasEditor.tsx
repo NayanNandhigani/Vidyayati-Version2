@@ -1,5 +1,6 @@
 "use client";
 
+import { formatIST } from "@/lib/ist";
 import { useState, useTransition } from "react";
 import { addElement, updateCanvasBackground, publishWebsite } from "./actions";
 import CanvasElement, { type ElementData } from "./CanvasElement";
@@ -13,15 +14,7 @@ const CANVAS_WIDTH = 1200;
 // error. Pinning locale + timezone makes the formatted string identical
 // wherever it's computed.
 function formatPublishedAt(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "Asia/Kolkata",
-  });
+  return formatIST(iso, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export default function CanvasEditor({

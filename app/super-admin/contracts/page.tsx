@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { db } from "@/lib/db";
 import { formatINR } from "@/lib/format";
 import { requirePlatformModuleAccess } from "@/lib/permissions";
@@ -101,7 +102,7 @@ export default async function ContractsPage({ searchParams }: { searchParams: Pr
                     {formatINR(r.annualFee)}
                   </div>
                   <div className="mono" style={{ color: "var(--muted)" }}>
-                    {new Date(r.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    {formatIST(r.endDate, { day: "2-digit", month: "short", year: "numeric" })}
                   </div>
                   <div>
                     <span className="pill" style={{ background: style.bg, color: style.fg }}>

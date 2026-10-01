@@ -11,7 +11,7 @@ import GuardianRow from "./GuardianRow";
 import AddGuardianForm from "./AddGuardianForm";
 import StudentFeeAllocationPanel from "./StudentFeeAllocationPanel";
 import { formatINR } from "@/lib/format";
-import { formatDateIST } from "@/lib/ist";
+import { formatDateIST, formatIST } from "@/lib/ist";
 
 type StudentDetail = {
   id: string;
@@ -359,7 +359,7 @@ export default function ProfileTabs({
               <Row label="Pickup stop" value={student.transportAssignment.stop.stopName} />
               <Row
                 label="Pickup time"
-                value={student.transportAssignment.stop.pickupTime ? student.transportAssignment.stop.pickupTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                value={student.transportAssignment.stop.pickupTime ? formatIST(student.transportAssignment.stop.pickupTime, { hour: "2-digit", minute: "2-digit" }, { clock: true }) : "—"}
                 mono
                 last
               />
@@ -397,7 +397,7 @@ export default function ProfileTabs({
             </div>
 
             <AdmissionSection title="Student">
-              <Row label="Date of birth" value={admission.dob ? new Date(admission.dob).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
+              <Row label="Date of birth" value={admission.dob ? formatIST(admission.dob, { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
               <Row label="Gender" value={admission.gender ? admission.gender[0] + admission.gender.slice(1).toLowerCase() : "—"} />
               <Row label="Blood group" value={admission.bloodGroup ?? "—"} />
               <Row label="Nationality" value={admission.nationality ?? "—"} />

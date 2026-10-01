@@ -7,7 +7,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { parseDateOnly, todayIST } from "@/lib/ist";
+import { parseDateOnly, todayIST, formatIST } from "@/lib/ist";
 
 export type HomeworkFormState = { error?: string };
 
@@ -181,7 +181,7 @@ export async function remindPending(assignmentId: string) {
     data: pending.map((p) =>
       scopedCreateData<Prisma.AnnouncementUncheckedCreateInput>({
         title: "Homework reminder",
-        body: `"${homework.title}" is due ${homework.dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} and hasn't been submitted yet.`,
+        body: `"${homework.title}" is due ${formatIST(homework.dueDate, { day: "2-digit", month: "short" })} and hasn't been submitted yet.`,
         audienceType: "SPECIFIC_STUDENT",
         audienceTarget: p.studentId,
         publishedOn: new Date(),

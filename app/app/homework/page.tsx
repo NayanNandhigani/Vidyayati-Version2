@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
@@ -174,7 +175,7 @@ async function ParentHomeworkView() {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {overdue.map((o) => (
               <div key={o.id} style={{ fontSize: 12.5, color: "var(--ink)" }}>
-                <strong>{o.studentName}</strong> · {o.title} ({o.subject}) — was due {new Date(o.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                <strong>{o.studentName}</strong> · {o.title} ({o.subject}) — was due {formatIST(o.dueDate, { day: "2-digit", month: "short" })}
               </div>
             ))}
           </div>
@@ -202,7 +203,7 @@ async function ParentHomeworkView() {
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600 }}>{sub.assignment.title}</div>
                       <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 1 }}>
-                        {sub.assignment.subject.name} · Due {sub.assignment.dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        {sub.assignment.subject.name} · Due {formatIST(sub.assignment.dueDate, { day: "2-digit", month: "short" })}
                       </div>
                     </div>
                     {showAttachments && <ParentSubmissionUpload submissionId={sub.id} hasAttachment={!!sub.attachmentPath} />}

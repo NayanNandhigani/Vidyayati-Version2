@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { initials } from "@/lib/format";
 import { avatarColorFor, subjectStyleFor } from "@/lib/academic";
 import { classifyHomework, type HomeworkBucket } from "@/lib/homework";
@@ -130,7 +131,7 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
           {dateGroups.map(([dateKey, items]) => (
             <div key={dateKey}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>
-                {new Date(dateKey).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "short", year: "numeric" })}
+                {formatIST(dateKey, { weekday: "long", day: "2-digit", month: "short", year: "numeric" })}
                 <span className="mono" style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 600, color: "var(--faint)", background: "var(--line)", borderRadius: 100, padding: "1px 7px" }}>
                   {items.length}
                 </span>
@@ -218,7 +219,7 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
-                      Due {new Date(a.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                      Due {formatIST(a.dueDate, { day: "2-digit", month: "short" })}
                     </span>
                     <span className="mono" style={{ fontSize: 11, fontWeight: 700 }}>
                       {submitted}/{total}
@@ -282,7 +283,7 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
               <>
                 <div className="field">
                   Due date
-                  <div className="in mono">{new Date(selected.dueDate).toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "short", year: "numeric" })}</div>
+                  <div className="in mono">{formatIST(selected.dueDate, { weekday: "long", day: "2-digit", month: "short", year: "numeric" })}</div>
                 </div>
                 {selected.description && (
                   <div className="field">

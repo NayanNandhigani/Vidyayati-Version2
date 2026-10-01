@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { classTeacherActOnLeave, adminActOnLeave } from "./depth-actions";
 
 type Req = {
@@ -41,7 +42,7 @@ export default function LeaveRequestsPanel({ requests, isAdmin, canActAsClassTea
     });
   }
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  const fmt = (d: string) => formatIST(d, { day: "2-digit", month: "short" });
 
   return (
     <div className="card" style={{ padding: 18 }}>

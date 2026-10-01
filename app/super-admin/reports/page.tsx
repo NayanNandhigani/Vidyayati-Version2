@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { db } from "@/lib/db";
 import { formatINR } from "@/lib/format";
 import { requirePlatformModuleAccess } from "@/lib/permissions";
@@ -35,7 +36,7 @@ export default async function SuperAdminReportsPage() {
 
   const monthStarts = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
-    return { label: d.toLocaleDateString("en-IN", { month: "short" }), year: d.getFullYear(), month: d.getMonth() };
+    return { label: formatIST(d, { month: "short" }), year: d.getFullYear(), month: d.getMonth() };
   });
   const onboardedByMonth = monthStarts.map(({ label, year, month }) => ({
     label,

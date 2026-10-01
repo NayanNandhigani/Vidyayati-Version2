@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
@@ -248,7 +249,7 @@ async function AllocationTab({ rooms, selectedId, canEdit, sdb }: { rooms: Rooms
                           Class {a.student.class.grade}-{a.student.class.section}
                         </div>
                         <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
-                          Moved in {a.dateFrom.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          Moved in {formatIST(a.dateFrom, { day: "2-digit", month: "short", year: "numeric" })}
                         </div>
                       </div>
                       {canEdit && (
@@ -431,7 +432,7 @@ async function ParentHostelView() {
                     return (
                       <div key={r.id} style={{ fontSize: 11.5, display: "flex", justifyContent: "space-between" }}>
                         <span style={{ color: "var(--muted)" }}>
-                          {r.reason} ({r.dateFrom.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}–{r.dateTo.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })})
+                          {r.reason} ({formatIST(r.dateFrom, { day: "2-digit", month: "short" })}–{formatIST(r.dateTo, { day: "2-digit", month: "short" })})
                         </span>
                         <span style={{ fontWeight: 700, color }}>{r.status}</span>
                       </div>

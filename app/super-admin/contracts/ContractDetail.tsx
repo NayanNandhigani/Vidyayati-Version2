@@ -1,6 +1,6 @@
 "use client";
 
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
@@ -80,9 +80,9 @@ export default function ContractDetail({ contract, canManage }: { contract: Cont
       <div style={{ flex: 1, overflowY: "auto", marginTop: 14 }}>
         <div style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
           <DetailRow label="Billing cycle" value={contract.billingCycle[0] + contract.billingCycle.slice(1).toLowerCase()} />
-          <DetailRow label="Term start" value={new Date(contract.startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} mono />
-          <DetailRow label="Term end" value={new Date(contract.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} mono />
-          {contract.signedDate && <DetailRow label="Signed on" value={new Date(contract.signedDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} mono />}
+          <DetailRow label="Term start" value={formatIST(contract.startDate, { day: "2-digit", month: "short", year: "numeric" })} mono />
+          <DetailRow label="Term end" value={formatIST(contract.endDate, { day: "2-digit", month: "short", year: "numeric" })} mono />
+          {contract.signedDate && <DetailRow label="Signed on" value={formatIST(contract.signedDate, { day: "2-digit", month: "short", year: "numeric" })} mono />}
           {contract.signatoryName && <DetailRow label="Signed by" value={`${contract.signatoryName}${contract.signatoryTitle ? `, ${contract.signatoryTitle}` : ""}`} last />}
         </div>
 

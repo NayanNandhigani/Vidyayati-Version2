@@ -1,6 +1,6 @@
 "use client";
 
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import type { HostelLogType, HostelLogStatus } from "@prisma/client";
@@ -77,7 +77,7 @@ export function MaintenancePanel({ targets, logs }: { targets: MaintenanceTarget
                 </div>
                 <div style={{ fontWeight: 600 }}>{l.targetLabel}</div>
                 <div style={{ color: "var(--muted)" }}>{l.description}</div>
-                <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{new Date(l.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</div>
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{formatIST(l.date, { day: "2-digit", month: "short" })}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <select
                     value={l.status}

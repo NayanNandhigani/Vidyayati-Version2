@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
@@ -92,7 +93,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                   <div className="mono" style={{ fontSize: 19, fontWeight: 700 }}>
                     {String(e.date.getDate()).padStart(2, "0")}
                   </div>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase" }}>{e.date.toLocaleDateString("en-IN", { month: "short" })}</div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase" }}>{formatIST(e.date, { month: "short" })}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -104,7 +105,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                     )}
                   </div>
                   <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 5 }}>
-                    {e.date.toLocaleDateString("en-IN", { weekday: "short" })} {e.venue && `· ${e.venue}`}
+                    {formatIST(e.date, { weekday: "short" })} {e.venue && `· ${e.venue}`}
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 9 }}>
                     <span style={{ fontSize: 11.5, color: "var(--faint)" }}>{e.expectedAttendance !== null ? `${e.expectedAttendance} expected` : ""}</span>
@@ -168,7 +169,7 @@ async function ParentEventsView() {
                   <div className="mono" style={{ fontSize: 19, fontWeight: 700 }}>
                     {String(e.date.getDate()).padStart(2, "0")}
                   </div>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase" }}>{e.date.toLocaleDateString("en-IN", { month: "short" })}</div>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase" }}>{formatIST(e.date, { month: "short" })}</div>
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{e.title}</div>

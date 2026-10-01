@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { formatIST } from "@/lib/ist";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import ComposeForm from "./ComposeForm";
@@ -96,7 +97,7 @@ export default async function CommunicationPage() {
                         {style.label}
                       </span>
                       <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
-                        {a.publishedOn.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        {formatIST(a.publishedOn, { day: "2-digit", month: "short", year: "numeric" })}
                       </span>
                       {isAdmin && <WithdrawButton id={a.id} withdrawn={a.withdrawn} />}
                     </div>
@@ -184,7 +185,7 @@ async function RecipientView() {
                 </div>
                 <div style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.6, marginBottom: 6 }}>{a.body}</div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
-                  {a.publishedOn!.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  {formatIST(a.publishedOn!, { day: "2-digit", month: "short", year: "numeric" })}
                 </div>
               </div>
             );

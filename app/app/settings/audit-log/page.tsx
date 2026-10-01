@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getScopedDb, AUDITED_MODEL_LABEL } from "@/lib/tenant-db";
-import { resolveAuditLabels } from "@/lib/audit-labels";
+import { resolveAuditLabels, formatAuditChanges } from "@/lib/audit-labels";
+import { formatDateTimeIST, istDayStart } from "@/lib/ist";
 import AuditLogTable, { type AuditLogRow } from "@/components/AuditLogTable";
 
 export default async function AuditLogPage({ searchParams }: { searchParams: Promise<{ entityType?: string; actorUserId?: string; from?: string; to?: string }> }) {
@@ -18,9 +19,10 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
         ...(params.actorUserId ? { actorUserId: params.actorUserId } : {}),
         ...(params.from || params.to
           ? {
+              // The From/To dates are IST calendar days.
               occurredAt: {
-                ...(params.from ? { gte: new Date(params.from) } : {}),
-                ...(params.to ? { lte: new Date(new Date(params.to).getTime() + 24 * 60 * 60 * 1000) } : {}),
+                ...(params.from ? { gte: istDayStart(params.from) } : {}),
+                ...(params.to ? { lt: new Date(istDayStart(params.to).getTime() + 24 * 60 * 60 * 1000) } : {}),
               },
             }
           : {}),
@@ -37,7 +39,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
   // own stored snapshot instead, since there's no live record left to
   // query — both replace what used to be just the raw entityId.
   const nonDeleted = rowsRaw.filter((r) => r.action !== "DELETE");
-  const labels = await resolveAuditLabels(sdb, nonDeleted);
+  const [labels, changeLines] = await Promise.all([resolveAuditLabels(sdb, nonDeleted), formatAuditChanges(sdb, rowsRaw)]);
 
   const rows: AuditLogRow[] = rowsRaw.map((r) => {
     const resolved = labels.get(`${r.entityType}:${r.entityId}`);
@@ -45,12 +47,15 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
       id: r.id,
       action: r.action,
       entityType: r.entityType,
+      entityLabel: AUDITED_MODEL_LABEL[r.entityType] ?? null,
       entityId: r.entityId,
       changes: r.changes,
       occurredAt: r.occurredAt.toISOString(),
+      when: formatDateTimeIST(r.occurredAt),
       actorName: r.actor?.name ?? null,
       resolvedLabel: resolved?.label ?? null,
       href: resolved?.href ?? null,
+      changeLines: changeLines.get(r.id) ?? [],
     };
   });
 

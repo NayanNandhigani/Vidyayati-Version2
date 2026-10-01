@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import type { UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { formatINR, formatDate } from "@/lib/format";
@@ -206,7 +207,7 @@ export default async function SuperAdminDashboard({ searchParams }: { searchPara
   // --- Revenue trend (last 12 months) ----------------------------------------
   const monthStarts = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
-    return { label: d.toLocaleDateString("en-IN", { month: "short" }), year: d.getFullYear(), month: d.getMonth() };
+    return { label: formatIST(d, { month: "short" }), year: d.getFullYear(), month: d.getMonth() };
   });
   const monthlyRevenue = monthStarts.map(({ label, year, month }) => ({
     label,

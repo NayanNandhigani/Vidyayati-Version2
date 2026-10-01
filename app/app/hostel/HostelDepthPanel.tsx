@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/friendly-error";
+import { formatIST } from "@/lib/ist";
 import { useState, useTransition } from "react";
 import { updateRoomTypeAndWarden, upsertMessMenu, addVisitorLog, checkOutVisitor, requestOuting, actOnOuting } from "./hostel-depth-actions";
 
@@ -155,8 +156,8 @@ export function VisitorLogPanel({ students, logs }: { students: { id: string; na
             <div>
               <b>{l.visitorName}</b> {l.relation && `(${l.relation})`} → {l.studentName}
               <div style={{ fontSize: 10.5, color: "var(--faint)" }}>
-                In {new Date(l.checkInAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                {l.checkOutAt && ` · Out ${new Date(l.checkOutAt).toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit" })}`}
+                In {formatIST(l.checkInAt, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                {l.checkOutAt && ` · Out ${formatIST(l.checkOutAt, { hour: "2-digit", minute: "2-digit" })}`}
               </div>
             </div>
             {!l.checkOutAt && (
@@ -194,7 +195,7 @@ export function OutingRequestsPanel({ requests }: { requests: { id: string; stud
           </div>
           <div style={{ color: "var(--muted)" }}>{r.reason}</div>
           <div style={{ fontSize: 10.5, color: "var(--faint)" }}>
-            {new Date(r.dateFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} – {new Date(r.dateTo).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+            {formatIST(r.dateFrom, { day: "2-digit", month: "short" })} – {formatIST(r.dateTo, { day: "2-digit", month: "short" })}
           </div>
           {r.status === "PENDING" && (
             <div style={{ display: "flex", gap: 10, marginTop: 4 }}>

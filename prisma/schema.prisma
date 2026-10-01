@@ -21,6 +21,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Loads `include`d relations with one SQL query (JOINs) instead of one
+  // query per relation level. Every relation level used to be a separate
+  // round trip to the database, which is what made pages slow on a remote
+  // database (QA BUG-28).
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -76,6 +81,8 @@ model School {
   district           String?
   country            String? @default("India")
   postalCode         String? @map("postal_code")
+  phone              String? // school office phone: a 10-digit mobile, or a landline with its STD code (lib/school-fields.ts)
+  email              String?
 
   // Multi-branch tagging (Batch 16) — purely a Super Admin grouping label
   // for the cross-school rollup report; deliberately NOT a new login role

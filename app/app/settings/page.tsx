@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getScopedDb } from "@/lib/tenant-db";
 import { hasFeature } from "@/lib/feature-flags";
 import GeneralForm from "./GeneralForm";
+import { matchIndianState } from "@/lib/school-fields";
 import AcademicYearsPanel from "./AcademicYearsPanel";
 import IdCardPanel from "./IdCardPanel";
 import GradingPanel from "./GradingPanel";
@@ -34,13 +35,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const school = await db.school.findUniqueOrThrow({ where: { id: session!.user.schoolId! } });
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 18, height: "100dvh", boxSizing: "border-box" }}>
+    <div className="settings-page" style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 18, height: "100dvh", boxSizing: "border-box" }}>
       <div className="disp" style={{ fontSize: 21 }}>
         Settings
       </div>
 
-      <div style={{ display: "flex", gap: 20, flex: 1, minHeight: 0 }}>
-        <div className="card" style={{ width: 196, flex: "none", padding: 10, display: "flex", flexDirection: "column", gap: 2, height: "fit-content" }}>
+      <div className="settings-layout" style={{ display: "flex", gap: 20, flex: 1, minHeight: 0 }}>
+        <div className="card settings-nav" style={{ width: 196, flex: "none", padding: 10, display: "flex", flexDirection: "column", gap: 2, height: "fit-content" }}>
           {PANELS.map((p) => (
             <Link
               key={p.key}
@@ -58,7 +59,20 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
         {panel === "general" && (
           <div className="card" style={{ flex: 1, padding: 26, overflowY: "auto" }}>
-            <GeneralForm school={{ name: school.name, city: school.city, state: school.state, admissionNoPrefix: school.admissionNoPrefix }} />
+            <GeneralForm
+              admissionNoPrefix={school.admissionNoPrefix}
+              school={{
+                name: school.name,
+                city: school.city ?? "",
+                state: matchIndianState(school.state),
+                postalCode: school.postalCode ?? "",
+                affiliationBoard: school.affiliationBoard ?? "",
+                affiliationNumber: school.affiliationNumber ?? "",
+                udiseCode: school.udiseCode ?? "",
+                phone: school.phone ?? "",
+                email: school.email ?? "",
+              }}
+            />
           </div>
         )}
 

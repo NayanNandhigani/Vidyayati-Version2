@@ -100,3 +100,26 @@ describe("friendly errors", () => {
     expect(await runAction(async () => ({ error: "Nope" }))).toEqual({ error: "Nope" });
   });
 });
+
+import { formatIST } from "@/lib/ist";
+
+describe("formatIST (deterministic IST formatting)", () => {
+  const at = new Date("2026-09-29T13:35:00Z"); // 7:05 pm IST
+  it("formats dates in IST regardless of the machine's timezone", () => {
+    expect(formatIST(at, { day: "2-digit", month: "short", year: "numeric" })).toBe("29 Sep 2026");
+    expect(formatIST(at, { weekday: "long", day: "2-digit", month: "long", year: "numeric" })).toBe("Tuesday, 29 September 2026");
+    expect(formatIST(at, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })).toBe("29 Sep, 7:05 pm");
+    expect(formatIST(at, { weekday: "short" })).toBe("Tue");
+    expect(formatIST(at, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })).toBe("29/09/2026, 7:05 pm");
+  });
+  it("rolls over to the next IST day late in the UTC evening", () => {
+    expect(formatIST("2026-09-29T19:00:00Z", { day: "2-digit", month: "short" })).toBe("30 Sep");
+  });
+  it("keeps date-only values (UTC midnight) on their own day", () => {
+    expect(formatIST("2026-09-29T00:00:00.000Z", { day: "2-digit", month: "short" })).toBe("29 Sep");
+  });
+  it("leaves clock times unshifted and handles empty values", () => {
+    expect(formatIST(new Date("1970-01-01T07:30:00Z"), { hour: "2-digit", minute: "2-digit" }, { clock: true })).toBe("7:30 am");
+    expect(formatIST(null, { day: "2-digit" })).toBe("—");
+  });
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import type { MealType } from "@prisma/client";
@@ -63,7 +63,7 @@ export function MealsServedLog({ logs }: { logs: MealServedRow[] }) {
           <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", fontSize: 12, padding: "8px 10px", background: "var(--paper)", borderRadius: 6 }}>
             <div>
               <div style={{ fontWeight: 700 }}>
-                {MEAL_LABEL[l.mealType]} <span className="mono" style={{ fontWeight: 500, color: "var(--faint)" }}>· {new Date(l.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
+                {MEAL_LABEL[l.mealType]} <span className="mono" style={{ fontWeight: 500, color: "var(--faint)" }}>· {formatIST(l.date, { day: "2-digit", month: "short" })}</span>
               </div>
               <div style={{ color: "var(--muted)", marginTop: 2 }}>{l.description}</div>
               {l.headcount != null && <div className="mono" style={{ color: "var(--faint)", fontSize: 10.5, marginTop: 2 }}>{l.headcount} served</div>}

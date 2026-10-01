@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { db } from "@/lib/db";
 import { requirePlatformModuleAccess } from "@/lib/permissions";
 import OnboardForm from "./OnboardForm";
@@ -97,7 +98,7 @@ export default async function SchoolsPage({ searchParams }: { searchParams: Prom
                     </span>
                   </div>
                   <div className="mono" style={{ color: "var(--muted)" }}>
-                    {s.onboardedOn.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    {formatIST(s.onboardedOn, { day: "2-digit", month: "short", year: "numeric" })}
                   </div>
                 </Link>
               );

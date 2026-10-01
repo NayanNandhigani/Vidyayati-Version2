@@ -86,3 +86,70 @@ export function formatDateIST(d: Date): string {
 export function formatLongDateIST(d: Date = new Date()): string {
   return LONG_DATE_FMT.format(d);
 }
+
+/** The instant an IST calendar day ("2026-09-29") begins. */
+export function istDayStart(day: string): Date {
+  return new Date(`${day}T00:00:00+05:30`);
+}
+
+// ---------------------------------------------------------------------------
+// formatIST: date/time text that's identical on the server and in every
+// browser. toLocaleDateString("en-IN", …) depends on each runtime's ICU
+// data and timezone — Node prints "Tuesday, 29 Sept 2026" where Chromium
+// prints "Tuesday 29 Sept, 2026", and a browser outside India shifts the
+// day — so a client component rendered on the server and hydrated in the
+// browser disagreed (React error #418 on Homework). This does the IST
+// arithmetic itself (UTC+5:30, India has no daylight saving) and always
+// writes the same shape: "Tuesday, 29 Sep 2026, 7:05 pm".
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+export type FormatISTOptions = {
+  weekday?: "long" | "short";
+  day?: "numeric" | "2-digit";
+  month?: "short" | "long" | "2-digit";
+  year?: "numeric";
+  hour?: "numeric" | "2-digit";
+  minute?: "2-digit";
+  hour12?: boolean;
+};
+
+/**
+ * Formats a moment in IST. Pass `clock: true` for a time-of-day column
+ * (Postgres TIME, e.g. a bus stop's pickup time) — those hold the wall-clock
+ * time as UTC and must not be shifted.
+ */
+export function formatIST(value: Date | string | number | null | undefined, opts: FormatISTOptions, { clock = false }: { clock?: boolean } = {}): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const t = new Date(value).getTime();
+  if (Number.isNaN(t)) return "—";
+  const d = new Date(clock ? t : t + IST_OFFSET_MS); // read with getUTC* below
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  const dateParts: string[] = [];
+  if (opts.day) dateParts.push(opts.day === "2-digit" ? pad(d.getUTCDate()) : String(d.getUTCDate()));
+  if (opts.month === "2-digit") {
+    // Numeric style: 29/09/2026
+    const numeric = [opts.day ? dateParts.pop()! : null, pad(d.getUTCMonth() + 1), opts.year ? String(d.getUTCFullYear()) : null].filter(Boolean).join("/");
+    dateParts.push(numeric);
+  } else {
+    if (opts.month) dateParts.push((opts.month === "long" ? MONTHS_LONG : MONTHS_SHORT)[d.getUTCMonth()]!);
+    if (opts.year) dateParts.push(String(d.getUTCFullYear()));
+  }
+
+  let text = dateParts.join(" ");
+  if (opts.weekday) {
+    const wd = WEEKDAYS_LONG[d.getUTCDay()]!;
+    const name = opts.weekday === "short" ? wd.slice(0, 3) : wd;
+    text = text ? `${name}, ${text}` : name;
+  }
+  if (opts.hour || opts.minute) {
+    const h24 = d.getUTCHours();
+    const mm = pad(d.getUTCMinutes());
+    const time = opts.hour12 === false ? `${pad(h24)}:${mm}` : `${h24 % 12 || 12}:${mm} ${h24 < 12 ? "am" : "pm"}`;
+    text = text ? `${text}, ${time}` : time;
+  }
+  return text;
+}

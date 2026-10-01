@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { deletePersonDocument } from "@/app/app/students/depth-actions";
 
 export type PersonDocumentRow = {
@@ -118,7 +119,7 @@ export default function PersonDocumentsPanel({
                 {d.label}
               </a>
               <span className="mono" style={{ fontSize: 11, color: isExpired(d.expiryDate) ? "var(--critical)" : isExpiringSoon(d.expiryDate) ? "var(--warn)" : "var(--muted)" }}>
-                {d.expiryDate ? `${isExpired(d.expiryDate) ? "Expired" : "Expires"} ${new Date(d.expiryDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}` : "No expiry"}
+                {d.expiryDate ? `${isExpired(d.expiryDate) ? "Expired" : "Expires"} ${formatIST(d.expiryDate, { day: "2-digit", month: "short", year: "numeric" })}` : "No expiry"}
               </span>
               <span onClick={() => remove(d.id)} style={{ fontSize: 11.5, fontWeight: 700, color: "var(--critical)", cursor: "pointer" }}>
                 Delete

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { formatIST } from "@/lib/ist";
 import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
@@ -179,7 +180,7 @@ export async function canViewExamResults(examId: string, studentId: string): Pro
   ]);
 
   if (exam?.resultReleaseAt && exam.resultReleaseAt > new Date()) {
-    return { visible: false, reason: `Results release on ${exam.resultReleaseAt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}.` };
+    return { visible: false, reason: `Results release on ${formatIST(exam.resultReleaseAt, { day: "2-digit", month: "short", year: "numeric" })}.` };
   }
 
   if (school.resultsLockUntilFeesCleared) {

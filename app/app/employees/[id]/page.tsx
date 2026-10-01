@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { formatIST } from "@/lib/ist";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
@@ -117,7 +118,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, fontSize: 12.5 }}>
           <BasicRow label="Designation" value={selected.designation ?? "—"} />
           <BasicRow label="Department" value={selected.department ?? "—"} />
-          <BasicRow label="Date joined" value={selected.dateJoined ? selected.dateJoined.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
+          <BasicRow label="Date joined" value={selected.dateJoined ? formatIST(selected.dateJoined, { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
           <BasicRow label="Contact" value={selected.user.phone ?? "—"} mono />
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { formatIST } from "@/lib/ist";
 // No server-only imports here (no `db`) — this is shared between the
 // Contracts server action (fallback template generation) and the client-side
 // "insert standard template" button in NewContractForm, so it must stay
@@ -6,7 +7,7 @@
 const CYCLE_LABEL: Record<string, string> = { MONTHLY: "monthly", QUARTERLY: "quarterly", YEARLY: "annual", NONE: "one-time" };
 
 function displayDate(d: Date): string {
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+  return formatIST(d, { day: "2-digit", month: "long", year: "numeric" });
 }
 
 // Deliberately "Rs." rather than the ₹ glyph (lib/format.ts's formatINR) —

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatIST } from "@/lib/ist";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
@@ -88,7 +89,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
     if (rows.length === 0) return NextResponse.json({ error: "Student not found in this class." }, { status: 404 });
   }
 
-  const examDates = `${exam.startDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} – ${exam.endDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`;
+  const examDates = `${formatIST(exam.startDate, { day: "2-digit", month: "short", year: "numeric" })} – ${formatIST(exam.endDate, { day: "2-digit", month: "short", year: "numeric" })}`;
   const schoolAddress = [exam.school.addressLine, exam.school.city, exam.school.state].filter(Boolean).join(", ");
 
   const buffer = await renderToBuffer(ReportCardDocument({ schoolName: exam.school.name, schoolAddress, examName: exam.name, examDates, students: rows }));

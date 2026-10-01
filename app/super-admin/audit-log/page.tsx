@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { requirePlatformModuleAccess } from "@/lib/permissions";
 import { AUDITED_MODEL_LABEL } from "@/lib/tenant-db";
+import { describeAuditChanges } from "@/lib/audit-labels";
+import { formatDateTimeIST, istDayStart } from "@/lib/ist";
 import AuditLogTable, { type AuditLogRow } from "@/components/AuditLogTable";
 
 export default async function SuperAdminAuditLogPage({ searchParams }: { searchParams: Promise<{ entityType?: string; actorUserId?: string; schoolId?: string; from?: string; to?: string }> }) {
@@ -16,9 +18,10 @@ export default async function SuperAdminAuditLogPage({ searchParams }: { searchP
         ...(params.schoolId ? { schoolId: params.schoolId } : {}),
         ...(params.from || params.to
           ? {
+              // The From/To dates are IST calendar days.
               occurredAt: {
-                ...(params.from ? { gte: new Date(params.from) } : {}),
-                ...(params.to ? { lte: new Date(new Date(params.to).getTime() + 24 * 60 * 60 * 1000) } : {}),
+                ...(params.from ? { gte: istDayStart(params.from) } : {}),
+                ...(params.to ? { lt: new Date(istDayStart(params.to).getTime() + 24 * 60 * 60 * 1000) } : {}),
               },
             }
           : {}),
@@ -35,9 +38,12 @@ export default async function SuperAdminAuditLogPage({ searchParams }: { searchP
     id: r.id,
     action: r.action,
     entityType: r.entityType,
+      entityLabel: AUDITED_MODEL_LABEL[r.entityType] ?? null,
     entityId: r.entityId,
     changes: r.changes,
     occurredAt: r.occurredAt.toISOString(),
+    when: formatDateTimeIST(r.occurredAt),
+    changeLines: describeAuditChanges(r.action, r.changes),
     actorName: r.actor?.name ?? null,
     schoolName: r.school?.name ?? null,
   }));

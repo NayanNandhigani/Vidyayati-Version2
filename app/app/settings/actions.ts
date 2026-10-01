@@ -11,6 +11,7 @@ import { newPasswordSchema } from "@/lib/validation";
 import { calculateExamResults } from "@/lib/domain/exam-results";
 import { GRADE_SCALE_PRESETS } from "@/lib/grade-scales";
 import { runAction } from "@/lib/action-result";
+import { parseSchoolGeneral, type SchoolGeneralValues } from "@/lib/school-fields";
 
 async function requireAdmin() {
   const session = await auth();
@@ -19,24 +20,31 @@ async function requireAdmin() {
 
 export type FormState = { error?: string; success?: boolean };
 
-export async function saveGeneral(_prevState: FormState, formData: FormData): Promise<FormState> {
+export type GeneralFormState = {
+  error?: string;
+  success?: boolean;
+  fieldErrors?: Partial<Record<keyof SchoolGeneralValues, string>>;
+  values?: SchoolGeneralValues;
+};
+
+export async function saveGeneral(_prevState: GeneralFormState, formData: FormData): Promise<GeneralFormState> {
   await requireAdmin();
   const session = await auth();
+  const schoolId = session!.user.schoolId!;
 
-  const name = formData.get("name");
-  const city = formData.get("city");
-  const state = formData.get("state");
+  const input: Record<string, string> = {};
+  for (const [k, v] of formData.entries()) if (typeof v === "string") input[k] = v;
 
-  if (typeof name !== "string" || !name.trim()) return { error: "School name is required." };
+  const current = await db.school.findUniqueOrThrow({ where: { id: schoolId }, select: { state: true } });
+  const parsed = parseSchoolGeneral(input, current);
+  if (parsed.fieldErrors) return { error: "Please fix the highlighted fields.", fieldErrors: parsed.fieldErrors, values: parsed.values };
 
-  await db.school.update({
-    where: { id: session!.user.schoolId! },
-    data: { name: name.trim(), city: typeof city === "string" ? city : null, state: typeof state === "string" ? state : null },
-  });
+  const result = await runAction(() => db.school.update({ where: { id: schoolId }, data: parsed.data }), "saveGeneral");
+  if (result.ok !== true) return { error: result.error, values: parsed.values };
 
   revalidatePath("/app/settings");
   revalidatePath("/app/dashboard");
-  return { success: true };
+  return { success: true, values: parsed.values };
 }
 
 export async function createAcademicYear(_prevState: FormState, formData: FormData): Promise<FormState> {

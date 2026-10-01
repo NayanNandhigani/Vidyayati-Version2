@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/friendly-error";
+import { formatIST } from "@/lib/ist";
 import { useState, useTransition } from "react";
 import { updateExam, approveExam, rejectExam, deleteExam } from "./actions";
 import { unwrap } from "@/lib/unwrap";
@@ -187,7 +188,7 @@ export default function ScheduleExamPanel({
         <div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{examName}</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-            Class {classLabel} · {new Date(startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} – {new Date(endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+            Class {classLabel} · {formatIST(startDate, { day: "2-digit", month: "short" })} – {formatIST(endDate, { day: "2-digit", month: "short", year: "numeric" })}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

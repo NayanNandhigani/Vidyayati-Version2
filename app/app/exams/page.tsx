@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess, getPermittedClassIds } from "@/lib/permissions";
@@ -42,14 +43,23 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   // Same reasoning as Attendance/Students: a class-scoped staffer with no
   // school-wide row must still reach this page — only reject up front when
   // they have no permitted classes at all.
-  const permittedClassIds = await getPermittedClassIds("Exams", "VIEW");
+  // Reads that don't depend on each other run together (QA BUG-28) — this
+  // page used to make ~19 database round trips one after another.
+  const [permittedClassIds, currentYear, school, showSeating, showResultRelease, rooms, allSubjects] = await Promise.all([
+    getPermittedClassIds("Exams", "VIEW"),
+    sdb.academicYear.findFirst({ where: { isCurrent: true }, include: { gradeScale: { include: { bands: true } } } }),
+    sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { resultsLockUntilFeesCleared: true, examFailLabel: true } }),
+    hasFeature(session!.user.schoolId, "exams.seatingAndBulkMarks"),
+    hasFeature(session!.user.schoolId, "exams.resultRelease"),
+    sdb.room.findMany({ orderBy: { name: "asc" } }),
+    sdb.subject.findMany({ orderBy: { name: "asc" } }),
+  ]);
   if (permittedClassIds !== "ALL" && permittedClassIds.size === 0) {
     await requireModuleAccess("Exams", "VIEW");
   }
 
   const tab: Tab = TABS.includes(params.tab as Tab) ? (params.tab as Tab) : "schedule";
 
-  const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true }, include: { gradeScale: { include: { bands: true } } } });
   const gradeBands = currentYear?.gradeScale?.bands.map((b) => ({ label: b.label, minPercent: Number(b.minPercent), maxPercent: Number(b.maxPercent) })) ?? [];
   const gradeForPct = (pct: number) => gradeForScale(pct, gradeBands) ?? gradeFor(pct);
   const examsRaw = currentYear
@@ -73,33 +83,24 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   const canEdit = accessLevel === "EDIT";
   const isSchoolAdmin = session!.user.role === "SCHOOL_ADMIN";
 
-  const [examSubjects, allSubjects] = await Promise.all([
+  const [examSubjects, students, marks, storedResults, seating] = await Promise.all([
     selectedExam
       ? sdb.examSubject.findMany({ where: { examId: selectedExam.id }, include: { subject: true }, orderBy: { subject: { name: "asc" } } })
       : Promise.resolve([]),
-    sdb.subject.findMany({ orderBy: { name: "asc" } }),
+    classId
+      ? sdb.student.findMany({ where: { classId, status: "ACTIVE" }, orderBy: [{ firstName: "asc" }, { surname: "asc" }], select: { id: true, firstName: true, surname: true, admissionNo: true } })
+      : Promise.resolve([]),
+    // Same rows as "marks of the students listed above", without waiting for that list first.
+    selectedExam && classId ? sdb.mark.findMany({ where: { examSubject: { examId: selectedExam.id }, student: { classId, status: "ACTIVE" } } }) : Promise.resolve([]),
+    selectedExam ? sdb.studentResult.findMany({ where: { examId: selectedExam.id } }) : Promise.resolve([]),
+    selectedExam && showSeating ? getSeating(selectedExam.id) : Promise.resolve([]),
   ]);
-
-  const students = classId
-    ? await sdb.student.findMany({ where: { classId, status: "ACTIVE" }, orderBy: [{ firstName: "asc" }, { surname: "asc" }], select: { id: true, firstName: true, surname: true, admissionNo: true } })
-    : [];
-
-  const marks = selectedExam
-    ? await sdb.mark.findMany({ where: { examSubject: { examId: selectedExam.id }, studentId: { in: students.map((s) => s.id) } } })
-    : [];
   const initialMarks: Record<string, Record<string, number | "AB">> = {};
   for (const m of marks) {
     initialMarks[m.studentId] = initialMarks[m.studentId] ?? {};
     initialMarks[m.studentId][m.examSubjectId] = m.isAbsent ? "AB" : Number(m.marksObtained);
   }
 
-  const [showSeating, showResultRelease, rooms, school] = await Promise.all([
-    hasFeature(session!.user.schoolId, "exams.seatingAndBulkMarks"),
-    hasFeature(session!.user.schoolId, "exams.resultRelease"),
-    sdb.room.findMany({ orderBy: { name: "asc" } }),
-    sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { resultsLockUntilFeesCleared: true } }),
-  ]);
-  const seating = selectedExam && showSeating ? await getSeating(selectedExam.id) : [];
 
   const examOptions = exams.map((e) => ({ id: e.id, classId: e.classId, label: `${e.name} · Class ${e.class.grade}-${e.class.section}` }));
 
@@ -113,12 +114,12 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   // yet — shows "—" rather than being scored as zero or omitted.
   // Results calculated before the shared rules (lib/exam-rules.ts) existed
   // are recalculated the first time the exam is opened.
-  let results = selectedExam ? await sdb.studentResult.findMany({ where: { examId: selectedExam.id } }) : [];
+  let results = storedResults;
   if (selectedExam && results.some((r) => r.computedAt < EXAM_RULES_SINCE)) {
     await calculateExamResults(selectedExam.id);
     results = await sdb.studentResult.findMany({ where: { examId: selectedExam.id } });
   }
-  const failLabel = (await sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { examFailLabel: true } }))?.examFailLabel ?? null;
+  const failLabel = school?.examFailLabel ?? null;
   const resultByStudent = new Map(results.map((r) => [r.studentId, r]));
   const subjectSpecs = examSubjects.map((es) => ({ id: es.id, maxMarks: es.maxMarks, passMarks: es.passMarks }));
   const reportCardRows = students.map((s) => {
@@ -210,7 +211,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 4, fontWeight: 600 }}>
-                    {e.startDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} – {e.endDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} · Class {e.class.grade}-{e.class.section}
+                    {formatIST(e.startDate, { day: "2-digit", month: "short" })} – {formatIST(e.endDate, { day: "2-digit", month: "short", year: "numeric" })} · Class {e.class.grade}-{e.class.section}
                   </div>
                   <span className="pill" style={{ background: approval.bg, color: approval.fg, marginTop: 6, display: "inline-block" }}>
                     {approval.label}

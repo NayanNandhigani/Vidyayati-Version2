@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatIST } from "@/lib/ist";
 import Link from "next/link";
 import { formatINR } from "@/lib/format";
 import RecordPaymentPanel from "../../subscriptions/RecordPaymentPanel";
@@ -78,7 +79,7 @@ export default function SchoolBillingPanel({ schoolId, invoices }: { schoolId: s
                     </span>
                   </div>
                   <div className="mono" style={{ color: "var(--muted)", textAlign: "right" }}>
-                    {new Date(r.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    {formatIST(r.dueDate, { day: "2-digit", month: "short", year: "numeric" })}
                   </div>
                 </div>
               );

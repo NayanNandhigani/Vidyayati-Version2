@@ -1,6 +1,6 @@
 "use client";
 
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState } from "react";
 import { recordBillPayment, type AccountsFormState } from "./actions";
@@ -56,7 +56,7 @@ export default function BillRow({ bill }: { bill: BillRowData }) {
         <div style={{ color: "var(--muted)" }}>{bill.categoryName}</div>
         <div className="mono">{formatAmount(bill.amount)}</div>
         <div className="mono" style={{ color: "var(--muted)" }}>
-          {new Date(bill.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+          {formatIST(bill.dueDate, { day: "2-digit", month: "short", year: "numeric" })}
         </div>
         <div>
           <span className="pill" style={{ background: style.bg, color: style.fg }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/friendly-error";
+import { formatIST } from "@/lib/ist";
 import { useState, useTransition } from "react";
 import { studentName } from "@/lib/format";
 import { computeLibraryFine } from "@/lib/library";
@@ -110,7 +111,7 @@ export default function CirculationPanel({
                 <div style={{ fontSize: 12, color: "var(--ink2)", margin: "2px 0 4px" }}>{c.bookTitle}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-                    Issued {new Date(c.issueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} · Due {new Date(c.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                    Issued {formatIST(c.issueDate, { day: "2-digit", month: "short" })} · Due {formatIST(c.dueDate, { day: "2-digit", month: "short" })}
                     {finePreview > 0 && <> · Fine ₹{finePreview}</>}
                   </span>
                   <span onClick={() => doReturn(c.id)} style={{ fontSize: 11, fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>

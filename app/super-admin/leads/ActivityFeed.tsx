@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { addActivity, completeActivity, type FormState } from "./actions";
 
 export type Activity = {
@@ -75,7 +76,7 @@ export default function ActivityFeed({ leadId, activities, canEdit }: { leadId: 
                   <div style={{ fontSize: 13, color: "var(--ink)" }}>{a.notes}</div>
                   {a.dueAt && (
                     <div className="mono" style={{ fontSize: 10.5, color: isOverdue && !a.completedAt ? "var(--critical)" : "var(--faint)", marginTop: 3 }}>
-                      Due {new Date(a.dueAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                      Due {formatIST(a.dueAt, { day: "2-digit", month: "short", year: "numeric" })}
                     </div>
                   )}
                 </div>

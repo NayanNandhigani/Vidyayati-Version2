@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { formatIST } from "@/lib/ist";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requirePlatformModuleAccess } from "@/lib/permissions";
@@ -180,7 +181,7 @@ export default async function SchoolProfilePage({ params }: { params: Promise<{ 
           <div style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
             <DetailRow label="Admin" value={admin?.name ?? "—"} />
             <DetailRow label="Admin username" value={admin?.username ?? "—"} mono />
-            <DetailRow label="Onboarded" value={school.onboardedOn.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} mono last />
+            <DetailRow label="Onboarded" value={formatIST(school.onboardedOn, { day: "2-digit", month: "short", year: "numeric" })} mono last />
           </div>
           <SchoolEditForm school={{ id: school.id, name: school.name, code: school.code, city: school.city, state: school.state }} />
 
@@ -226,7 +227,7 @@ export default async function SchoolProfilePage({ params }: { params: Promise<{ 
           <Stat label="This month" value={loginsMonth.length} small />
           <Stat label="This year" value={loginsYear.length} small />
         </div>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 18 }}>Last login: {lastLogin ? lastLogin.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Never"}</div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 18 }}>Last login: {lastLogin ? formatIST(lastLogin, { day: "2-digit", month: "short", year: "numeric" }) : "Never"}</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
           <ActivationRow label="Staff accounts" activated={staffActivated} total={staffTotal} />

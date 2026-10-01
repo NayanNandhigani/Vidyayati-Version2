@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import Link from "next/link";
 import { renderCertificateBody } from "@/lib/certificates";
 import { issueCertificate } from "./actions";
@@ -117,7 +118,7 @@ export default function GeneratePanel({
               <span style={{ color: "var(--muted)" }}> · {r.templateLabel}</span>
             </span>
             <span className="mono" style={{ color: "var(--faint)" }}>
-              {new Date(r.issuedDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+              {formatIST(r.issuedDate, { day: "2-digit", month: "short" })}
             </span>
           </Link>
         ))}

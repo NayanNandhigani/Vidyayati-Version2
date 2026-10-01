@@ -1,12 +1,28 @@
 import { AccessLevel } from "@prisma/client";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { cache } from "react";
 
 const LEVEL_RANK: Record<AccessLevel, number> = {
   NONE: 0,
   VIEW: 1,
   EDIT: 2,
 };
+
+// Per-request caches (QA BUG-28): a page typically checks access two or
+// three times (requireModuleAccess, getPermittedClassIds for VIEW and EDIT)
+// and the layout reads the same rows again. Each used to be its own
+// database round trip; React's cache() makes them one per request. Outside
+// a React render (e.g. in a server action) cache() simply calls through.
+export const getSchoolDisabledModules = cache(async (schoolId: string): Promise<string[]> => {
+  const school = await db.school.findUnique({ where: { id: schoolId }, select: { disabledModules: true } });
+  return school?.disabledModules ?? [];
+});
+
+export const getStaffPermissionRows = cache(async (userId: string) => {
+  const staff = await db.staffProfile.findUnique({ where: { userId }, include: { permissions: true } });
+  return staff?.permissions ?? [];
+});
 
 /**
  * Staff permissions are per-module (see StaffPermission), not a fixed
@@ -36,8 +52,8 @@ export async function requireModuleAccess(
   }
 
   if (session.user.schoolId) {
-    const school = await db.school.findUnique({ where: { id: session.user.schoolId }, select: { disabledModules: true } });
-    if (school?.disabledModules.includes(moduleName)) {
+    const disabledModules = await getSchoolDisabledModules(session.user.schoolId);
+    if (disabledModules.includes(moduleName)) {
       throw new Error(`Module "${moduleName}" is disabled for this school`);
     }
   }
@@ -50,12 +66,7 @@ export async function requireModuleAccess(
     throw new Error(`Role ${session.user.role} cannot access module "${moduleName}"`);
   }
 
-  const staffProfile = await db.staffProfile.findUnique({
-    where: { userId: session.user.id },
-    include: { permissions: { where: { moduleName } } },
-  });
-
-  const rows = staffProfile?.permissions ?? [];
+  const rows = (await getStaffPermissionRows(session.user.id)).filter((p) => p.moduleName === moduleName);
   const schoolWide = rows.find((p) => p.classId === null);
   const classSpecific = classId ? rows.find((p) => p.classId === classId) : undefined;
   const level = schoolWide?.accessLevel ?? classSpecific?.accessLevel ?? "NONE";
@@ -81,12 +92,7 @@ export async function getPermittedClassIds(moduleName: string, minimum: AccessLe
   if (session.user.role === "SCHOOL_ADMIN") return "ALL";
   if (session.user.role !== "STAFF") return new Set();
 
-  const staffProfile = await db.staffProfile.findUnique({
-    where: { userId: session.user.id },
-    include: { permissions: { where: { moduleName } } },
-  });
-
-  const rows = (staffProfile?.permissions ?? []).filter((p) => LEVEL_RANK[p.accessLevel] >= LEVEL_RANK[minimum]);
+  const rows = (await getStaffPermissionRows(session.user.id)).filter((p) => p.moduleName === moduleName && LEVEL_RANK[p.accessLevel] >= LEVEL_RANK[minimum]);
   if (rows.some((p) => p.classId === null)) return "ALL";
   return new Set(rows.map((p) => p.classId).filter((id): id is string => id !== null));
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { NAV_GROUPS } from "./sidebar-config";
 import { IconSchool, IconLogOut, IconLock } from "./icons";
 
@@ -16,10 +17,25 @@ type Props = {
 
 export default function Sidebar({ role, visibleModules, disabledSchoolModules, schoolName, userName, onSignOut }: Props) {
   const pathname = usePathname();
+  // Small screens: the sidebar is a slide-in menu (see .app-sidebar in
+  // globals.css). It closes whenever the page changes.
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [pathname]);
 
   return (
+    <>
+    <div className="app-topbar print-hide">
+      <button type="button" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(true)} style={{ background: "none", border: "none", color: "#fff", fontSize: 22, lineHeight: 1, cursor: "pointer", padding: 4 }}>
+        ☰
+      </button>
+      <div className="disp" style={{ fontSize: 15 }}>
+        Vidya Yati
+      </div>
+      <div style={{ fontSize: 11, color: "#aeb8d6", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "45vw" }}>{schoolName}</div>
+    </div>
+    <div className={`app-backdrop${open ? " is-open" : ""}`} onClick={() => setOpen(false)} />
     <aside
-      className="print-hide"
+      className={`print-hide app-sidebar${open ? " is-open" : ""}`}
       style={{
         width: 236,
         flex: "none",
@@ -108,5 +124,6 @@ export default function Sidebar({ role, visibleModules, disabledSchoolModules, s
         </button>
       </div>
     </aside>
+    </>
   );
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatIST } from "@/lib/ist";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
@@ -55,7 +56,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
     };
   });
 
-  const examDates = `${exam.startDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} – ${exam.endDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`;
+  const examDates = `${formatIST(exam.startDate, { day: "2-digit", month: "short", year: "numeric" })} – ${formatIST(exam.endDate, { day: "2-digit", month: "short", year: "numeric" })}`;
 
   const buffer = await renderToBuffer(HallTicketDocument({ schoolName: exam.school.name, examName: exam.name, examDates, students: rows }));
 

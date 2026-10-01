@@ -62,7 +62,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   // session with no class assignment at all is a normal, expected state
   // now — show a plain explanation instead of throwing to the generic
   // error boundary.
-  const permittedClassIds = await getPermittedClassIds("Attendance", "VIEW");
+  // Independent reads run together (QA BUG-28).
+  const [permittedClassIds, classesRaw, showLeaveWorkflow, showFlags] = await Promise.all([
+    getPermittedClassIds("Attendance", "VIEW"),
+    sdb.class.findMany({ orderBy: [{ grade: "asc" }, { section: "asc" }] }),
+    hasFeature(session!.user.schoolId, "attendance.studentLeave"),
+    hasFeature(session!.user.schoolId, "attendance.defaulterAlerts"),
+  ]);
   if (session!.user.role === "STAFF" && permittedClassIds !== "ALL" && permittedClassIds.size === 0) {
     return (
       <div style={{ padding: "26px 34px" }}>
@@ -76,7 +82,6 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     );
   }
 
-  const classesRaw = await sdb.class.findMany({ orderBy: [{ grade: "asc" }, { section: "asc" }] });
   const classes = permittedClassIds === "ALL" ? classesRaw : classesRaw.filter((c) => permittedClassIds.has(c.id));
   const classId = params.classId ?? classes[0]?.id ?? "";
 
@@ -84,36 +89,34 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   // and only VIEW (or none) on another. Throws if classId itself isn't
   // permitted at all (e.g. a manipulated ?classId=), consistent with how
   // insufficient access is handled elsewhere in this codebase.
-  const accessLevel = classId ? await requireModuleAccess("Attendance", "VIEW", classId) : "NONE";
+  const classFilter = permittedClassIds === "ALL" ? {} : { classId: { in: [...permittedClassIds] } };
+  const [accessLevel, students, existing, reqs, flags, school] = await Promise.all([
+    classId ? requireModuleAccess("Attendance", "VIEW", classId) : Promise.resolve("NONE" as const),
+    classId
+      ? sdb.student.findMany({
+          where: { classId, status: "ACTIVE" },
+          orderBy: [{ firstName: "asc" }, { surname: "asc" }],
+          select: { id: true, firstName: true, surname: true, admissionNo: true },
+        })
+      : Promise.resolve([]),
+    // The day's marks for this class's active students, without waiting for the student list first.
+    classId ? sdb.attendance.findMany({ where: { date: dateValue, student: { classId, status: "ACTIVE" } } }) : Promise.resolve([]),
+    showLeaveWorkflow
+      ? sdb.studentLeaveRequest.findMany({
+          where: { stage: { in: ["PENDING", "CLASS_TEACHER_APPROVED"] }, student: classFilter },
+          include: { student: { include: { class: true } } },
+          orderBy: { requestedAt: "desc" },
+        })
+      : Promise.resolve([]),
+    showFlags ? getAttendanceFlags() : Promise.resolve({ defaulters: [], consecutiveAbsentees: [] }),
+    showFlags ? sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { attendanceDefaulterThresholdPct: true, consecutiveAbsenceAlertDays: true } }) : Promise.resolve(null),
+  ]);
   const canEdit = accessLevel === "EDIT";
-
-  const students = classId
-    ? await sdb.student.findMany({
-        where: { classId, status: "ACTIVE" },
-        orderBy: [{ firstName: "asc" }, { surname: "asc" }],
-        select: { id: true, firstName: true, surname: true, admissionNo: true },
-      })
-    : [];
-
-  const existing = classId
-    ? await sdb.attendance.findMany({ where: { date: dateValue, studentId: { in: students.map((s) => s.id) } } })
-    : [];
   const initialMarks: Record<string, "PRESENT" | "ABSENT" | "HALF_DAY"> = {};
   for (const a of existing) initialMarks[a.studentId] = a.status;
 
-  const [showLeaveWorkflow, showFlags] = await Promise.all([
-    hasFeature(session!.user.schoolId, "attendance.studentLeave"),
-    hasFeature(session!.user.schoolId, "attendance.defaulterAlerts"),
-  ]);
-
   let leaveRequests: { id: string; studentName: string; className: string; dateFrom: string; dateTo: string; reason: string; stage: "PENDING" | "CLASS_TEACHER_APPROVED" | "ADMIN_APPROVED" | "REJECTED"; rejectionNote: string | null }[] = [];
   if (showLeaveWorkflow) {
-    const classFilter = permittedClassIds === "ALL" ? {} : { classId: { in: [...permittedClassIds] } };
-    const reqs = await sdb.studentLeaveRequest.findMany({
-      where: { stage: { in: ["PENDING", "CLASS_TEACHER_APPROVED"] }, student: classFilter },
-      include: { student: { include: { class: true } } },
-      orderBy: { requestedAt: "desc" },
-    });
     leaveRequests = reqs.map((r) => ({
       id: r.id,
       studentName: `${r.student.firstName} ${r.student.surname}`,
@@ -126,8 +129,6 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     }));
   }
 
-  const flags = showFlags ? await getAttendanceFlags() : { defaulters: [], consecutiveAbsentees: [] };
-  const school = showFlags ? await sdb.school.findUnique({ where: { id: session!.user.schoolId! }, select: { attendanceDefaulterThresholdPct: true, consecutiveAbsenceAlertDays: true } }) : null;
 
   return (
     <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>

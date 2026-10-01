@@ -1,4 +1,4 @@
-import { todayIST } from "@/lib/ist";
+import { todayIST, formatIST } from "@/lib/ist";
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
@@ -204,7 +204,7 @@ function RoutesTab({
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{stop.stopName}</div>
                     {stop.pickupTime && (
                       <div className="mono" style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                        {stop.pickupTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                        {formatIST(stop.pickupTime, { hour: "2-digit", minute: "2-digit", hour12: true }, { clock: true })}
                       </div>
                     )}
                   </div>
@@ -386,7 +386,7 @@ async function ParentTransportView() {
               <div style={{ fontWeight: 600 }}>{s.transportAssignment.route.name}</div>
               <div style={{ color: "var(--muted)", fontSize: 12.5, marginTop: 2 }}>
                 Pickup: {s.transportAssignment.stop.stopName}
-                {s.transportAssignment.stop.pickupTime && ` · ${s.transportAssignment.stop.pickupTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`}
+                {s.transportAssignment.stop.pickupTime && ` · ${formatIST(s.transportAssignment.stop.pickupTime, { hour: "2-digit", minute: "2-digit", hour12: true }, { clock: true })}`}
               </div>
               {showLiveLocation && s.transportAssignment.route.vehicle?.lastKnownLat != null && (
                 <div style={{ marginTop: 6 }}>

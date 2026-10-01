@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { formatIST } from "@/lib/ist";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatINR } from "@/lib/format";
@@ -66,7 +67,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             <DetailRow label="Phone" value={lead.contactPhone} mono />
             {lead.contactEmail && <DetailRow label="Email" value={lead.contactEmail} mono />}
             {lead.estimatedValue != null && <DetailRow label="Estimated value" value={`${formatINR(Number(lead.estimatedValue))}/yr`} mono />}
-            {lead.expectedCloseDate && <DetailRow label="Expected close" value={lead.expectedCloseDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} mono />}
+            {lead.expectedCloseDate && <DetailRow label="Expected close" value={formatIST(lead.expectedCloseDate, { day: "2-digit", month: "short", year: "numeric" })} mono />}
             {lead.relationshipManager && <DetailRow label="Relationship manager" value={lead.relationshipManager} />}
             <DetailRow label="Address" value={address ?? "—"} last />
           </div>

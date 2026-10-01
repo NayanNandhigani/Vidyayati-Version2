@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/friendly-error";
+import { formatIST } from "@/lib/ist";
 import { toast } from "@/components/Toaster";
 import { useState, useTransition } from "react";
 import type { VehicleLogType } from "@prisma/client";
@@ -234,7 +235,7 @@ function ServiceLogSection({ vehicleId, logs, pending, startTransition }: { vehi
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span className="mono" style={{ fontSize: 10.5, color: "var(--faint)" }}>
-                  {new Date(l.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                  {formatIST(l.date, { day: "2-digit", month: "short" })}
                 </span>
                 <span onClick={() => startTransition(() => deleteVehicleLog(l.id, vehicleId))} style={{ color: "var(--critical)", cursor: "pointer", fontWeight: 700 }}>
                   ×
@@ -280,7 +281,7 @@ function ComplianceRow({ label, policyNo, expiry, style }: { label: string; poli
       </div>
       {policyNo !== undefined && <div className="mono" style={{ fontSize: 11.5, color: "var(--muted)" }}>{policyNo || "No policy/license no. on file"}</div>}
       <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>
-        {expiry ? `Expires ${new Date(expiry).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}` : "No expiry date on file"}
+        {expiry ? `Expires ${formatIST(expiry, { day: "2-digit", month: "short", year: "numeric" })}` : "No expiry date on file"}
       </div>
     </div>
   );

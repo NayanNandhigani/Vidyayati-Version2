@@ -1,6 +1,7 @@
 "use client";
 
 import { friendlyError } from "@/lib/friendly-error";
+import { formatIST } from "@/lib/ist";
 import { useState, useTransition } from "react";
 import { registerLaundry, markLaundryCollected, deleteLaundryTicket, type LaundryItemInput } from "./laundry-actions";
 import { unwrap } from "@/lib/unwrap";
@@ -172,8 +173,8 @@ export default function LaundryPanel({ students, tickets, canEdit }: { students:
                 <div style={{ fontSize: 10.5, color: "var(--faint)" }}>Room {t.roomNo}</div>
               </div>
               <div style={{ color: "var(--muted)", fontSize: 11.5 }}>{t.items.map((i) => `${i.itemType} ×${i.quantity}`).join(", ")}</div>
-              <div className="mono" style={{ fontSize: 11 }}>{new Date(t.submittedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</div>
-              <div className="mono" style={{ fontSize: 11 }}>{t.collectionDate ? new Date(t.collectionDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—"}</div>
+              <div className="mono" style={{ fontSize: 11 }}>{formatIST(t.submittedAt, { day: "2-digit", month: "short" })}</div>
+              <div className="mono" style={{ fontSize: 11 }}>{t.collectionDate ? formatIST(t.collectionDate, { day: "2-digit", month: "short" }) : "—"}</div>
               <div>
                 <span className="pill" style={{ background: t.status === "COLLECTED" ? "var(--good-tint)" : "var(--warn-tint)", color: t.status === "COLLECTED" ? "var(--good)" : "var(--warn)" }}>
                   {t.status === "COLLECTED" ? "Collected" : "Pending"}
@@ -223,10 +224,10 @@ function Receipt({ ticket, onClose }: { ticket: LaundryTicketRow; onClose: () =>
             <b>{ticket.studentName}</b> · Room {ticket.roomNo}
           </div>
           <div style={{ color: "var(--muted)", fontSize: 11.5, marginTop: 2 }}>
-            Submitted {new Date(ticket.submittedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+            Submitted {formatIST(ticket.submittedAt, { day: "2-digit", month: "short", year: "numeric" })}
           </div>
           <div style={{ color: "var(--muted)", fontSize: 11.5 }}>
-            Collection date: {ticket.collectionDate ? new Date(ticket.collectionDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Not set"}
+            Collection date: {ticket.collectionDate ? formatIST(ticket.collectionDate, { day: "2-digit", month: "short", year: "numeric" }) : "Not set"}
           </div>
         </div>
         <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>

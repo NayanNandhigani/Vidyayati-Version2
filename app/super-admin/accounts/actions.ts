@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { formatIST } from "@/lib/ist";
 import type { LedgerAccountType, Recurrence } from "@prisma/client";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
@@ -217,7 +218,7 @@ export async function setInvoiceRecurrence(invoiceId: string, recurrence: Recurr
 }
 
 function nextBillingPeriodLabel(recurrence: Recurrence, dueDate: Date): string {
-  if (recurrence === "MONTHLY") return dueDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+  if (recurrence === "MONTHLY") return formatIST(dueDate, { month: "short", year: "numeric" });
   if (recurrence === "QUARTERLY") return `Q${Math.floor(dueDate.getMonth() / 3) + 1} ${dueDate.getFullYear()}`;
   const fyStartYear = dueDate.getMonth() >= 3 ? dueDate.getFullYear() : dueDate.getFullYear() - 1;
   return `${fyStartYear}–${String(fyStartYear + 1).slice(2)}`;

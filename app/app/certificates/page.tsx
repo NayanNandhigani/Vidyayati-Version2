@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
@@ -159,7 +160,7 @@ async function ParentCertificatesView() {
                 >
                   <span style={{ fontWeight: 600 }}>{c.template.label}</span>
                   <span className="mono" style={{ color: "var(--muted)" }}>
-                    {c.issuedDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    {formatIST(c.issuedDate, { day: "2-digit", month: "short", year: "numeric" })}
                   </span>
                 </Link>
               ))}

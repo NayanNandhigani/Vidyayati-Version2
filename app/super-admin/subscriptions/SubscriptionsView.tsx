@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatIST } from "@/lib/ist";
 import { formatINR } from "@/lib/format";
 import RecordPaymentPanel from "./RecordPaymentPanel";
 
@@ -83,10 +84,10 @@ export default function SubscriptionsView({ rows }: { rows: Row[] }) {
                 </span>
               </div>
               <div className="mono" style={{ color: isOverdue ? "var(--critical)" : "var(--muted)", fontWeight: isOverdue ? 600 : 400 }}>
-                {new Date(r.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                {formatIST(r.dueDate, { day: "2-digit", month: "short", year: "numeric" })}
               </div>
               <div className="mono" style={{ color: "var(--muted)" }}>
-                {r.lastPaymentDate ? new Date(r.lastPaymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                {r.lastPaymentDate ? formatIST(r.lastPaymentDate, { day: "2-digit", month: "short", year: "numeric" }) : "—"}
               </div>
               <div className="mono" style={{ color: "var(--muted)" }}>
                 {formatINR(r.paidAmount)}

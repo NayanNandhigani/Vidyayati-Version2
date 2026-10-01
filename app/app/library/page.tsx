@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatIST } from "@/lib/ist";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
@@ -194,7 +195,7 @@ async function ParentLibraryView() {
                   <div>
                     <div style={{ fontSize: 12.5, fontWeight: 600 }}>{c.book.title}</div>
                     <div style={{ fontSize: 10.5, color: "var(--faint)" }}>
-                      Issued {c.issueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} · Due {c.dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                      Issued {formatIST(c.issueDate, { day: "2-digit", month: "short" })} · Due {formatIST(c.dueDate, { day: "2-digit", month: "short" })}
                     </div>
                   </div>
                   <span className="pill" style={{ background: c.status === "ISSUED" ? "var(--warn-tint)" : "var(--good-tint)", color: c.status === "ISSUED" ? "var(--warn)" : "var(--good)" }}>

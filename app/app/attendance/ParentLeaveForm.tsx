@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { applyForLeave } from "./depth-actions";
 
 type Req = { id: string; dateFrom: string; dateTo: string; reason: string; stage: string; rejectionNote: string | null };
@@ -66,7 +67,7 @@ export default function ParentLeaveForm({ studentId, requests }: { studentId: st
             return (
               <div key={r.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "6px 10px", background: "var(--paper)", borderRadius: 6 }}>
                 <span>
-                  {new Date(r.dateFrom).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} – {new Date(r.dateTo).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} · {r.reason}
+                  {formatIST(r.dateFrom, { day: "2-digit", month: "short" })} – {formatIST(r.dateTo, { day: "2-digit", month: "short" })} · {r.reason}
                 </span>
                 <span style={{ fontWeight: 700, color: stage.color }}>{stage.label}</span>
               </div>

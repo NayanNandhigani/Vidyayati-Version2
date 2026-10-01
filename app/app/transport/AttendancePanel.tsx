@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { formatIST } from "@/lib/ist";
 import { useRouter } from "next/navigation";
 import { studentName } from "@/lib/format";
 import { markTransportEvent, unmarkTransportEvent } from "./attendance-actions";
@@ -74,7 +75,7 @@ function EventCell({ label, time, canEdit, pending, onToggle }: { label: string;
       </button>
       {marked && (
         <div className="mono" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 3 }}>
-          {new Date(time!).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+          {formatIST(time!, { hour: "2-digit", minute: "2-digit" })}
         </div>
       )}
     </div>
