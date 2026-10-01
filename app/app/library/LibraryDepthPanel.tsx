@@ -1,7 +1,9 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { updateLibraryFineSettings, issueBookByAccession, returnBookByAccession } from "./depth-actions";
+import { unwrap } from "@/lib/unwrap";
 
 export function LibraryFineSettings({ ratePerDay, graceDays }: { ratePerDay: number | null; graceDays: number | null }) {
   const [, startTransition] = useTransition();
@@ -35,11 +37,11 @@ export function ScanCirculation({ students }: { students: { id: string; name: st
     setMsg(null);
     startTransition(async () => {
       try {
-        await issueBookByAccession(studentId, issueAcc.trim());
+        unwrap(await issueBookByAccession(studentId, issueAcc.trim()));
         setMsg({ text: `Issued "${issueAcc.trim()}".`, ok: true });
         setIssueAcc("");
       } catch (e) {
-        setMsg({ text: e instanceof Error ? e.message : "Could not issue.", ok: false });
+        setMsg({ text: friendlyError(e, "Could not issue."), ok: false });
       }
     });
   }
@@ -49,11 +51,11 @@ export function ScanCirculation({ students }: { students: { id: string; name: st
     setMsg(null);
     startTransition(async () => {
       try {
-        const res = await returnBookByAccession(returnAcc.trim());
+        const res = unwrap(await returnBookByAccession(returnAcc.trim()));
         setMsg({ text: res.fine > 0 ? `Returned "${returnAcc.trim()}" — fine ₹${res.fine} charged.` : `Returned "${returnAcc.trim()}", no fine.`, ok: true });
         setReturnAcc("");
       } catch (e) {
-        setMsg({ text: e instanceof Error ? e.message : "Could not return.", ok: false });
+        setMsg({ text: friendlyError(e, "Could not return."), ok: false });
       }
     });
   }

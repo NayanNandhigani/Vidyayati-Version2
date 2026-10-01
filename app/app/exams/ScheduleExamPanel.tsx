@@ -1,7 +1,9 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { updateExam, approveExam, rejectExam, deleteExam } from "./actions";
+import { unwrap } from "@/lib/unwrap";
 
 type ExamSubjectRow = { id: string; subjectId: string; name: string; maxMarks: number; passMarks: number | null };
 type Subject = { id: string; name: string };
@@ -68,15 +70,15 @@ export default function ScheduleExamPanel({
     }
     startTransition(async () => {
       try {
-        await updateExam(examId, {
+        unwrap(await updateExam(examId, {
           name,
           startDate: start,
           endDate: end,
           subjects: rows.map((r) => ({ examSubjectId: r.examSubjectId, subjectId: r.subjectId, maxMarks: r.maxMarks, passMarks: r.passMarks })),
-        });
+        }));
         setEditing(false);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save.");
+        setError(friendlyError(e, "Could not save."));
       }
     });
   }

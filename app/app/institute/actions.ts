@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { promoteStudent } from "@/lib/domain/enrollment";
 import { applyFeePlan, generateInstalmentsForClass, regenerateInstalmentsForGrade, type FeePlanTerm, type InstalmentPlanResult } from "@/lib/fee-instalments";
+import { runAction, UserError } from "@/lib/action-result";
 
 async function requireAdmin() {
   const session = await auth();
@@ -192,28 +193,30 @@ export async function deleteSubject(subjectId: string): Promise<{ error?: string
 
 function assertWholeNonNegative(amount: number, label: string) {
   if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(amount)) {
-    throw new Error(`${label} must be a whole number ≥ 0.`);
+    throw new UserError(`${label} must be a whole number of 0 or more.`);
   }
 }
 
 export async function setClassFeeDefault(grade: string, actualFee: number) {
-  await requireAdmin();
-  assertWholeNonNegative(actualFee, "Actual fee");
-  const sdb = await getScopedDb();
-  const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
-  if (!currentYear) throw new Error("Set an active academic year in Settings first.");
-  await sdb.classFeeDefault.upsert({
-    where: { yearId_grade: { yearId: currentYear.id, grade } },
-    update: { actualFee },
-    create: scopedCreateData<Prisma.ClassFeeDefaultUncheckedCreateInput>({ yearId: currentYear.id, grade, actualFee }),
-  });
-  // Students without their own charged fee are billed from this figure, so
-  // their instalments must follow it.
-  await regenerateInstalmentsForGrade(sdb, currentYear.id, grade);
-  revalidatePath("/app/institute");
-  revalidatePath("/app/fees");
-  revalidatePath("/app/admissions");
-  revalidatePath("/app/students");
+  return runAction(async () => {
+    await requireAdmin();
+    assertWholeNonNegative(actualFee, "Actual fee");
+    const sdb = await getScopedDb();
+    const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
+    if (!currentYear) throw new UserError("Set an active academic year in Settings first.");
+    await sdb.classFeeDefault.upsert({
+      where: { yearId_grade: { yearId: currentYear.id, grade } },
+      update: { actualFee },
+      create: scopedCreateData<Prisma.ClassFeeDefaultUncheckedCreateInput>({ yearId: currentYear.id, grade, actualFee }),
+    });
+    // Students without their own charged fee are billed from this figure, so
+    // their instalments must follow it.
+    await regenerateInstalmentsForGrade(sdb, currentYear.id, grade);
+    revalidatePath("/app/institute");
+    revalidatePath("/app/fees");
+    revalidatePath("/app/admissions");
+    revalidatePath("/app/students");
+  }, "setClassFeeDefault");
 }
 
 export type FeeInstalmentPlanTerm = FeePlanTerm;

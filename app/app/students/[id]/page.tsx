@@ -7,6 +7,7 @@ import { studentName } from "@/lib/format";
 import { feeStatusFor, FEE_STATUS_STYLE, gradeFor, gradeForScale } from "@/lib/academic";
 import { getSchoolFeatures } from "@/lib/feature-flags";
 import { attendancePercent } from "@/lib/attendance";
+import { todayISTDate, formatDateIST } from "@/lib/ist";
 import { getSiblings } from "../depth-actions";
 import ProfileTabs from "./ProfileTabs";
 import StudentActionsPanel from "./StudentActionsPanel";
@@ -56,7 +57,14 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const gradeBands = currentYear?.gradeScale?.bands.map((b) => ({ label: b.label, minPercent: Number(b.minPercent), maxPercent: Number(b.maxPercent) })) ?? [];
   const gradeForPct = (pct: number) => gradeForScale(pct, gradeBands) ?? gradeFor(pct);
 
-  const feeInstalments = student.feeInstalments.map((fi) => ({ id: fi.id, term: fi.feeStructure.term, amount: fi.amount, dueDate: fi.feeStructure.dueDate }));
+  // Plain numbers only: Prisma Decimals can't be passed to the client
+  // component below. Overdue is decided here against today's IST date.
+  const today = todayISTDate();
+  const feeInstalments = student.feeInstalments.map((fi) => {
+    const amount = Number(fi.amount);
+    const paid = fi.payments.reduce((s, p) => s + Number(p.amount), 0);
+    return { id: fi.id, term: fi.feeStructure.term, amount, paid, dueDate: fi.feeStructure.dueDate, overdue: paid < amount && fi.feeStructure.dueDate < today };
+  });
   const classFeeDefault = currentYear
     ? await sdb.classFeeDefault.findUnique({ where: { yearId_grade: { yearId: currentYear.id, grade: student.class.grade } } })
     : null;
@@ -84,9 +92,9 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const latestExamPct = examResults[0] ? Math.round((examResults[0].obtained / examResults[0].max) * 100) : null;
   const latestExamGrade = latestExamPct !== null ? gradeForPct(latestExamPct) : null;
 
-  const totalFeeDue = feeInstalments.reduce((s, f) => s + Number(f.amount), 0);
+  const totalFeeDue = feeInstalments.reduce((s, f) => s + f.amount, 0);
   const totalFeePaid = student.feePayments.reduce((s, p) => s + Number(p.amount), 0);
-  const feeStatus = feeStatusFor(totalFeeDue, totalFeePaid, feeInstalments.some((f) => f.dueDate < new Date()) && totalFeePaid < totalFeeDue);
+  const feeStatus = feeStatusFor(totalFeeDue, totalFeePaid, feeInstalments.some((f) => f.overdue));
   const feeStyle = FEE_STATUS_STYLE[feeStatus];
 
   return (
@@ -140,7 +148,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
           <QuickStat label="Fee status" value={feeStyle.label} color={feeStyle.fg} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, fontSize: 12.5 }}>
-          <BasicRow label="Date of birth" value={student.dob ? student.dob.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
+          <BasicRow label="Date of birth" value={student.dob ? formatDateIST(student.dob) : "—"} />
           <BasicRow label="Gender" value={student.gender ? student.gender[0] + student.gender.slice(1).toLowerCase() : "—"} />
           <BasicRow label="Parent / guardian" value={student.parentLinks[0]?.parent.name ?? "—"} />
           <BasicRow label="Contact" value={student.parentLinks[0]?.parent.phone ?? "—"} mono />
@@ -148,7 +156,22 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
       </div>
 
       <ProfileTabs
-        student={student}
+        student={{
+          id: student.id,
+          dob: student.dob,
+          gender: student.gender,
+          admissionNo: student.admissionNo,
+          class: { grade: student.class.grade, section: student.class.section },
+          parentLinks: student.parentLinks.map((l) => ({ id: l.id, relation: l.relation, isPrimary: l.isPrimary, parent: { id: l.parent.id, name: l.parent.name, phone: l.parent.phone, preferredContactMethod: l.parent.preferredContactMethod } })),
+          transportAssignment: student.transportAssignment
+            ? {
+                route: { name: student.transportAssignment.route.name, vehicle: student.transportAssignment.route.vehicle ? { driverName: student.transportAssignment.route.vehicle.driverName, vehicleNo: student.transportAssignment.route.vehicle.vehicleNo } : null },
+                stop: { stopName: student.transportAssignment.stop.stopName, pickupTime: student.transportAssignment.stop.pickupTime },
+              }
+            : null,
+          attendance: student.attendance.map((a) => ({ date: a.date, status: a.status })),
+          feePayments: student.feePayments.map((p) => ({ amount: Number(p.amount), paidOn: p.paidOn })),
+        }}
         attendancePct={attendancePct}
         attendanceTotals={attendanceTotals}
         examResults={examResults}

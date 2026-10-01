@@ -1,5 +1,7 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { unwrap } from "@/lib/unwrap";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { formatINR } from "@/lib/format";
@@ -181,7 +183,7 @@ export function ConsumableRow({ item }: { item: { id: string; name: string; cate
     if (!n || n <= 0) return;
     startTransition(async () => {
       try {
-        await adjustStock(item.id, type, n, null);
+        unwrap(await adjustStock(item.id, type, n, null));
         setQty("");
       } catch {
         /* server action's error message isn't easily surfaced here without a message slot; a failed OUT (insufficient stock) simply leaves the quantity field as typed for the user to correct */
@@ -302,10 +304,10 @@ export function StockItemRow({ item }: { item: { id: string; name: string; itemT
     setError(null);
     startTransition(async () => {
       try {
-        await adjustStockItem(item.id, type, n, null);
+        unwrap(await adjustStockItem(item.id, type, n, null));
         setQty("");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not adjust stock.");
+        setError(friendlyError(e, "Could not adjust stock."));
       }
     });
   }
@@ -313,8 +315,16 @@ export function StockItemRow({ item }: { item: { id: string; name: string; itemT
   function savePricing() {
     const cost = Number(costPrice);
     const sell = Number(sellPrice);
-    if (Number.isNaN(cost) || Number.isNaN(sell)) return;
-    startTransition(() => updateStockItemPricing(item.id, cost, sell));
+    if (Number.isNaN(cost) || Number.isNaN(sell)) return setError("Prices must be numbers.");
+    if (cost < 0 || sell < 0) return setError("Prices can't be negative.");
+    setError(null);
+    startTransition(async () => {
+      try {
+        unwrap(await updateStockItemPricing(item.id, cost, sell));
+      } catch (e) {
+        setError(friendlyError(e, "Could not save the prices. Please try again."));
+      }
+    });
   }
 
   return (

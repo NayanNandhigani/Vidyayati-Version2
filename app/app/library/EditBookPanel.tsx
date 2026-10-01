@@ -1,7 +1,9 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { updateBook, deleteBook } from "./actions";
+import { unwrap } from "@/lib/unwrap";
 
 type Book = { id: string; title: string; author: string | null; accessionNo: string; category: string | null; copiesTotal: number; copiesAvailable: number; isbn: string | null };
 
@@ -39,10 +41,10 @@ export default function EditBookPanel({ books, showIsbn }: { books: Book[]; show
     setError(null);
     startTransition(async () => {
       try {
-        await updateBook(selected.id, { title, author: author || null, accessionNo, category: category || null, copiesTotal: Number(copies), isbn: isbn || null });
+        unwrap(await updateBook(selected.id, { title, author: author || null, accessionNo, category: category || null, copiesTotal: Number(copies), isbn: isbn || null }));
         setSaved(true);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save.");
+        setError(friendlyError(e, "Could not save."));
       }
     });
   }
@@ -56,12 +58,12 @@ export default function EditBookPanel({ books, showIsbn }: { books: Book[]; show
     setError(null);
     startTransition(async () => {
       try {
-        await deleteBook(selected.id);
+        unwrap(await deleteBook(selected.id));
         const remaining = books.filter((b) => b.id !== selected.id);
         pick(remaining[0]?.id ?? "");
         setConfirmingDelete(false);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not delete.");
+        setError(friendlyError(e, "Could not delete."));
         setConfirmingDelete(false);
       }
     });

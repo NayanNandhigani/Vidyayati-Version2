@@ -1,8 +1,11 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
 import { useState, useTransition } from "react";
 import { setInvoiceRecurrence, generateNextInvoice } from "./actions";
 import type { Recurrence } from "@prisma/client";
+import { unwrap } from "@/lib/unwrap";
 
 export default function InvoiceRecurrenceControl({ invoiceId, recurrence }: { invoiceId: string; recurrence: Recurrence }) {
   const [pending, startTransition] = useTransition();
@@ -18,8 +21,12 @@ export default function InvoiceRecurrenceControl({ invoiceId, recurrence }: { in
 
   function onGenerate() {
     startTransition(async () => {
-      await generateNextInvoice(invoiceId);
-      setGenerated(true);
+      try {
+        unwrap(await generateNextInvoice(invoiceId));
+        setGenerated(true);
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 

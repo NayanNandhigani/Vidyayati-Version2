@@ -6,6 +6,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
 import type { DiscountKind, DiscountValueType, Prisma } from "@prisma/client";
+import { runAction, UserError } from "@/lib/action-result";
 
 async function schoolId() {
   const session = await auth();
@@ -33,16 +34,18 @@ export async function removeFeeDiscount(discountId: string) {
 
 /** An ad-hoc extra charge on a student's fee record — the mirror of addFeeDiscount, but adds. Not tied to any FeeStructure/term. */
 export async function addFeeAdjustment(studentId: string, description: string, amount: number) {
-  await requireModuleAccess("Fees", "EDIT");
-  await requireFeature(await schoolId(), "fees.discountsAndFines");
-  if (!description.trim() || !(amount > 0)) throw new Error("A description and a positive amount are required.");
-  const sdb = await getScopedDb();
-  await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { id: true } });
-  await sdb.feeAdjustment.create({
-    data: scopedCreateData<Prisma.FeeAdjustmentUncheckedCreateInput>({ studentId, description: description.trim(), amount }),
-  });
-  revalidatePath("/app/fees");
-  revalidatePath(`/app/students/${studentId}`);
+  return runAction(async () => {
+    await requireModuleAccess("Fees", "EDIT");
+    await requireFeature(await schoolId(), "fees.discountsAndFines");
+    if (!description.trim() || !(amount > 0)) throw new UserError("A description and a positive amount are required.");
+    const sdb = await getScopedDb();
+    await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { id: true } });
+    await sdb.feeAdjustment.create({
+      data: scopedCreateData<Prisma.FeeAdjustmentUncheckedCreateInput>({ studentId, description: description.trim(), amount }),
+    });
+    revalidatePath("/app/fees");
+    revalidatePath(`/app/students/${studentId}`);
+  }, "addFeeAdjustment");
 }
 
 export async function removeFeeAdjustment(adjustmentId: string) {

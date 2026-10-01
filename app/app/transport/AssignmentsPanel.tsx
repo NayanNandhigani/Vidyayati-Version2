@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { studentName } from "@/lib/format";
 import { assignStudentToRoute, unassignStudentFromRoute } from "./actions";
+import { friendlyError } from "@/lib/friendly-error";
 
 export type VehicleColumn = {
   vehicleId: string | null;
@@ -51,11 +52,15 @@ function RouteRoster({ route, unassigned, canEdit }: { route: VehicleColumn["rou
     setError(null);
     startTransition(async () => {
       try {
-        await assignStudentToRoute(studentId, route.id, stopId);
+        const res = await assignStudentToRoute(studentId, route.id, stopId);
+        if (res.error) {
+          setError(res.error);
+          return;
+        }
         setStudentId("");
         setStopId("");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not assign.");
+        setError(friendlyError(e, "Could not assign this student. Please try again."));
       }
     });
   }

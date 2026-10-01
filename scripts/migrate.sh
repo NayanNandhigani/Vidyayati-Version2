@@ -6,6 +6,19 @@
 # `prisma migrate dev`, which can prompt interactively or reset data).
 set -e
 
+# Vercel builds every branch, not just production. A Preview build shares
+# the production DATABASE_URL unless one was set for Preview, so letting it
+# migrate would change the live schema while production still runs older
+# code — exactly what took down /app/fees and every student profile in the
+# Sep 2026 QA round (old code querying fee_payments.fee_structure_id after a
+# newer build's migration dropped it). Only production deploys migrate.
+# Set ALLOW_PREVIEW_MIGRATIONS=1 on a Preview environment that has its own
+# database to let it migrate that database.
+if [ -n "$VERCEL_ENV" ] && [ "$VERCEL_ENV" != "production" ] && [ "$ALLOW_PREVIEW_MIGRATIONS" != "1" ]; then
+  echo "Skipping migrations: this is a Vercel $VERCEL_ENV build (only production deploys migrate the database)."
+  exit 0
+fi
+
 echo "Running database migrations..."
 npx prisma migrate deploy
 echo "Migrations applied."

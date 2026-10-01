@@ -1,8 +1,10 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createVehicle, updateVehicle, type VehicleFields } from "./vehicle-actions";
+import { unwrap } from "@/lib/unwrap";
 
 function isPastDate(value: string | null | undefined): boolean {
   return !!value && new Date(value) < new Date(new Date().toDateString());
@@ -80,15 +82,15 @@ export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; 
     startTransition(async () => {
       try {
         if (vehicle) {
-          await updateVehicle(vehicle.id, form);
+          unwrap(await updateVehicle(vehicle.id, form));
           onSaved?.();
         } else {
-          const created = await createVehicle(form);
+          const created = unwrap(await createVehicle(form));
           setForm(EMPTY);
           onSaved?.(created.id);
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save.");
+        setError(friendlyError(e, "Could not save."));
       }
     });
   }

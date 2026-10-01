@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { calculateExamResults } from "@/lib/domain/exam-results";
+import { runAction, UserError } from "@/lib/action-result";
 
 export type ExamFormState = { error?: string };
 
@@ -163,39 +164,41 @@ export type UpdateExamFields = {
 
 /** Editing a scheduled exam sends it back to PENDING for re-approval, regardless of who edits it (School Admin included) — a changed exam needs a fresh sign-off just like a newly scheduled one does. */
 export async function updateExam(examId: string, fields: UpdateExamFields) {
-  const sdb = await getScopedDb();
-  const exam = await sdb.exam.findUniqueOrThrow({ where: { id: examId } });
-  await requireModuleAccess("Exams", "EDIT", exam.classId);
+  return runAction(async () => {
+    const sdb = await getScopedDb();
+    const exam = await sdb.exam.findUniqueOrThrow({ where: { id: examId } });
+    await requireModuleAccess("Exams", "EDIT", exam.classId);
 
-  if (!fields.name.trim() || !fields.startDate || !fields.endDate) {
-    throw new Error("Name and both dates are required.");
-  }
-  if (new Date(fields.endDate) < new Date(fields.startDate)) {
-    throw new Error("End date can't be before the start date.");
-  }
-
-  await sdb.exam.update({
-    where: { id: examId },
-    data: {
-      name: fields.name.trim(),
-      startDate: new Date(fields.startDate),
-      endDate: new Date(fields.endDate),
-      approvalStatus: "PENDING",
-    },
-  });
-
-  for (const s of fields.subjects) {
-    if (s.examSubjectId) {
-      await sdb.examSubject.update({ where: { id: s.examSubjectId }, data: { maxMarks: s.maxMarks, passMarks: s.passMarks } });
-    } else {
-      await sdb.subject.findUniqueOrThrow({ where: { id: s.subjectId }, select: { id: true } });
-      await sdb.examSubject.create({
-        data: scopedCreateData<Prisma.ExamSubjectUncheckedCreateInput>({ examId, subjectId: s.subjectId, maxMarks: s.maxMarks, passMarks: s.passMarks }),
-      });
+    if (!fields.name.trim() || !fields.startDate || !fields.endDate) {
+      throw new UserError("Name and both dates are required.");
     }
-  }
+    if (new Date(fields.endDate) < new Date(fields.startDate)) {
+      throw new UserError("End date can't be before the start date.");
+    }
 
-  revalidatePath("/app/exams");
+    await sdb.exam.update({
+      where: { id: examId },
+      data: {
+        name: fields.name.trim(),
+        startDate: new Date(fields.startDate),
+        endDate: new Date(fields.endDate),
+        approvalStatus: "PENDING",
+      },
+    });
+
+    for (const s of fields.subjects) {
+      if (s.examSubjectId) {
+        await sdb.examSubject.update({ where: { id: s.examSubjectId }, data: { maxMarks: s.maxMarks, passMarks: s.passMarks } });
+      } else {
+        await sdb.subject.findUniqueOrThrow({ where: { id: s.subjectId }, select: { id: true } });
+        await sdb.examSubject.create({
+          data: scopedCreateData<Prisma.ExamSubjectUncheckedCreateInput>({ examId, subjectId: s.subjectId, maxMarks: s.maxMarks, passMarks: s.passMarks }),
+        });
+      }
+    }
+
+    revalidatePath("/app/exams");
+  }, "updateExam");
 }
 
 /** Deletes an exam entirely — blocked once any marks have been entered, unless forced (the client asks for confirmation either way). */

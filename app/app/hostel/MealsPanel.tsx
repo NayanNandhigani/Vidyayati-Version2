@@ -1,8 +1,10 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import type { MealType } from "@prisma/client";
 import { logMealServed, deleteMealServed } from "./meal-actions";
+import { unwrap } from "@/lib/unwrap";
 
 const MEALS = ["BREAKFAST", "LUNCH", "DINNER"] as const;
 const MEAL_LABEL: Record<string, string> = { BREAKFAST: "Breakfast", LUNCH: "Lunch", DINNER: "Dinner" };
@@ -25,11 +27,11 @@ export function MealsServedLog({ logs }: { logs: MealServedRow[] }) {
     setError(null);
     startTransition(async () => {
       try {
-        await logMealServed(date, mealType, description, headcount ? Number(headcount) : null);
+        unwrap(await logMealServed(date, mealType, description, headcount ? Number(headcount) : null));
         setDescription("");
         setHeadcount("");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not log.");
+        setError(friendlyError(e, "Could not log."));
       }
     });
   }

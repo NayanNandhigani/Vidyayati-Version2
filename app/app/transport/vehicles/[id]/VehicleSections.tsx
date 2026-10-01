@@ -1,11 +1,14 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
 import { useState, useTransition } from "react";
 import type { VehicleLogType } from "@prisma/client";
 import { IconTruck, IconClipboard, IconPaperclip, IconAward } from "@/components/icons";
 import { VehicleForm, type VehicleRow } from "../../VehiclesPanel";
 import { toggleVehicleActive, updateVehicleLocation, addVehicleLog, deleteVehicleLog, addVehicleDocument, deleteVehicleDocument } from "../../vehicle-actions";
 import PersonDocumentsPanel, { type PersonDocumentRow } from "@/components/PersonDocumentsPanel";
+import { unwrap } from "@/lib/unwrap";
 
 type LogRow = { id: string; type: VehicleLogType; date: string; description: string; cost: number | null; odometerReading: number | null };
 
@@ -182,11 +185,15 @@ function ServiceLogSection({ vehicleId, logs, pending, startTransition }: { vehi
   function submitLog() {
     if (!logDate || !logDesc.trim()) return;
     startTransition(async () => {
-      await addVehicleLog(vehicleId, logType, logDate, logDesc, logCost ? Number(logCost) : null, logOdo ? Number(logOdo) : null);
-      setLogDate("");
-      setLogDesc("");
-      setLogCost("");
-      setLogOdo("");
+      try {
+        unwrap(await addVehicleLog(vehicleId, logType, logDate, logDesc, logCost ? Number(logCost) : null, logOdo ? Number(logOdo) : null));
+        setLogDate("");
+        setLogDesc("");
+        setLogCost("");
+        setLogOdo("");
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 

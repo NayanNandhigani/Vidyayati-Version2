@@ -1,7 +1,27 @@
-export function formatINR(amount: number): string {
-  if (Math.abs(amount) >= 1e7) return `₹${(amount / 1e7).toFixed(2)}Cr`;
-  if (Math.abs(amount) >= 1e5) return `₹${(amount / 1e5).toFixed(1)}L`;
-  return `₹${amount.toLocaleString("en-IN")}`;
+const INR = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
+
+/**
+ * Indian money format used everywhere money is shown: ₹ with lakh grouping
+ * (₹1,00,000), paise only when there are any (₹1,234.50), and the minus
+ * sign before the symbol (-₹32,600, never ₹-32,600). Accepts Prisma
+ * Decimals via Number().
+ */
+export function formatINR(amount: number | string | { toString(): string } | null | undefined): string {
+  const n = Number(amount ?? 0);
+  if (!Number.isFinite(n)) return "₹0";
+  const sign = n < 0 ? "-" : "";
+  return `${sign}₹${INR.format(Math.abs(n))}`;
+}
+
+/** Short form for tight spaces such as chart axes: ₹4.5L, ₹1.2Cr, -₹32.6K. Use formatINR for anything a person reads as a figure. */
+export function formatINRCompact(amount: number): string {
+  const n = Number(amount) || 0;
+  const sign = n < 0 ? "-" : "";
+  const a = Math.abs(n);
+  if (a >= 1e7) return `${sign}₹${+(a / 1e7).toFixed(2)}Cr`;
+  if (a >= 1e5) return `${sign}₹${+(a / 1e5).toFixed(1)}L`;
+  if (a >= 1e3) return `${sign}₹${+(a / 1e3).toFixed(1)}K`;
+  return `${sign}₹${Math.round(a)}`;
 }
 
 export function formatDate(date: Date): string {

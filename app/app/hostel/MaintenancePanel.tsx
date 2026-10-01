@@ -1,8 +1,10 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import type { HostelLogType, HostelLogStatus } from "@prisma/client";
 import { addMaintenanceLog, updateMaintenanceStatus, deleteMaintenanceLog } from "./maintenance-actions";
+import { unwrap } from "@/lib/unwrap";
 
 const TYPE_LABEL: Record<HostelLogType, string> = { LAUNDRY: "Laundry", MAINTENANCE: "Maintenance" };
 const STATUS_STYLE: Record<HostelLogStatus, { bg: string; fg: string; label: string }> = {
@@ -43,10 +45,10 @@ export function MaintenancePanel({ targets, logs }: { targets: MaintenanceTarget
     setError(null);
     startTransition(async () => {
       try {
-        await addMaintenanceLog({ roomId: target.roomId, facilityId: target.facilityId }, type, date, description);
+        unwrap(await addMaintenanceLog({ roomId: target.roomId, facilityId: target.facilityId }, type, date, description));
         setDescription("");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not log.");
+        setError(friendlyError(e, "Could not log."));
       }
     });
   }

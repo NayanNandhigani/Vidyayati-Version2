@@ -1,8 +1,11 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { addReminder, removeReminder, addNote, removeNote } from "./actions";
+import { unwrap } from "@/lib/unwrap";
 
 function BlockHead({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
@@ -38,10 +41,14 @@ export function RemindersPanel({ reminders }: { reminders: Reminder[] }) {
   function add() {
     if (!title.trim() || !remindAt) return;
     startTransition(async () => {
-      await addReminder(title, content, remindAt);
-      setTitle("");
-      setContent("");
-      setAdding(false);
+      try {
+        unwrap(await addReminder(title, content, remindAt));
+        setTitle("");
+        setContent("");
+        setAdding(false);
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 
@@ -198,8 +205,12 @@ export function NotesPanel({ notes }: { notes: Note[] }) {
   function add() {
     if (!draft.trim()) return;
     startTransition(async () => {
-      await addNote(draft);
-      setDraft("");
+      try {
+        unwrap(await addNote(draft));
+        setDraft("");
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 

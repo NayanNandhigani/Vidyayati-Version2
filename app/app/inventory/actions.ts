@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
+import { runAction, UserError } from "@/lib/action-result";
 
 async function schoolId() {
   const session = await auth();
@@ -72,23 +73,25 @@ export async function createConsumable(data: { name: string; category: string | 
 
 /** Manual stock adjustment (e.g. a physical recount, or usage not tied to a PO) — writes a movement row and updates the cached running total. */
 export async function adjustStock(consumableId: string, type: "IN" | "OUT", quantity: number, note: string | null) {
-  await guard();
-  if (quantity <= 0) throw new Error("Quantity must be positive.");
-  const sdb = await getScopedDb();
-  const consumable = await sdb.inventoryConsumable.findUniqueOrThrow({ where: { id: consumableId } });
-  if (type === "OUT" && Number(consumable.quantityOnHand) < quantity) {
-    throw new Error(`Only ${consumable.quantityOnHand} ${consumable.unit} in stock.`);
-  }
-  await sdb.$transaction([
-    sdb.inventoryStockMovement.create({
-      data: scopedCreateData<Prisma.InventoryStockMovementUncheckedCreateInput>({ consumableId, type, quantity, note }),
-    }),
-    sdb.inventoryConsumable.update({
-      where: { id: consumableId },
-      data: { quantityOnHand: type === "IN" ? { increment: quantity } : { decrement: quantity } },
-    }),
-  ]);
-  revalidatePath("/app/inventory");
+  return runAction(async () => {
+    await guard();
+    if (quantity <= 0) throw new UserError("Quantity must be positive.");
+    const sdb = await getScopedDb();
+    const consumable = await sdb.inventoryConsumable.findUniqueOrThrow({ where: { id: consumableId } });
+    if (type === "OUT" && Number(consumable.quantityOnHand) < quantity) {
+      throw new UserError(`Only ${consumable.quantityOnHand} ${consumable.unit} in stock.`);
+    }
+    await sdb.$transaction([
+      sdb.inventoryStockMovement.create({
+        data: scopedCreateData<Prisma.InventoryStockMovementUncheckedCreateInput>({ consumableId, type, quantity, note }),
+      }),
+      sdb.inventoryConsumable.update({
+        where: { id: consumableId },
+        data: { quantityOnHand: type === "IN" ? { increment: quantity } : { decrement: quantity } },
+      }),
+    ]);
+    revalidatePath("/app/inventory");
+  }, "adjustStock");
 }
 
 // ---------------------------------------------------------------- Vendors
@@ -174,31 +177,35 @@ export async function createStockItem(data: { name: string; itemType: string | n
 
 /** Add/remove stock for an existing item — same IN/OUT movement-log pattern as adjustStock for Consumables. */
 export async function adjustStockItem(stockItemId: string, type: "IN" | "OUT", quantity: number, note: string | null) {
-  await guard();
-  if (quantity <= 0) throw new Error("Quantity must be positive.");
-  const sdb = await getScopedDb();
-  const item = await sdb.inventoryStockItem.findUniqueOrThrow({ where: { id: stockItemId } });
-  if (type === "OUT" && Number(item.quantityOnHand) < quantity) {
-    throw new Error(`Only ${item.quantityOnHand} in stock.`);
-  }
-  await sdb.$transaction([
-    sdb.inventoryStockItemMovement.create({
-      data: scopedCreateData<Prisma.InventoryStockItemMovementUncheckedCreateInput>({ stockItemId, type, quantity, note }),
-    }),
-    sdb.inventoryStockItem.update({
-      where: { id: stockItemId },
-      data: { quantityOnHand: type === "IN" ? { increment: quantity } : { decrement: quantity } },
-    }),
-  ]);
-  revalidatePath("/app/inventory");
+  return runAction(async () => {
+    await guard();
+    if (quantity <= 0) throw new UserError("Quantity must be positive.");
+    const sdb = await getScopedDb();
+    const item = await sdb.inventoryStockItem.findUniqueOrThrow({ where: { id: stockItemId } });
+    if (type === "OUT" && Number(item.quantityOnHand) < quantity) {
+      throw new UserError(`Only ${item.quantityOnHand} in stock.`);
+    }
+    await sdb.$transaction([
+      sdb.inventoryStockItemMovement.create({
+        data: scopedCreateData<Prisma.InventoryStockItemMovementUncheckedCreateInput>({ stockItemId, type, quantity, note }),
+      }),
+      sdb.inventoryStockItem.update({
+        where: { id: stockItemId },
+        data: { quantityOnHand: type === "IN" ? { increment: quantity } : { decrement: quantity } },
+      }),
+    ]);
+    revalidatePath("/app/inventory");
+  }, "adjustStockItem");
 }
 
 export async function updateStockItemPricing(stockItemId: string, costPrice: number, sellPrice: number) {
-  await guard();
-  if (costPrice < 0 || sellPrice < 0) throw new Error("Prices can't be negative.");
-  const sdb = await getScopedDb();
-  await sdb.inventoryStockItem.update({ where: { id: stockItemId }, data: { costPrice, sellPrice } });
-  revalidatePath("/app/inventory");
+  return runAction(async () => {
+    await guard();
+    if (costPrice < 0 || sellPrice < 0) throw new UserError("Prices can't be negative.");
+    const sdb = await getScopedDb();
+    await sdb.inventoryStockItem.update({ where: { id: stockItemId }, data: { costPrice, sellPrice } });
+    revalidatePath("/app/inventory");
+  }, "updateStockItemPricing");
 }
 
 // ------------------------------------------------------------------ Billing

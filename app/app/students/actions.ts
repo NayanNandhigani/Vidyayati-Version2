@@ -11,6 +11,7 @@ import { enrollStudent, promoteStudent } from "@/lib/domain/enrollment";
 import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
 import { validateDob } from "@/lib/validation";
 import type { StudentStatus } from "@prisma/client";
+import { runAction, UserError } from "@/lib/action-result";
 
 export type StudentFormState = { error?: string };
 
@@ -86,25 +87,27 @@ export async function createStudent(_prevState: StudentFormState, formData: Form
 // student's recorded scholarship (the class's actual fee, from Academic
 // Management → Fee Structure, minus this charged fee).
 export async function updateStudentChargedFee(studentId: string, chargedFee: number | null) {
-  const session = await auth();
-  if (session!.user.role !== "SCHOOL_ADMIN") throw new Error("Only a School Admin can change a student's charged fee.");
-  const sdb = await getScopedDb();
+  return runAction(async () => {
+    const session = await auth();
+    if (session!.user.role !== "SCHOOL_ADMIN") throw new UserError("Only a School Admin can change a student's charged fee.");
+    const sdb = await getScopedDb();
 
-  if (chargedFee != null && (!Number.isFinite(chargedFee) || chargedFee < 0 || !Number.isInteger(chargedFee))) {
-    throw new Error("Charged fee must be a whole number ≥ 0.");
-  }
+    if (chargedFee != null && (!Number.isFinite(chargedFee) || chargedFee < 0 || !Number.isInteger(chargedFee))) {
+      throw new UserError("Charged fee must be a whole number ≥ 0.");
+    }
 
-  const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { classId: true } });
-  const cls = await sdb.class.findUniqueOrThrow({ where: { id: student.classId }, select: { grade: true, yearId: true } });
-  const feeDefault = await sdb.classFeeDefault.findUnique({ where: { yearId_grade: { yearId: cls.yearId, grade: cls.grade } } });
-  if (chargedFee != null && feeDefault && chargedFee > Number(feeDefault.actualFee)) {
-    throw new Error("Charged fee can't be more than the actual fee.");
-  }
+    const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { classId: true } });
+    const cls = await sdb.class.findUniqueOrThrow({ where: { id: student.classId }, select: { grade: true, yearId: true } });
+    const feeDefault = await sdb.classFeeDefault.findUnique({ where: { yearId_grade: { yearId: cls.yearId, grade: cls.grade } } });
+    if (chargedFee != null && feeDefault && chargedFee > Number(feeDefault.actualFee)) {
+      throw new UserError("Charged fee can't be more than the actual fee.");
+    }
 
-  await sdb.student.update({ where: { id: studentId }, data: { chargedFee } });
-  await generateInstalmentsForStudent(sdb, studentId, student.classId, cls.yearId);
-  revalidatePath(`/app/students/${studentId}`);
-  revalidatePath("/app/fees");
+    await sdb.student.update({ where: { id: studentId }, data: { chargedFee } });
+    await generateInstalmentsForStudent(sdb, studentId, student.classId, cls.yearId);
+    revalidatePath(`/app/students/${studentId}`);
+    revalidatePath("/app/fees");
+  }, "updateStudentChargedFee");
 }
 
 export type StudentProfileFields = {

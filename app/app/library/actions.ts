@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
+import { runAction, UserError } from "@/lib/action-result";
 
 export type FormState = { error?: string };
 
@@ -42,64 +43,70 @@ export async function createBook(_prevState: FormState, formData: FormData): Pro
 export type UpdateBookFields = { title: string; author: string | null; accessionNo: string; category: string | null; copiesTotal: number; isbn: string | null };
 
 export async function updateBook(bookId: string, fields: UpdateBookFields) {
-  await requireModuleAccess("Library", "EDIT");
-  if (!fields.title.trim() || !fields.accessionNo.trim() || !(fields.copiesTotal >= 0)) {
-    throw new Error("Title, accession number, and a valid copy count are required.");
-  }
-  const sdb = await getScopedDb();
-  const book = await sdb.libraryBook.findUniqueOrThrow({ where: { id: bookId } });
+  return runAction(async () => {
+    await requireModuleAccess("Library", "EDIT");
+    if (!fields.title.trim() || !fields.accessionNo.trim() || !(fields.copiesTotal >= 0)) {
+      throw new UserError("Title, accession number, and a valid copy count are required.");
+    }
+    const sdb = await getScopedDb();
+    const book = await sdb.libraryBook.findUniqueOrThrow({ where: { id: bookId } });
 
-  // Copies currently checked out never change on an edit — only the total
-  // (and therefore how many of the new total remain available) does.
-  const issuedCount = book.copiesTotal - book.copiesAvailable;
-  const newAvailable = Math.max(0, fields.copiesTotal - issuedCount);
+    // Copies currently checked out never change on an edit — only the total
+    // (and therefore how many of the new total remain available) does.
+    const issuedCount = book.copiesTotal - book.copiesAvailable;
+    const newAvailable = Math.max(0, fields.copiesTotal - issuedCount);
 
-  await sdb.libraryBook.update({
-    where: { id: bookId },
-    data: {
-      title: fields.title.trim(),
-      author: fields.author?.trim() || null,
-      accessionNo: fields.accessionNo.trim(),
-      category: fields.category?.trim() || null,
-      copiesTotal: fields.copiesTotal,
-      copiesAvailable: newAvailable,
-      isbn: fields.isbn?.trim() || null,
-    },
-  });
+    await sdb.libraryBook.update({
+      where: { id: bookId },
+      data: {
+        title: fields.title.trim(),
+        author: fields.author?.trim() || null,
+        accessionNo: fields.accessionNo.trim(),
+        category: fields.category?.trim() || null,
+        copiesTotal: fields.copiesTotal,
+        copiesAvailable: newAvailable,
+        isbn: fields.isbn?.trim() || null,
+      },
+    });
 
-  revalidatePath("/app/library");
+    revalidatePath("/app/library");
+  }, "updateBook");
 }
 
 /** Soft delete — a hard delete used to cascade-wipe LibraryCirculation, losing issue history for copies that had already been returned, not just blocking active loans. */
 export async function deleteBook(bookId: string) {
-  await requireModuleAccess("Library", "EDIT");
-  const sdb = await getScopedDb();
-  const activeLoans = await sdb.libraryCirculation.count({ where: { bookId, status: "ISSUED" } });
-  if (activeLoans > 0) throw new Error("This title has copies currently on loan — return them before deleting it.");
-  await sdb.libraryBook.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
-  revalidatePath("/app/library");
+  return runAction(async () => {
+    await requireModuleAccess("Library", "EDIT");
+    const sdb = await getScopedDb();
+    const activeLoans = await sdb.libraryCirculation.count({ where: { bookId, status: "ISSUED" } });
+    if (activeLoans > 0) throw new UserError("This title has copies currently on loan — return them before deleting it.");
+    await sdb.libraryBook.update({ where: { id: bookId }, data: { deletedAt: new Date() } });
+    revalidatePath("/app/library");
+  }, "deleteBook");
 }
 
 export async function issueBook(studentId: string, bookId: string) {
-  await requireModuleAccess("Library", "EDIT");
-  const sdb = await getScopedDb();
+  return runAction(async () => {
+    await requireModuleAccess("Library", "EDIT");
+    const sdb = await getScopedDb();
 
-  const book = await sdb.libraryBook.findUniqueOrThrow({ where: { id: bookId } });
-  await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { id: true } });
-  if (book.copiesAvailable <= 0) throw new Error("No copies available.");
+    const book = await sdb.libraryBook.findUniqueOrThrow({ where: { id: bookId } });
+    await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { id: true } });
+    if (book.copiesAvailable <= 0) throw new UserError("No copies available.");
 
-  const issueDate = new Date();
-  const dueDate = new Date(issueDate);
-  dueDate.setDate(dueDate.getDate() + 14);
+    const issueDate = new Date();
+    const dueDate = new Date(issueDate);
+    dueDate.setDate(dueDate.getDate() + 14);
 
-  await sdb.$transaction([
-    sdb.libraryCirculation.create({
-      data: scopedCreateData<Prisma.LibraryCirculationUncheckedCreateInput>({ bookId, studentId, issueDate, dueDate, status: "ISSUED" }),
-    }),
-    sdb.libraryBook.update({ where: { id: bookId }, data: { copiesAvailable: { decrement: 1 } } }),
-  ]);
+    await sdb.$transaction([
+      sdb.libraryCirculation.create({
+        data: scopedCreateData<Prisma.LibraryCirculationUncheckedCreateInput>({ bookId, studentId, issueDate, dueDate, status: "ISSUED" }),
+      }),
+      sdb.libraryBook.update({ where: { id: bookId }, data: { copiesAvailable: { decrement: 1 } } }),
+    ]);
 
-  revalidatePath("/app/library");
+    revalidatePath("/app/library");
+  }, "issueBook");
 }
 
 export async function returnBook(circulationId: string) {

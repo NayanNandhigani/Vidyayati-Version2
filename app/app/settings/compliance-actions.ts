@@ -7,6 +7,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireFeature } from "@/lib/feature-flags";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 import { buildCsv } from "@/lib/csv";
+import { runAction, UserError } from "@/lib/action-result";
 
 async function requireAdmin() {
   const session = await auth();
@@ -30,35 +31,37 @@ export async function updateUdiseFields(udiseCode: string, affiliationBoard: str
 }
 
 export async function uploadComplianceDocument(formData: FormData) {
-  const schoolId = await requireAdmin();
-  await requireFeature(schoolId, "compliance.udise");
+  return runAction(async () => {
+    const schoolId = await requireAdmin();
+    await requireFeature(schoolId, "compliance.udise");
 
-  const documentType = formData.get("documentType");
-  const documentNo = formData.get("documentNo");
-  const issuedDate = formData.get("issuedDate");
-  const expiryDate = formData.get("expiryDate");
-  const file = formData.get("file");
+    const documentType = formData.get("documentType");
+    const documentNo = formData.get("documentNo");
+    const issuedDate = formData.get("issuedDate");
+    const expiryDate = formData.get("expiryDate");
+    const file = formData.get("file");
 
-  if (typeof documentType !== "string" || !documentType.trim()) throw new Error("Document type is required.");
+    if (typeof documentType !== "string" || !documentType.trim()) throw new UserError("Document type is required.");
 
-  let filePath: string | null = null;
-  if (file instanceof File && file.size > 0) {
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const saved = await saveUploadedFile(`documents/${schoolId}`, file.name, bytes);
-    filePath = saved.storagePath;
-  }
+    let filePath: string | null = null;
+    if (file instanceof File && file.size > 0) {
+      const bytes = Buffer.from(await file.arrayBuffer());
+      const saved = await saveUploadedFile(`documents/${schoolId}`, file.name, bytes);
+      filePath = saved.storagePath;
+    }
 
-  const sdb = await getScopedDb();
-  await sdb.schoolComplianceDocument.create({
-    data: scopedCreateData<Prisma.SchoolComplianceDocumentUncheckedCreateInput>({
-      documentType: documentType.trim(),
-      documentNo: typeof documentNo === "string" && documentNo ? documentNo : null,
-      issuedDate: typeof issuedDate === "string" && issuedDate ? new Date(issuedDate) : null,
-      expiryDate: typeof expiryDate === "string" && expiryDate ? new Date(expiryDate) : null,
-      filePath,
-    }),
-  });
-  revalidatePath("/app/settings");
+    const sdb = await getScopedDb();
+    await sdb.schoolComplianceDocument.create({
+      data: scopedCreateData<Prisma.SchoolComplianceDocumentUncheckedCreateInput>({
+        documentType: documentType.trim(),
+        documentNo: typeof documentNo === "string" && documentNo ? documentNo : null,
+        issuedDate: typeof issuedDate === "string" && issuedDate ? new Date(issuedDate) : null,
+        expiryDate: typeof expiryDate === "string" && expiryDate ? new Date(expiryDate) : null,
+        filePath,
+      }),
+    });
+    revalidatePath("/app/settings");
+  }, "uploadComplianceDocument");
 }
 
 export async function deleteComplianceDocument(docId: string) {

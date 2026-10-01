@@ -1,9 +1,11 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { studentName } from "@/lib/format";
 import { computeLibraryFine } from "@/lib/library";
 import { issueBook, returnBook } from "./actions";
+import { unwrap } from "@/lib/unwrap";
 
 type Circ = { id: string; studentName: string; bookTitle: string; issueDate: string; dueDate: string; overdueDays: number };
 
@@ -38,11 +40,11 @@ export default function CirculationPanel({
     setError(null);
     startTransition(async () => {
       try {
-        await issueBook(studentId, bookId);
+        unwrap(await issueBook(studentId, bookId));
         setStudentId("");
         setBookId("");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not issue.");
+        setError(friendlyError(e, "Could not issue."));
       }
     });
   }

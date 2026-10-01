@@ -7,6 +7,7 @@ import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature, hasFeature } from "@/lib/feature-flags";
 import { calculateExamResults } from "@/lib/domain/exam-results";
 import type { Prisma } from "@prisma/client";
+import { runAction, UserError } from "@/lib/action-result";
 
 async function schoolId() {
   const session = await auth();
@@ -15,31 +16,33 @@ async function schoolId() {
 
 /** Shuffles students into seats across the given rooms, sequential seat numbers per room, in randomized order. */
 export async function randomizeSeating(examId: string, roomIds: string[]) {
-  const sdb = await getScopedDb();
-  const exam = await sdb.exam.findUniqueOrThrow({ where: { id: examId }, select: { classId: true } });
-  await requireModuleAccess("Exams", "EDIT", exam.classId);
-  await requireFeature(await schoolId(), "exams.seatingAndBulkMarks");
+  return runAction(async () => {
+    const sdb = await getScopedDb();
+    const exam = await sdb.exam.findUniqueOrThrow({ where: { id: examId }, select: { classId: true } });
+    await requireModuleAccess("Exams", "EDIT", exam.classId);
+    await requireFeature(await schoolId(), "exams.seatingAndBulkMarks");
 
-  if (roomIds.length === 0) throw new Error("Choose at least one room.");
+    if (roomIds.length === 0) throw new UserError("Choose at least one room.");
 
-  const validRooms = await sdb.room.findMany({ where: { id: { in: roomIds } }, select: { id: true } });
-  if (validRooms.length !== roomIds.length) throw new Error("One or more selected rooms could not be found.");
+    const validRooms = await sdb.room.findMany({ where: { id: { in: roomIds } }, select: { id: true } });
+    if (validRooms.length !== roomIds.length) throw new UserError("One or more selected rooms could not be found.");
 
-  const students = await sdb.student.findMany({ where: { classId: exam.classId, status: "ACTIVE" } });
-  const shuffled = [...students].sort(() => Math.random() - 0.5);
+    const students = await sdb.student.findMany({ where: { classId: exam.classId, status: "ACTIVE" } });
+    const shuffled = [...students].sort(() => Math.random() - 0.5);
 
-  await sdb.examSeating.deleteMany({ where: { examId } });
+    await sdb.examSeating.deleteMany({ where: { examId } });
 
-  const rows: Prisma.ExamSeatingUncheckedCreateInput[] = [];
-  shuffled.forEach((student, i) => {
-    const roomId = roomIds[i % roomIds.length];
-    const seatNo = Math.floor(i / roomIds.length) + 1;
-    rows.push(scopedCreateData<Prisma.ExamSeatingUncheckedCreateInput>({ examId, studentId: student.id, roomId, seatNo }));
-  });
-  if (rows.length > 0) await sdb.examSeating.createMany({ data: rows });
+    const rows: Prisma.ExamSeatingUncheckedCreateInput[] = [];
+    shuffled.forEach((student, i) => {
+      const roomId = roomIds[i % roomIds.length];
+      const seatNo = Math.floor(i / roomIds.length) + 1;
+      rows.push(scopedCreateData<Prisma.ExamSeatingUncheckedCreateInput>({ examId, studentId: student.id, roomId, seatNo }));
+    });
+    if (rows.length > 0) await sdb.examSeating.createMany({ data: rows });
 
-  revalidatePath("/app/exams");
-  return { seated: rows.length };
+    revalidatePath("/app/exams");
+    return { seated: rows.length };
+  }, "randomizeSeating");
 }
 
 export async function getSeating(examId: string) {

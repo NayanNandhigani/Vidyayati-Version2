@@ -10,6 +10,7 @@ import { generateInstalmentsForStudent } from "@/lib/fee-instalments";
 import { nextAdmissionNumber } from "@/lib/admission-number";
 import { validateDob } from "@/lib/validation";
 import { createGuardianAccountForEnquiry } from "./guardian";
+import { runAction, UserError } from "@/lib/action-result";
 
 export type ApplicationFields = {
   photoPath: string | null;
@@ -83,80 +84,84 @@ export async function approveAdmissionWithFee(
   openingFeeAmount: number | null,
   chargedFee: number | null
 ) {
-  await requireModuleAccess("Admissions", "EDIT");
-  const session = await auth();
-  if (session!.user.role !== "SCHOOL_ADMIN") throw new Error("Only a School Admin can approve an admission.");
-  const sdb = await getScopedDb();
+  return runAction(async () => {
+    await requireModuleAccess("Admissions", "EDIT");
+    const session = await auth();
+    if (session!.user.role !== "SCHOOL_ADMIN") throw new UserError("Only a School Admin can approve an admission.");
+    const sdb = await getScopedDb();
 
-  const enquiry = await sdb.admissionEnquiry.findUniqueOrThrow({ where: { id: enquiryId } });
-  if (enquiry.approvalStatus !== "PENDING") throw new Error("This application isn't pending approval.");
+    const enquiry = await sdb.admissionEnquiry.findUniqueOrThrow({ where: { id: enquiryId } });
+    if (enquiry.approvalStatus !== "PENDING") throw new UserError("This application isn't pending approval.");
 
-  const targetClass = await sdb.class.findUniqueOrThrow({ where: { id: classId }, select: { grade: true, yearId: true } });
+    const targetClass = await sdb.class.findUniqueOrThrow({ where: { id: classId }, select: { grade: true, yearId: true } });
 
-  if (chargedFee != null) {
-    const feeDefault = await sdb.classFeeDefault.findUnique({ where: { yearId_grade: { yearId: targetClass.yearId, grade: targetClass.grade } } });
-    if (feeDefault && chargedFee > Number(feeDefault.actualFee)) {
-      throw new Error("Charged fee can't be more than the actual fee.");
+    if (chargedFee != null) {
+      const feeDefault = await sdb.classFeeDefault.findUnique({ where: { yearId_grade: { yearId: targetClass.yearId, grade: targetClass.grade } } });
+      if (feeDefault && chargedFee > Number(feeDefault.actualFee)) {
+        throw new UserError("Charged fee can't be more than the actual fee.");
+      }
     }
-  }
 
-  const admissionNo = await nextAdmissionNumber(sdb, session!.user.schoolId!);
-  const nameParts = enquiry.applicantName.trim().split(/\s+/);
-  const surname = nameParts.length > 1 ? nameParts.pop()! : "";
-  const firstName = nameParts.join(" ");
+    const admissionNo = await nextAdmissionNumber(sdb, session!.user.schoolId!);
+    const nameParts = enquiry.applicantName.trim().split(/\s+/);
+    const surname = nameParts.length > 1 ? nameParts.pop()! : "";
+    const firstName = nameParts.join(" ");
 
-  const student = await sdb.$transaction(async (tx) => {
-    const student = await tx.student.create({
-      data: scopedCreateData<Prisma.StudentUncheckedCreateInput>({
-        firstName,
-        surname,
-        admissionNo,
-        classId,
-        status: "ACTIVE",
-        dob: enquiry.dob,
-        gender: enquiry.gender,
-        chargedFee,
-      }),
-    });
-    await enrollStudent(student.id, classId, undefined, tx);
-
-    if (openingFeeAmount && openingFeeAmount > 0) {
-      await tx.feeAdjustment.create({
-        data: scopedCreateData<Prisma.FeeAdjustmentUncheckedCreateInput>({
-          studentId: student.id,
-          description: openingFeeDescription?.trim() || "Admission fee",
-          amount: openingFeeAmount,
+    const student = await sdb.$transaction(async (tx) => {
+      const student = await tx.student.create({
+        data: scopedCreateData<Prisma.StudentUncheckedCreateInput>({
+          firstName,
+          surname,
+          admissionNo,
+          classId,
+          status: "ACTIVE",
+          dob: enquiry.dob,
+          gender: enquiry.gender,
+          chargedFee,
         }),
       });
-    }
+      await enrollStudent(student.id, classId, undefined, tx);
 
-    await tx.admissionEnquiry.update({
-      where: { id: enquiryId },
-      data: { stage: "ADMITTED", convertedStudentId: student.id, approvalStatus: "APPROVED", approvalActionAt: new Date() },
+      if (openingFeeAmount && openingFeeAmount > 0) {
+        await tx.feeAdjustment.create({
+          data: scopedCreateData<Prisma.FeeAdjustmentUncheckedCreateInput>({
+            studentId: student.id,
+            description: openingFeeDescription?.trim() || "Admission fee",
+            amount: openingFeeAmount,
+          }),
+        });
+      }
+
+      await tx.admissionEnquiry.update({
+        where: { id: enquiryId },
+        data: { stage: "ADMITTED", convertedStudentId: student.id, approvalStatus: "APPROVED", approvalActionAt: new Date() },
+      });
+
+      return student;
     });
 
-    return student;
-  });
+    await generateInstalmentsForStudent(sdb, student.id, classId, targetClass.yearId);
+    const guardian = await createGuardianAccountForEnquiry(sdb, enquiry, student.id);
 
-  await generateInstalmentsForStudent(sdb, student.id, classId, targetClass.yearId);
-  const guardian = await createGuardianAccountForEnquiry(sdb, enquiry, student.id);
-
-  revalidatePath("/app/admissions");
-  revalidatePath("/app/students");
-  revalidatePath("/app/fees");
-  return { studentId: student.id, guardianSetupToken: guardian?.setupToken ?? null, guardianName: guardian?.guardianName ?? null };
+    revalidatePath("/app/admissions");
+    revalidatePath("/app/students");
+    revalidatePath("/app/fees");
+    return { studentId: student.id, guardianSetupToken: guardian?.setupToken ?? null, guardianName: guardian?.guardianName ?? null };
+  }, "approveAdmissionWithFee");
 }
 
 export async function rejectAdmission(enquiryId: string, reason: string) {
-  await requireModuleAccess("Admissions", "EDIT");
-  const session = await auth();
-  if (session!.user.role !== "SCHOOL_ADMIN") throw new Error("Only a School Admin can reject an admission.");
-  if (!reason.trim()) throw new Error("A rejection reason is required.");
-  const sdb = await getScopedDb();
-  await sdb.admissionEnquiry.update({
-    where: { id: enquiryId },
-    data: { approvalStatus: "REJECTED", approvalActionAt: new Date(), rejectionReason: reason.trim() },
-  });
-  revalidatePath("/app/admissions");
-  revalidatePath(`/app/admissions/${enquiryId}`);
+  return runAction(async () => {
+    await requireModuleAccess("Admissions", "EDIT");
+    const session = await auth();
+    if (session!.user.role !== "SCHOOL_ADMIN") throw new UserError("Only a School Admin can reject an admission.");
+    if (!reason.trim()) throw new UserError("A rejection reason is required.");
+    const sdb = await getScopedDb();
+    await sdb.admissionEnquiry.update({
+      where: { id: enquiryId },
+      data: { approvalStatus: "REJECTED", approvalActionAt: new Date(), rejectionReason: reason.trim() },
+    });
+    revalidatePath("/app/admissions");
+    revalidatePath(`/app/admissions/${enquiryId}`);
+  }, "rejectAdmission");
 }

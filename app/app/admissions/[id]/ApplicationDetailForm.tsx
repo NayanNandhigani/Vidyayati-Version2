@@ -1,9 +1,12 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import type { Gender, AdmissionStage, AdmissionApprovalStatus } from "@prisma/client";
 import { updateApplicationDetails, submitForAdmitApproval, approveAdmissionWithFee, rejectAdmission, type ApplicationFields } from "../depth-actions";
+import { unwrap } from "@/lib/unwrap";
 
 type Enquiry = ApplicationFields & {
   id: string;
@@ -122,8 +125,12 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
     }
     setFeeError(null);
     startTransition(async () => {
-      const result = await approveAdmissionWithFee(enquiry.id, classId, feeDesc, feeAmount ? Number(feeAmount) : null, chargedFee ? Number(chargedFee) : null);
-      setAdmitResult(result);
+      try {
+        const result = unwrap(await approveAdmissionWithFee(enquiry.id, classId, feeDesc, feeAmount ? Number(feeAmount) : null, chargedFee ? Number(chargedFee) : null));
+        setAdmitResult(result);
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
   function reject() {
@@ -133,9 +140,13 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
     }
     if (!rejectReason.trim()) return;
     startTransition(async () => {
-      await rejectAdmission(enquiry.id, rejectReason);
-      setRejecting(false);
-      setRejectReason("");
+      try {
+        unwrap(await rejectAdmission(enquiry.id, rejectReason));
+        setRejecting(false);
+        setRejectReason("");
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 

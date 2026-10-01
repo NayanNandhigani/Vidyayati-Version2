@@ -1,7 +1,10 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
 import { useRef, useState, useTransition } from "react";
 import { randomizeSeating, bulkImportMarks, updateExamResultRelease, updateFeeLockSetting } from "./depth-actions";
+import { unwrap } from "@/lib/unwrap";
 
 type Seat = { id: string; studentName: string; roomName: string; seatNo: number };
 type Room = { id: string; name: string };
@@ -45,7 +48,11 @@ export default function ExamDepthPanel({
 
   function doRandomize() {
     startTransition(async () => {
-      await randomizeSeating(examId, [...selectedRooms]);
+      try {
+        unwrap(await randomizeSeating(examId, [...selectedRooms]));
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 

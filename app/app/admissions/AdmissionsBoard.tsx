@@ -1,11 +1,13 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { avatarColorFor } from "@/lib/academic";
 import { initials } from "@/lib/format";
 import { advanceToApplication, deleteEnquiry, updateEnquiryCore, type EnquiryCoreFields } from "./actions";
 import { rejectAdmission } from "./depth-actions";
+import { unwrap } from "@/lib/unwrap";
 
 type Enquiry = {
   id: string;
@@ -218,9 +220,9 @@ function EnquiryCard({
     }
     startTransition(async () => {
       try {
-        await deleteEnquiry(e.id);
+        unwrap(await deleteEnquiry(e.id));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Couldn't delete. Please try again.");
+        setError(friendlyError(err, "Couldn't delete. Please try again."));
         setConfirmingDelete(false);
       }
     });
@@ -230,9 +232,9 @@ function EnquiryCard({
     if (!rejectReason.trim()) return;
     startTransition(async () => {
       try {
-        await rejectAdmission(e.id, rejectReason);
+        unwrap(await rejectAdmission(e.id, rejectReason));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Couldn't reject. Please try again.");
+        setError(friendlyError(err, "Couldn't reject. Please try again."));
       }
     });
   }

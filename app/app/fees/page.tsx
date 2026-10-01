@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { formatINR, studentName } from "@/lib/format";
+import { todayISTDate } from "@/lib/ist";
 import { feeStatusFor, FEE_STATUS_STYLE } from "@/lib/academic";
 import { hasFeature } from "@/lib/feature-flags";
 import { computeDiscountAmount, computeLateFine } from "@/lib/fees";
@@ -20,6 +22,10 @@ export default async function FeesPage() {
   const canEdit = accessLevel === "EDIT";
 
   const currentYear = await sdb.academicYear.findFirst({ where: { isCurrent: true } });
+  const feePlanCount = currentYear ? await sdb.feeStructure.count({ where: { yearId: currentYear.id } }) : 0;
+  if (!currentYear || feePlanCount === 0) {
+    return <FeesEmptyState hasYear={!!currentYear} yearLabel={currentYear?.label ?? null} />;
+  }
 
   const students = await sdb.student.findMany({
     where: { status: "ACTIVE" },
@@ -58,7 +64,7 @@ export default async function FeesPage() {
     const adjustmentAmount = s.feeAdjustments.reduce((sum, a) => sum + Number(a.amount), 0);
     const netTotal = Math.max(0, total - discountAmount + lateFine + adjustmentAmount);
     const pending = Math.max(0, netTotal - paid);
-    const hasOverdue = instalments.some((fi) => fi.feeStructure.dueDate < new Date() && fi.payments.reduce((sm, p) => sm + Number(p.amount), 0) < Number(fi.amount));
+    const hasOverdue = instalments.some((fi) => fi.feeStructure.dueDate < todayISTDate() && fi.payments.reduce((sm, p) => sm + Number(p.amount), 0) < Number(fi.amount));
     return {
       id: s.id,
       name: studentName(s),
@@ -108,6 +114,27 @@ export default async function FeesPage() {
       </div>
 
       <FeesView rows={rows} canEdit={canEdit} showDiscounts={showDiscounts} showGst={showGst} gstNumber={school?.gstNumber ?? null} gstRatePercent={school?.gstRatePercent ? Number(school.gstRatePercent) : null} />
+    </div>
+  );
+}
+
+function FeesEmptyState({ hasYear, yearLabel }: { hasYear: boolean; yearLabel: string | null }) {
+  return (
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="disp" style={{ fontSize: 21 }}>
+        Fees {yearLabel && <span style={{ fontSize: 14, fontWeight: 500, color: "var(--faint)" }}>· {yearLabel}</span>}
+      </div>
+      <div className="card" style={{ padding: 28, maxWidth: 620 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{hasYear ? "No fees have been set up yet" : "No academic year is active yet"}</div>
+        <p style={{ margin: "0 0 16px", fontSize: 13.5, color: "var(--muted)", lineHeight: 1.6 }}>
+          {hasYear
+            ? "Set each class's fee and its instalment plan (terms, amounts and due dates) in Academic Management → Fee Structure. Every student's instalments are created from it, and you can then record payments here."
+            : "Set the current academic year in Settings first, then set each class's fee in Academic Management → Fee Structure."}
+        </p>
+        <Link href={hasYear ? "/app/institute?panel=fees" : "/app/settings"} style={{ display: "inline-block", background: "var(--marigold)", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
+          {hasYear ? "Go to Fee Structure" : "Go to Settings"}
+        </Link>
+      </div>
     </div>
   );
 }
@@ -209,7 +236,7 @@ async function ParentFeesView() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {structures.map((fs) => {
                   const paidThis = paidTerms.has(fs.id);
-                  const overdue = !paidThis && fs.dueDate < new Date();
+                  const overdue = !paidThis && fs.dueDate < todayISTDate();
                   const style = FEE_STATUS_STYLE[paidThis ? "PAID" : overdue ? "OVERDUE" : "PENDING"];
                   return (
                     <div key={fs.id} style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>

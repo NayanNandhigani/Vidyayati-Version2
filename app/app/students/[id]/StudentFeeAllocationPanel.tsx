@@ -1,7 +1,9 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { updateStudentChargedFee } from "../actions";
+import { unwrap } from "@/lib/unwrap";
 
 export default function StudentFeeAllocationPanel({
   studentId,
@@ -33,10 +35,10 @@ export default function StudentFeeAllocationPanel({
     }
     startTransition(async () => {
       try {
-        await updateStudentChargedFee(studentId, newCharged);
+        unwrap(await updateStudentChargedFee(studentId, newCharged));
         setEditing(false);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save.");
+        setError(friendlyError(e, "Could not save."));
       }
     });
   }

@@ -1,5 +1,7 @@
 "use client";
 
+import { unwrap } from "@/lib/unwrap";
+import { friendlyError } from "@/lib/friendly-error";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { recordPayment, type PaymentFormState } from "./actions";
 import { addFeeDiscount, removeFeeDiscount, addFeeAdjustment, removeFeeAdjustment } from "./depth-actions";
@@ -78,6 +80,7 @@ export default function FeesView({
   const [chargeAmount, setChargeAmount] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [pendingOnly, setPendingOnly] = useState(false);
+  const [chargeError, setChargeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (state.success) setSelectedId(null);
@@ -90,10 +93,20 @@ export default function FeesView({
   }
 
   function addCharge() {
-    if (!selected || !chargeDesc.trim() || !chargeAmount) return;
-    startTransition(() => addFeeAdjustment(selected.id, chargeDesc, Number(chargeAmount)));
-    setChargeDesc("");
-    setChargeAmount("");
+    if (!selected) return;
+    if (!chargeDesc.trim()) return setChargeError("Describe the charge, e.g. Lab breakage.");
+    if (!chargeAmount || !(Number(chargeAmount) > 0)) return setChargeError("Enter an amount more than ₹0.");
+    setChargeError(null);
+    const studentId = selected.id;
+    startTransition(async () => {
+      try {
+        unwrap(await addFeeAdjustment(studentId, chargeDesc, Number(chargeAmount)));
+        setChargeDesc("");
+        setChargeAmount("");
+      } catch (e) {
+        setChargeError(friendlyError(e, "Could not add the charge. Please try again."));
+      }
+    });
   }
 
   const classOptions = Array.from(new Map(rows.map((r) => [r.classId, r.className])).entries()).sort((a, b) => a[1].localeCompare(b[1]));
@@ -266,6 +279,7 @@ export default function FeesView({
                       Add charge
                     </button>
                   </div>
+                  {chargeError && <div role="alert" style={{ marginTop: 4, fontSize: 11.5, fontWeight: 600, color: "var(--critical)" }}>{chargeError}</div>}
                 </div>
               )}
 

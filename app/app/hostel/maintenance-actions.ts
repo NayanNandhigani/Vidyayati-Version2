@@ -4,25 +4,28 @@ import { revalidatePath } from "next/cache";
 import { Prisma, HostelLogType, HostelLogStatus } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
+import { runAction, UserError } from "@/lib/action-result";
 
 /** Exactly one of roomId/facilityId should be set — logging against the room itself, or one of its toilets/showers. */
 export async function addMaintenanceLog(target: { roomId?: string; facilityId?: string }, type: HostelLogType, date: string, description: string) {
-  await requireModuleAccess("Hostel", "EDIT");
-  if (!target.roomId && !target.facilityId) throw new Error("Pick a room or a facility.");
-  if (!description.trim()) throw new Error("Description is required.");
-  const sdb = await getScopedDb();
-  if (target.roomId) await sdb.hostelRoom.findUniqueOrThrow({ where: { id: target.roomId }, select: { id: true } });
-  if (target.facilityId) await sdb.hostelFacility.findUniqueOrThrow({ where: { id: target.facilityId }, select: { id: true } });
-  await sdb.hostelMaintenanceLog.create({
-    data: scopedCreateData<Prisma.HostelMaintenanceLogUncheckedCreateInput>({
-      roomId: target.roomId ?? null,
-      facilityId: target.facilityId ?? null,
-      type,
-      date: new Date(date),
-      description: description.trim(),
-    }),
-  });
-  revalidatePath("/app/hostel");
+  return runAction(async () => {
+    await requireModuleAccess("Hostel", "EDIT");
+    if (!target.roomId && !target.facilityId) throw new UserError("Pick a room or a facility.");
+    if (!description.trim()) throw new UserError("Description is required.");
+    const sdb = await getScopedDb();
+    if (target.roomId) await sdb.hostelRoom.findUniqueOrThrow({ where: { id: target.roomId }, select: { id: true } });
+    if (target.facilityId) await sdb.hostelFacility.findUniqueOrThrow({ where: { id: target.facilityId }, select: { id: true } });
+    await sdb.hostelMaintenanceLog.create({
+      data: scopedCreateData<Prisma.HostelMaintenanceLogUncheckedCreateInput>({
+        roomId: target.roomId ?? null,
+        facilityId: target.facilityId ?? null,
+        type,
+        date: new Date(date),
+        description: description.trim(),
+      }),
+    });
+    revalidatePath("/app/hostel");
+  }, "addMaintenanceLog");
 }
 
 export async function updateMaintenanceStatus(logId: string, status: HostelLogStatus) {

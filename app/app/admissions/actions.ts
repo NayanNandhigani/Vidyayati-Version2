@@ -5,9 +5,12 @@ import { revalidatePath } from "next/cache";
 import { Prisma, type Gender } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { validatePhone, validateOptionalEmail, validateDob } from "@/lib/validation";
+import { cleanPhone, validateOptionalEmail, validateDob } from "@/lib/validation";
+import { parseDateOnly } from "@/lib/ist";
+import { toActionError } from "@/lib/action-result";
+import { runAction, UserError } from "@/lib/action-result";
 
-export type EnquiryFormState = { error?: string };
+export type EnquiryFormState = { error?: string; fieldErrors?: Partial<Record<keyof EnquiryCoreFields, string>>; values?: EnquiryCoreFields; attempt?: number };
 
 export type EnquiryCoreFields = {
   applicantName: string;
@@ -23,33 +26,41 @@ export type EnquiryCoreFields = {
   notes: string;
 };
 
-function validateEnquiryCore(f: EnquiryCoreFields): string | null {
-  if (!f.applicantName.trim()) return "Applicant name is required.";
-  if (!f.classApplied.trim()) return "Pick the class this applicant is applying for.";
-  const phoneErr = validatePhone(f.parentContact, "Contact number");
-  if (phoneErr) return phoneErr;
+/** Checks an enquiry's fields; returns a message per bad field (empty when all fine). `classes` is the school's real class list — the class must be one of them. */
+async function validateEnquiryCore(f: EnquiryCoreFields, sdb: Awaited<ReturnType<typeof getScopedDb>>): Promise<Partial<Record<keyof EnquiryCoreFields, string>>> {
+  const errors: Partial<Record<keyof EnquiryCoreFields, string>> = {};
+  if (!f.applicantName.trim()) errors.applicantName = "Enter the applicant's name.";
+  else if (f.applicantName.trim().length > 120) errors.applicantName = "Name is too long (120 characters at most).";
+  if (!f.classApplied.trim()) errors.classApplied = "Pick the class this applicant is applying for.";
+  else if ((await sdb.class.count({ where: { grade: f.classApplied.trim() } })) === 0) errors.classApplied = "Pick one of the school's classes from the list.";
+  const phone = cleanPhone(f.parentContact, "Contact number", { required: true });
+  if (phone.error) errors.parentContact = phone.error;
   const emailErr = validateOptionalEmail(f.email);
-  if (emailErr) return emailErr;
-  const dobErr = validateDob(f.dob);
-  if (dobErr) return dobErr;
-  if (f.followUpDate && Number.isNaN(Date.parse(f.followUpDate))) return "Follow-up date isn't valid.";
-  return null;
+  if (emailErr) errors.email = emailErr;
+  const dobErr = validateDob(f.dob, 2, 20);
+  if (dobErr) errors.dob = dobErr;
+  if (f.followUpDate && !parseDateOnly(f.followUpDate)) errors.followUpDate = "Follow-up date isn't a valid date.";
+  return errors;
 }
 
 function enquiryCoreData(f: EnquiryCoreFields) {
   return {
     applicantName: f.applicantName.trim(),
-    dob: f.dob ? new Date(f.dob) : null,
+    dob: parseDateOnly(f.dob),
     gender: f.gender || null,
-    parentContact: f.parentContact.trim(),
+    parentContact: cleanPhone(f.parentContact).value ?? f.parentContact.trim(),
     email: f.email.trim() || null,
     parentName: f.parentName.trim() || null,
     address: f.address.trim() || null,
     classApplied: f.classApplied.trim(),
     enquirySource: f.enquirySource.trim() || null,
-    followUpDate: f.followUpDate ? new Date(f.followUpDate) : null,
+    followUpDate: parseDateOnly(f.followUpDate),
     notes: f.notes.trim() || null,
   };
+}
+
+function firstError(errors: Partial<Record<string, string>>): string | null {
+  return Object.values(errors).find(Boolean) ?? null;
 }
 
 export async function createEnquiry(_prevState: EnquiryFormState, formData: FormData): Promise<EnquiryFormState> {
@@ -70,24 +81,28 @@ export async function createEnquiry(_prevState: EnquiryFormState, formData: Form
     notes: String(formData.get("notes") ?? ""),
   };
 
-  const error = validateEnquiryCore(fields);
-  if (error) return { error };
+  const fieldErrors = await validateEnquiryCore(fields, sdb);
+  if (Object.keys(fieldErrors).length > 0) return { error: "Please fix the highlighted fields.", fieldErrors, values: fields, attempt: Date.now() };
 
-  await sdb.admissionEnquiry.create({
-    data: scopedCreateData<Prisma.AdmissionEnquiryUncheckedCreateInput>(enquiryCoreData(fields)),
-  });
+  try {
+    await sdb.admissionEnquiry.create({
+      data: scopedCreateData<Prisma.AdmissionEnquiryUncheckedCreateInput>(enquiryCoreData(fields)),
+    });
+  } catch (err) {
+    return { ...toActionError(err, "createEnquiry"), values: fields, attempt: Date.now() };
+  }
 
   revalidatePath("/app/admissions");
-  redirect("/app/admissions");
+  redirect(`/app/admissions?saved=${encodeURIComponent(fields.applicantName.trim())}`);
 }
 
 /** Edits an enquiry's own fields (the detail drawer's "Edit") — distinct from updateApplicationDetails, which edits the fuller Application-stage form. */
 export async function updateEnquiryCore(enquiryId: string, fields: EnquiryCoreFields): Promise<{ error?: string }> {
   await requireModuleAccess("Admissions", "EDIT");
-  const error = validateEnquiryCore(fields);
+  const sdb = await getScopedDb();
+  const error = firstError(await validateEnquiryCore(fields, sdb));
   if (error) return { error };
 
-  const sdb = await getScopedDb();
   await sdb.admissionEnquiry.update({ where: { id: enquiryId }, data: enquiryCoreData(fields) });
   revalidatePath("/app/admissions");
   revalidatePath(`/app/admissions/${enquiryId}`);
@@ -103,10 +118,12 @@ export async function advanceToApplication(enquiryId: string) {
 
 /** Deletes an enquiry that never became a student. Blocked once admitted — that would orphan the real Student/Parent records already created from it; use Reject instead to remove it from the active pipeline. */
 export async function deleteEnquiry(enquiryId: string) {
-  await requireModuleAccess("Admissions", "EDIT");
-  const sdb = await getScopedDb();
-  const enquiry = await sdb.admissionEnquiry.findUniqueOrThrow({ where: { id: enquiryId }, select: { stage: true } });
-  if (enquiry.stage === "ADMITTED") throw new Error("This enquiry has already been admitted and can't be deleted.");
-  await sdb.admissionEnquiry.delete({ where: { id: enquiryId } });
-  revalidatePath("/app/admissions");
+  return runAction(async () => {
+    await requireModuleAccess("Admissions", "EDIT");
+    const sdb = await getScopedDb();
+    const enquiry = await sdb.admissionEnquiry.findUniqueOrThrow({ where: { id: enquiryId }, select: { stage: true } });
+    if (enquiry.stage === "ADMITTED") throw new UserError("This enquiry has already been admitted and can't be deleted.");
+    await sdb.admissionEnquiry.delete({ where: { id: enquiryId } });
+    revalidatePath("/app/admissions");
+  }, "deleteEnquiry");
 }

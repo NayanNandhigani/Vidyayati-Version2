@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { updateRoomTypeAndWarden, upsertMessMenu, addVisitorLog, checkOutVisitor, requestOuting, actOnOuting } from "./hostel-depth-actions";
 
@@ -225,7 +226,7 @@ export function ParentOutingRequestForm({ studentId }: { studentId: string }) {
         setForm({ reason: "", dateFrom: "", dateTo: "" });
         setMsg("Outing request submitted.");
       } catch (e) {
-        setMsg(e instanceof Error ? e.message : "Could not submit.");
+        setMsg(friendlyError(e, "Could not submit."));
       }
     });
   }

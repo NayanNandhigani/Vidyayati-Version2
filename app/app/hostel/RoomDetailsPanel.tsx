@@ -1,8 +1,10 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useActionState, useState, useTransition } from "react";
 import type { HostelFacilityType } from "@prisma/client";
 import { createRoom, updateRoomDetails, addFacility, updateFacilityCondition, removeFacility, type FormState } from "./actions";
+import { unwrap } from "@/lib/unwrap";
 
 const initialState: FormState = {};
 
@@ -72,9 +74,9 @@ export function RoomDetailEditor({
     setError(null);
     startTransition(async () => {
       try {
-        await updateRoomDetails(room.id, roomNo, roomSize, Number(capacity));
+        unwrap(await updateRoomDetails(room.id, roomNo, roomSize, Number(capacity)));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save.");
+        setError(friendlyError(e, "Could not save."));
       }
     });
   }

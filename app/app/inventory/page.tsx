@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
-import { requireFeature } from "@/lib/feature-flags";
+import { hasFeature } from "@/lib/feature-flags";
 import { formatINR } from "@/lib/format";
 import { currentAssetValue } from "@/lib/inventory";
 import Link from "next/link";
@@ -26,7 +26,18 @@ const TAB_LABEL: Record<Tab, string> = { assets: "Assets", consumables: "Consuma
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await auth();
   await requireModuleAccess("Inventory", "VIEW");
-  await requireFeature(session!.user.schoolId, "inventory.module");
+  if (!(await hasFeature(session!.user.schoolId, "inventory.module"))) {
+    return (
+      <div style={{ padding: "26px 34px" }}>
+        <div className="disp" style={{ fontSize: 21, marginBottom: 12 }}>
+          Inventory
+        </div>
+        <div className="card" style={{ padding: 24, maxWidth: 560, fontSize: 13.5, color: "var(--muted)", lineHeight: 1.6 }}>
+          Inventory &amp; Asset Management isn&apos;t turned on for your school. Contact Vidya Yati if you&apos;d like to use it.
+        </div>
+      </div>
+    );
+  }
   const sdb = await getScopedDb();
 
   const params = await searchParams;

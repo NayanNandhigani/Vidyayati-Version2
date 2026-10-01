@@ -1,7 +1,10 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
 import { useState, useTransition } from "react";
 import { createSchoolGroup, assignSchoolGroup } from "../group-actions";
+import { unwrap } from "@/lib/unwrap";
 
 export default function SchoolGroupField({ schoolId, groupId, groups }: { schoolId: string; groupId: string | null; groups: { id: string; name: string }[] }) {
   const [pending, startTransition] = useTransition();
@@ -15,10 +18,14 @@ export default function SchoolGroupField({ schoolId, groupId, groups }: { school
   function createAndAssign() {
     if (!newName.trim()) return;
     startTransition(async () => {
-      const group = await createSchoolGroup(newName);
-      await assignSchoolGroup(schoolId, group.id);
-      setNewName("");
-      setCreating(false);
+      try {
+        const group = unwrap(await createSchoolGroup(newName));
+        await assignSchoolGroup(schoolId, group.id);
+        setNewName("");
+        setCreating(false);
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 

@@ -1,7 +1,10 @@
 "use client";
 
+import { toast } from "@/components/Toaster";
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { setClassFeeDefault, saveFeeInstalmentPlan, type FeeInstalmentPlanTerm } from "./actions";
+import { unwrap } from "@/lib/unwrap";
 
 type PlanRow = { head: string; term: string; amount: number; dueDate: string };
 export type GradeFeeRow = { grade: string; sectionCount: number; actualFee: number | null; plan: PlanRow[] };
@@ -31,9 +34,13 @@ function GradeCard({ gradeRow }: { gradeRow: GradeFeeRow }) {
     const actual = Number(actualFee);
     if (!actualFee || Number.isNaN(actual) || actual < 0 || !Number.isInteger(actual)) return;
     startTransition(async () => {
-      await setClassFeeDefault(gradeRow.grade, actual);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
+      try {
+        unwrap(await setClassFeeDefault(gradeRow.grade, actual));
+        setSaved(true);
+        setTimeout(() => setSaved(false), 1500);
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 
@@ -101,7 +108,7 @@ function InstalmentPlanEditor({ grade, initialPlan }: { grade: string; initialPl
         if ("error" in r) setError(r.error);
         else setResult(r);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save the instalment plan.");
+        setError(friendlyError(e, "Could not save the instalment plan."));
       }
     });
   }

@@ -7,6 +7,7 @@ import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { deleteUploadedFile, saveUploadedFile } from "@/lib/storage";
 import { validateOptionalPhone } from "@/lib/validation";
+import { runAction, UserError } from "@/lib/action-result";
 
 export type VehicleFields = {
   vehicleNo: string;
@@ -36,57 +37,61 @@ function validateVehicleFields(fields: VehicleFields) {
 }
 
 export async function createVehicle(fields: VehicleFields) {
-  await requireModuleAccess("Transport", "EDIT");
-  const validationError = validateVehicleFields(fields);
-  if (validationError) throw new Error(validationError);
-  const sdb = await getScopedDb();
-  const vehicle = await sdb.transportVehicle.create({
-    data: scopedCreateData<Prisma.TransportVehicleUncheckedCreateInput>({
-      vehicleNo: fields.vehicleNo.trim(),
-      vehicleType: fields.vehicleType,
-      capacity: fields.capacity,
-      make: fields.make,
-      model: fields.model,
-      driverName: fields.driverName,
-      driverPhone: fields.driverPhone,
-      driverLicenseNo: fields.driverLicenseNo,
-      driverLicenseExpiry: fields.driverLicenseExpiry ? new Date(fields.driverLicenseExpiry) : null,
-      insurancePolicyNo: fields.insurancePolicyNo,
-      insuranceExpiry: fields.insuranceExpiry ? new Date(fields.insuranceExpiry) : null,
-      fitnessExpiry: fields.fitnessExpiry ? new Date(fields.fitnessExpiry) : null,
-      pollutionCertExpiry: fields.pollutionCertExpiry ? new Date(fields.pollutionCertExpiry) : null,
-    }),
-  });
-  revalidatePath("/app/transport");
-  return { id: vehicle.id };
+  return runAction(async () => {
+    await requireModuleAccess("Transport", "EDIT");
+    const validationError = validateVehicleFields(fields);
+    if (validationError) throw new UserError(validationError);
+    const sdb = await getScopedDb();
+    const vehicle = await sdb.transportVehicle.create({
+      data: scopedCreateData<Prisma.TransportVehicleUncheckedCreateInput>({
+        vehicleNo: fields.vehicleNo.trim(),
+        vehicleType: fields.vehicleType,
+        capacity: fields.capacity,
+        make: fields.make,
+        model: fields.model,
+        driverName: fields.driverName,
+        driverPhone: fields.driverPhone,
+        driverLicenseNo: fields.driverLicenseNo,
+        driverLicenseExpiry: fields.driverLicenseExpiry ? new Date(fields.driverLicenseExpiry) : null,
+        insurancePolicyNo: fields.insurancePolicyNo,
+        insuranceExpiry: fields.insuranceExpiry ? new Date(fields.insuranceExpiry) : null,
+        fitnessExpiry: fields.fitnessExpiry ? new Date(fields.fitnessExpiry) : null,
+        pollutionCertExpiry: fields.pollutionCertExpiry ? new Date(fields.pollutionCertExpiry) : null,
+      }),
+    });
+    revalidatePath("/app/transport");
+    return { id: vehicle.id };
+  }, "createVehicle");
 }
 
 export async function updateVehicle(vehicleId: string, fields: VehicleFields) {
-  await requireModuleAccess("Transport", "EDIT");
-  const validationError = validateVehicleFields(fields);
-  if (validationError) throw new Error(validationError);
-  const sdb = await getScopedDb();
-  await sdb.transportVehicle.update({
-    where: { id: vehicleId },
-    data: {
-      vehicleNo: fields.vehicleNo.trim(),
-      vehicleType: fields.vehicleType,
-      capacity: fields.capacity,
-      make: fields.make,
-      model: fields.model,
-      driverName: fields.driverName,
-      driverPhone: fields.driverPhone,
-      driverLicenseNo: fields.driverLicenseNo,
-      driverLicenseExpiry: fields.driverLicenseExpiry ? new Date(fields.driverLicenseExpiry) : null,
-      insurancePolicyNo: fields.insurancePolicyNo,
-      insuranceExpiry: fields.insuranceExpiry ? new Date(fields.insuranceExpiry) : null,
-      fitnessExpiry: fields.fitnessExpiry ? new Date(fields.fitnessExpiry) : null,
-      pollutionCertExpiry: fields.pollutionCertExpiry ? new Date(fields.pollutionCertExpiry) : null,
-      notes: fields.notes,
-    },
-  });
-  revalidatePath("/app/transport");
-  revalidatePath(`/app/transport/vehicles/${vehicleId}`);
+  return runAction(async () => {
+    await requireModuleAccess("Transport", "EDIT");
+    const validationError = validateVehicleFields(fields);
+    if (validationError) throw new UserError(validationError);
+    const sdb = await getScopedDb();
+    await sdb.transportVehicle.update({
+      where: { id: vehicleId },
+      data: {
+        vehicleNo: fields.vehicleNo.trim(),
+        vehicleType: fields.vehicleType,
+        capacity: fields.capacity,
+        make: fields.make,
+        model: fields.model,
+        driverName: fields.driverName,
+        driverPhone: fields.driverPhone,
+        driverLicenseNo: fields.driverLicenseNo,
+        driverLicenseExpiry: fields.driverLicenseExpiry ? new Date(fields.driverLicenseExpiry) : null,
+        insurancePolicyNo: fields.insurancePolicyNo,
+        insuranceExpiry: fields.insuranceExpiry ? new Date(fields.insuranceExpiry) : null,
+        fitnessExpiry: fields.fitnessExpiry ? new Date(fields.fitnessExpiry) : null,
+        pollutionCertExpiry: fields.pollutionCertExpiry ? new Date(fields.pollutionCertExpiry) : null,
+        notes: fields.notes,
+      },
+    });
+    revalidatePath("/app/transport");
+    revalidatePath(`/app/transport/vehicles/${vehicleId}`);
+  }, "updateVehicle");
 }
 
 export async function toggleVehicleActive(vehicleId: string) {
@@ -109,15 +114,17 @@ export async function updateVehicleLocation(vehicleId: string, lat: number, lng:
 // ------------------------------------------------------------- Service log
 
 export async function addVehicleLog(vehicleId: string, type: VehicleLogType, date: string, description: string, cost: number | null, odometerReading: number | null) {
-  await requireModuleAccess("Transport", "EDIT");
-  if (!date || !description.trim()) throw new Error("Date and description are required.");
-  const sdb = await getScopedDb();
-  await sdb.transportVehicle.findUniqueOrThrow({ where: { id: vehicleId }, select: { id: true } });
-  await sdb.vehicleLog.create({
-    data: scopedCreateData<Prisma.VehicleLogUncheckedCreateInput>({ vehicleId, type, date: new Date(date), description: description.trim(), cost, odometerReading }),
-  });
-  revalidatePath("/app/transport");
-  revalidatePath(`/app/transport/vehicles/${vehicleId}`);
+  return runAction(async () => {
+    await requireModuleAccess("Transport", "EDIT");
+    if (!date || !description.trim()) throw new UserError("Date and description are required.");
+    const sdb = await getScopedDb();
+    await sdb.transportVehicle.findUniqueOrThrow({ where: { id: vehicleId }, select: { id: true } });
+    await sdb.vehicleLog.create({
+      data: scopedCreateData<Prisma.VehicleLogUncheckedCreateInput>({ vehicleId, type, date: new Date(date), description: description.trim(), cost, odometerReading }),
+    });
+    revalidatePath("/app/transport");
+    revalidatePath(`/app/transport/vehicles/${vehicleId}`);
+  }, "addVehicleLog");
 }
 
 export async function deleteVehicleLog(logId: string, vehicleId: string) {

@@ -3,8 +3,10 @@ import { auth } from "@/auth";
 import { getScopedDb } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import AdmissionsBoard from "./AdmissionsBoard";
+import { SuccessBanner } from "@/components/form/FormMessages";
 
-export default async function AdmissionsPage() {
+export default async function AdmissionsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  const { saved } = await searchParams;
   const accessLevel = await requireModuleAccess("Admissions", "VIEW");
   const canEdit = accessLevel === "EDIT";
   const session = await auth();
@@ -36,6 +38,8 @@ export default async function AdmissionsPage() {
           )}
         </div>
       </div>
+
+      <SuccessBanner message={saved ? `Enquiry for ${saved.slice(0, 120)} saved. It's in the Enquiries column below.` : null} />
 
       <AdmissionsBoard
         enquiries={enquiries.map((e) => ({

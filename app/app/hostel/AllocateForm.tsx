@@ -1,8 +1,10 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { studentName } from "@/lib/format";
 import { allocateRoom } from "./actions";
+import { unwrap } from "@/lib/unwrap";
 
 type AvailableBed = { id: string; bedNo: string };
 
@@ -17,11 +19,11 @@ export default function AllocateForm({ roomId, students, availableBeds }: { room
     setError(null);
     startTransition(async () => {
       try {
-        await allocateRoom(roomId, studentId, bedId || undefined);
+        unwrap(await allocateRoom(roomId, studentId, bedId || undefined));
         setStudentId("");
         setBedId("");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not allocate.");
+        setError(friendlyError(e, "Could not allocate."));
       }
     });
   }

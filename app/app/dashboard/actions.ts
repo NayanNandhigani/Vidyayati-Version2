@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
+import { runAction, UserError } from "@/lib/action-result";
 
 async function requireAdmin() {
   const session = await auth();
@@ -11,18 +12,20 @@ async function requireAdmin() {
 }
 
 export async function addReminder(title: string, content: string, remindAt: string) {
-  await requireAdmin();
-  if (!title.trim()) throw new Error("A title is required.");
-  if (!remindAt) throw new Error("Pick a date to schedule this reminder for.");
-  const sdb = await getScopedDb();
-  await sdb.dashboardReminder.create({
-    data: scopedCreateData<Prisma.DashboardReminderUncheckedCreateInput>({
-      title: title.trim(),
-      content: content.trim(),
-      remindAt: new Date(remindAt),
-    }),
-  });
-  revalidatePath("/app/dashboard");
+  return runAction(async () => {
+    await requireAdmin();
+    if (!title.trim()) throw new UserError("A title is required.");
+    if (!remindAt) throw new UserError("Pick a date to schedule this reminder for.");
+    const sdb = await getScopedDb();
+    await sdb.dashboardReminder.create({
+      data: scopedCreateData<Prisma.DashboardReminderUncheckedCreateInput>({
+        title: title.trim(),
+        content: content.trim(),
+        remindAt: new Date(remindAt),
+      }),
+    });
+    revalidatePath("/app/dashboard");
+  }, "addReminder");
 }
 
 export async function removeReminder(id: string) {
@@ -33,13 +36,15 @@ export async function removeReminder(id: string) {
 }
 
 export async function addNote(content: string) {
-  await requireAdmin();
-  if (!content.trim()) throw new Error("Write something before saving the note.");
-  const sdb = await getScopedDb();
-  await sdb.dashboardNote.create({
-    data: scopedCreateData<Prisma.DashboardNoteUncheckedCreateInput>({ content: content.trim() }),
-  });
-  revalidatePath("/app/dashboard");
+  return runAction(async () => {
+    await requireAdmin();
+    if (!content.trim()) throw new UserError("Write something before saving the note.");
+    const sdb = await getScopedDb();
+    await sdb.dashboardNote.create({
+      data: scopedCreateData<Prisma.DashboardNoteUncheckedCreateInput>({ content: content.trim() }),
+    });
+    revalidatePath("/app/dashboard");
+  }, "addNote");
 }
 
 export async function removeNote(id: string) {

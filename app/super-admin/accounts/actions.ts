@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { LedgerAccountType, Recurrence } from "@prisma/client";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { runAction, UserError } from "@/lib/action-result";
 
 export type AccountsFormState = { error?: string; success?: boolean };
 
@@ -223,28 +224,30 @@ function nextBillingPeriodLabel(recurrence: Recurrence, dueDate: Date): string {
 }
 
 export async function generateNextInvoice(invoiceId: string) {
-  await assertSuperAdmin();
+  return runAction(async () => {
+    await assertSuperAdmin();
 
-  const invoice = await db.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
-  if (invoice.recurrence === "NONE") throw new Error("This invoice isn't set to recur.");
+    const invoice = await db.subscriptionInvoice.findUniqueOrThrow({ where: { id: invoiceId } });
+    if (invoice.recurrence === "NONE") throw new UserError("This invoice isn't set to recur.");
 
-  const next = new Date(invoice.dueDate);
-  if (invoice.recurrence === "MONTHLY") next.setMonth(next.getMonth() + 1);
-  else if (invoice.recurrence === "QUARTERLY") next.setMonth(next.getMonth() + 3);
-  else if (invoice.recurrence === "YEARLY") next.setFullYear(next.getFullYear() + 1);
+    const next = new Date(invoice.dueDate);
+    if (invoice.recurrence === "MONTHLY") next.setMonth(next.getMonth() + 1);
+    else if (invoice.recurrence === "QUARTERLY") next.setMonth(next.getMonth() + 3);
+    else if (invoice.recurrence === "YEARLY") next.setFullYear(next.getFullYear() + 1);
 
-  const created = await db.subscriptionInvoice.create({
-    data: {
-      schoolId: invoice.schoolId,
-      amount: invoice.amount,
-      billingPeriod: nextBillingPeriodLabel(invoice.recurrence, next),
-      dueDate: next,
-      status: "PENDING",
-      recurrence: invoice.recurrence,
-    },
-  });
+    const created = await db.subscriptionInvoice.create({
+      data: {
+        schoolId: invoice.schoolId,
+        amount: invoice.amount,
+        billingPeriod: nextBillingPeriodLabel(invoice.recurrence, next),
+        dueDate: next,
+        status: "PENDING",
+        recurrence: invoice.recurrence,
+      },
+    });
 
-  revalidateAccounts();
-  revalidatePath("/super-admin/subscriptions");
-  return { id: created.id };
+    revalidateAccounts();
+    revalidatePath("/super-admin/subscriptions");
+    return { id: created.id };
+  }, "generateNextInvoice");
 }

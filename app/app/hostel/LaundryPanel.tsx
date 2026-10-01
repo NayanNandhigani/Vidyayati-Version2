@@ -1,7 +1,9 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
 import { useState, useTransition } from "react";
 import { registerLaundry, markLaundryCollected, deleteLaundryTicket, type LaundryItemInput } from "./laundry-actions";
+import { unwrap } from "@/lib/unwrap";
 
 export type LaundryStudentOption = { id: string; name: string; roomNo: string };
 export type LaundryTicketRow = {
@@ -48,7 +50,7 @@ export default function LaundryPanel({ students, tickets, canEdit }: { students:
     setError(null);
     startTransition(async () => {
       try {
-        const result = await registerLaundry(studentId, rows, collectionDate || null);
+        const result = unwrap(await registerLaundry(studentId, rows, collectionDate || null));
         const student = students.find((s) => s.id === studentId);
         setReceipt({
           id: result.id,
@@ -64,7 +66,7 @@ export default function LaundryPanel({ students, tickets, canEdit }: { students:
         setRows([emptyRow()]);
         setCollectionDate("");
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not register laundry.");
+        setError(friendlyError(e, "Could not register laundry."));
       }
     });
   }

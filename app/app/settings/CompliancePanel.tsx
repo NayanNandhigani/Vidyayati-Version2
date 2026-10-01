@@ -1,7 +1,10 @@
 "use client";
 
+import { friendlyError } from "@/lib/friendly-error";
+import { toast } from "@/components/Toaster";
 import { useRef, useState, useTransition } from "react";
 import { updateUdiseFields, uploadComplianceDocument, deleteComplianceDocument, exportUdiseCsv } from "./compliance-actions";
+import { unwrap } from "@/lib/unwrap";
 
 type Doc = { id: string; documentType: string; documentNo: string | null; issuedDate: string | null; expiryDate: string | null; filePath: string | null };
 
@@ -46,9 +49,13 @@ export default function CompliancePanel({
     fd.set("expiryDate", form.expiryDate);
     if (fileRef.current?.files?.[0]) fd.set("file", fileRef.current.files[0]);
     startUpload(async () => {
-      await uploadComplianceDocument(fd);
-      setForm({ documentType: "", documentNo: "", issuedDate: "", expiryDate: "" });
-      if (fileRef.current) fileRef.current.value = "";
+      try {
+        unwrap(await uploadComplianceDocument(fd));
+        setForm({ documentType: "", documentNo: "", issuedDate: "", expiryDate: "" });
+        if (fileRef.current) fileRef.current.value = "";
+      } catch (e) {
+        toast.error(friendlyError(e));
+      }
     });
   }
 

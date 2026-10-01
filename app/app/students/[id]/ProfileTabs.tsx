@@ -10,6 +10,8 @@ import { addStudentDocument } from "../depth-actions";
 import GuardianRow from "./GuardianRow";
 import AddGuardianForm from "./AddGuardianForm";
 import StudentFeeAllocationPanel from "./StudentFeeAllocationPanel";
+import { formatINR } from "@/lib/format";
+import { formatDateIST } from "@/lib/ist";
 
 type StudentDetail = {
   id: string;
@@ -23,7 +25,7 @@ type StudentDetail = {
     stop: { stopName: string; pickupTime: Date | null };
   } | null;
   attendance: { date: Date; status: AttendanceStatus }[];
-  feePayments: { amount: unknown; paidOn: Date; feeInstalment: { id: string; feeStructure: { term: string } } }[];
+  feePayments: { amount: number; paidOn: Date }[];
 };
 
 type ExamResult = { examName: string; date: Date; obtained: number; max: number };
@@ -35,7 +37,7 @@ type Props = {
   examResults: ExamResult[];
   latestExamGrade: string | null;
   latestExamPct: number | null;
-  feeInstalments: { id: string; term: string; amount: unknown; dueDate: Date }[];
+  feeInstalments: { id: string; term: string; amount: number; paid: number; dueDate: Date; overdue: boolean }[];
   features: { medicalInfo: boolean; priorSchool: boolean; siblings: boolean; documents: boolean };
   medical: { address: string | null; bloodGroup: string | null; medicalNotes: string | null };
   emergencyContacts: { id: string; name: string; relation: string; phone: string; priority: number }[];
@@ -119,10 +121,9 @@ export default function ProfileTabs({
   ];
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("Profile");
 
-  const totalDue = feeInstalments.reduce((s, f) => s + Number(f.amount), 0);
-  const totalPaid = student.feePayments.reduce((s, p) => s + Number(p.amount), 0);
+  const totalDue = feeInstalments.reduce((s, f) => s + f.amount, 0);
+  const totalPaid = student.feePayments.reduce((s, p) => s + p.amount, 0);
   const totalDueRemaining = Math.max(0, totalDue - totalPaid);
-  const paidInstalmentIds = new Set(student.feePayments.map((p) => p.feeInstalment.id));
 
   return (
     <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column" }}>
@@ -162,7 +163,7 @@ export default function ProfileTabs({
         {tab === "Profile" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 13.5, maxWidth: 560 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-              <Row label="Date of birth" value={student.dob ? student.dob.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
+              <Row label="Date of birth" value={student.dob ? formatDateIST(student.dob) : "—"} />
               <Row label="Gender" value={student.gender ? student.gender[0] + student.gender.slice(1).toLowerCase() : "—"} />
               <Row label="Admission number" value={student.admissionNo} mono />
               <Row label="Class" value={`${student.class.grade}-${student.class.section}`} mono last />
@@ -265,9 +266,9 @@ export default function ProfileTabs({
           <>
             <StudentFeeAllocationPanel studentId={student.id} actualFee={actualFee} chargedFee={chargedFee} isAdmin={isAdmin} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
-              <StatBox label="Total fee" value={`₹${totalDue.toLocaleString("en-IN")}`} />
-              <StatBox label="Paid" value={`₹${totalPaid.toLocaleString("en-IN")}`} color="var(--good)" />
-              <StatBox label="Due" value={`₹${totalDueRemaining.toLocaleString("en-IN")}`} color="var(--warn)" />
+              <StatBox label="Total fee" value={formatINR(totalDue)} />
+              <StatBox label="Paid" value={formatINR(totalPaid)} color="var(--good)" />
+              <StatBox label="Due" value={formatINR(totalDueRemaining)} color="var(--warn)" />
             </div>
             <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 9 }}>Installments</div>
             {feeInstalments.length === 0 ? (
@@ -275,8 +276,8 @@ export default function ProfileTabs({
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {feeInstalments.map((fs) => {
-                  const paid = paidInstalmentIds.has(fs.id);
-                  const overdue = !paid && fs.dueDate < new Date();
+                  const paid = fs.paid >= fs.amount;
+                  const overdue = fs.overdue;
                   const status = paid ? "PAID" : overdue ? "OVERDUE" : "PENDING";
                   const style = FEE_STATUS_STYLE[status];
                   return (
@@ -296,11 +297,11 @@ export default function ProfileTabs({
                       <div>
                         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{fs.term}</div>
                         <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 1 }}>
-                          {paid ? "Paid" : `Due ${fs.dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`}
+                          {paid ? "Paid" : `${fs.paid > 0 ? `${formatINR(fs.paid)} paid · ` : ""}Due ${formatDateIST(fs.dueDate)}`}
                         </div>
                       </div>
                       <div className="mono" style={{ fontSize: 12.5, fontWeight: 700, textAlign: "right" }}>
-                        ₹{Number(fs.amount).toLocaleString("en-IN")}
+                        {formatINR(fs.amount)}
                       </div>
                       <span className="pill" style={{ background: style.bg, color: style.fg }}>
                         {style.label}

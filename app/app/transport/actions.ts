@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
+import { runAction, UserError, type ActionResult } from "@/lib/action-result";
 
 export type FormState = { error?: string };
 
@@ -64,27 +65,43 @@ export async function addStop(routeId: string, stopName: string, pickupTime: str
 
 // ------------------------------------------------------- Student assignment
 
-/** Assigns (or re-assigns) a student to a route + one of its stops — upserts on studentId, the table's own primary key, since a student can only ever be on one route at a time. Capacity now lives on the route's vehicle, not the route itself. */
-export async function assignStudentToRoute(studentId: string, routeId: string, stopId: string) {
+/**
+ * Assigns (or re-assigns) a student to a route + one of its stops — upserts
+ * on studentId, since a student can only ever be on one route at a time.
+ * Capacity belongs to the vehicle, so seats are counted across every route
+ * that vehicle runs. Returns { error } for a full vehicle rather than
+ * throwing, so the message reaches the user in production.
+ */
+export async function assignStudentToRoute(studentId: string, routeId: string, stopId: string): Promise<ActionResult> {
   await requireModuleAccess("Transport", "EDIT");
-  const sdb = await getScopedDb();
+  return runAction(async () => {
+    const sdb = await getScopedDb();
+    const route = await sdb.transportRoute.findUnique({ where: { id: routeId }, include: { vehicle: true } });
+    if (!route) throw new UserError("This route no longer exists. Please refresh the page.");
+    const [student, stop] = await Promise.all([
+      sdb.student.findUnique({ where: { id: studentId }, select: { id: true } }),
+      sdb.transportStop.findFirst({ where: { id: stopId, routeId }, select: { id: true } }),
+    ]);
+    if (!student) throw new UserError("This student no longer exists. Please refresh the page.");
+    if (!stop) throw new UserError("Pick a stop on this route.");
 
-  const route = await sdb.transportRoute.findUniqueOrThrow({ where: { id: routeId }, include: { assignments: true, vehicle: true } });
-  await sdb.student.findUniqueOrThrow({ where: { id: studentId }, select: { id: true } });
-  await sdb.transportStop.findUniqueOrThrow({ where: { id: stopId }, select: { id: true } });
-  const alreadyOnThisRoute = route.assignments.some((a) => a.studentId === studentId);
-  const capacity = route.vehicle?.capacity ?? null;
-  if (!alreadyOnThisRoute && capacity !== null && route.assignments.length >= capacity) {
-    throw new Error(`${route.name} is at full capacity.`);
-  }
+    const vehicle = route.vehicle;
+    if (vehicle?.capacity != null) {
+      const seated = await sdb.studentTransportAssignment.count({ where: { route: { vehicleId: vehicle.id }, studentId: { not: studentId } } });
+      if (seated >= vehicle.capacity) {
+        throw new UserError(`This vehicle is full (${seated}/${vehicle.capacity} seats). Increase capacity or choose another vehicle.`);
+      }
+    }
 
-  await sdb.studentTransportAssignment.upsert({
-    where: { studentId },
-    update: { routeId, stopId },
-    create: scopedCreateData<Prisma.StudentTransportAssignmentUncheckedCreateInput>({ studentId, routeId, stopId }),
-  });
+    await sdb.studentTransportAssignment.upsert({
+      where: { studentId },
+      update: { routeId, stopId },
+      create: scopedCreateData<Prisma.StudentTransportAssignmentUncheckedCreateInput>({ studentId, routeId, stopId }),
+    });
 
-  revalidatePath("/app/transport");
+    revalidatePath("/app/transport");
+    return {};
+  }, "assignStudentToRoute");
 }
 
 export async function unassignStudentFromRoute(studentId: string) {

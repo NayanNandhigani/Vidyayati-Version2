@@ -9,6 +9,7 @@ import { requireFeature } from "@/lib/feature-flags";
 import { studentName } from "@/lib/format";
 import { computeLibraryFine } from "@/lib/library";
 import { issueBook } from "./actions";
+import { runAction, UserError } from "@/lib/action-result";
 
 async function schoolId() {
   const session = await auth();
@@ -21,14 +22,16 @@ async function schoolId() {
  * to the existing, untouched `issueBook` action for the actual transaction.
  */
 export async function issueBookByAccession(studentId: string, accessionNo: string) {
-  await requireModuleAccess("Library", "EDIT");
-  await requireFeature(await schoolId(), "library.barcodesAndFines");
-  const sdb = await getScopedDb();
+  return runAction(async () => {
+    await requireModuleAccess("Library", "EDIT");
+    await requireFeature(await schoolId(), "library.barcodesAndFines");
+    const sdb = await getScopedDb();
 
-  const book = await sdb.libraryBook.findFirst({ where: { accessionNo: accessionNo.trim() } });
-  if (!book) throw new Error(`No book found with accession no. "${accessionNo.trim()}".`);
+    const book = await sdb.libraryBook.findFirst({ where: { accessionNo: accessionNo.trim() } });
+    if (!book) throw new UserError(`No book found with accession no. "${accessionNo.trim()}".`);
 
-  await issueBook(studentId, book.id);
+    await issueBook(studentId, book.id);
+  }, "issueBookByAccession");
 }
 
 /**
@@ -78,18 +81,20 @@ export async function returnBookWithFine(circulationId: string) {
 
 /** Scan-style return: resolve the accession no. to its single active loan, then return it (with fine calc). */
 export async function returnBookByAccession(accessionNo: string) {
-  await requireModuleAccess("Library", "EDIT");
-  await requireFeature(await schoolId(), "library.barcodesAndFines");
-  const sdb = await getScopedDb();
+  return runAction(async () => {
+    await requireModuleAccess("Library", "EDIT");
+    await requireFeature(await schoolId(), "library.barcodesAndFines");
+    const sdb = await getScopedDb();
 
-  const book = await sdb.libraryBook.findFirst({ where: { accessionNo: accessionNo.trim() } });
-  if (!book) throw new Error(`No book found with accession no. "${accessionNo.trim()}".`);
+    const book = await sdb.libraryBook.findFirst({ where: { accessionNo: accessionNo.trim() } });
+    if (!book) throw new UserError(`No book found with accession no. "${accessionNo.trim()}".`);
 
-  const circs = await sdb.libraryCirculation.findMany({ where: { bookId: book.id, status: "ISSUED" } });
-  if (circs.length === 0) throw new Error(`"${book.title}" has no active loan to return.`);
-  if (circs.length > 1) throw new Error(`"${book.title}" has multiple active loans — return manually from the list below.`);
+    const circs = await sdb.libraryCirculation.findMany({ where: { bookId: book.id, status: "ISSUED" } });
+    if (circs.length === 0) throw new UserError(`"${book.title}" has no active loan to return.`);
+    if (circs.length > 1) throw new UserError(`"${book.title}" has multiple active loans — return manually from the list below.`);
 
-  return returnBookWithFine(circs[0].id);
+    return returnBookWithFine(circs[0].id);
+  }, "returnBookByAccession");
 }
 
 /** Looks up a book's title/author from its ISBN via the free Open Library API. Never throws for a "not found" or network failure — always falls back to manual entry. */
