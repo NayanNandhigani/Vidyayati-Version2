@@ -87,7 +87,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
     const teacher = staff.find((s) => s.id === teacherId)!;
     const { grid: teacherGrid, periodCount } = await buildTeacherGrid(sdb, teacherId, teacherId === ownStaff?.id ? "ALL" : permittedClassIds);
     return (
-      <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 13, height: "100dvh", boxSizing: "border-box" }}>
+      <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 13, height: "var(--page-h)", boxSizing: "border-box" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div className="disp" style={{ fontSize: 21 }}>
@@ -121,7 +121,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
   const classSubjects = subjects.filter((sub) => assignedIds.has(sub.id));
 
   return (
-    <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 13, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 13, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div className="disp" style={{ fontSize: 21 }}>
@@ -243,7 +243,7 @@ async function ParentTimetableView() {
   const [subjects, grid] = await Promise.all([sdb.subject.findMany({ orderBy: { name: "asc" } }), buildGrid(sdb, student.classId)]);
 
   return (
-    <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 13, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 13, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div className="disp" style={{ fontSize: 21 }}>
         Timetable · {studentName(student)} · Class {student.class.grade}-{student.class.section}
       </div>

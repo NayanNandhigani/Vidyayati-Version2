@@ -57,7 +57,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   }));
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div className="disp" style={{ fontSize: 21 }}>
           Library

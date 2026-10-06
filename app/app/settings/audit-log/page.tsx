@@ -60,7 +60,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
   });
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 18, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 18, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div>
         <div className="disp" style={{ fontSize: 21 }}>
           Audit log

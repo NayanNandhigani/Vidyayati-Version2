@@ -15,7 +15,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ k
   const { columns, rows } = await getReportData(reportKey, sdb);
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <Link href="/app/reports" style={{ fontSize: 12.5, color: "var(--muted)", textDecoration: "none" }}>

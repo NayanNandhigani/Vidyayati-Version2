@@ -84,7 +84,7 @@ export default function IdCardEditor({
   }
 
   return (
-    <div style={{ background: "#f4f5f7", minHeight: "100dvh" }}>
+    <div style={{ background: "#f4f5f7", minHeight: "var(--page-h)" }}>
       <header style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 24px", background: "#fff", borderBottom: "1px solid var(--line)", position: "sticky", top: 0, zIndex: 500 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <Link href="/app/settings?panel=idcards" style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)", textDecoration: "none" }}>

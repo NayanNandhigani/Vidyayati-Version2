@@ -89,7 +89,7 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
   }));
 
   return (
-    <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 14, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "22px 30px", display: "flex", flexDirection: "column", gap: 14, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div className="disp" style={{ fontSize: 21 }}>

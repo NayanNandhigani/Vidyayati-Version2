@@ -12,6 +12,8 @@ import { calculateExamResults } from "@/lib/domain/exam-results";
 import { GRADE_SCALE_PRESETS } from "@/lib/grade-scales";
 import { runAction } from "@/lib/action-result";
 import { parseSchoolGeneral, type SchoolGeneralValues } from "@/lib/school-fields";
+import { LOGO_DIR, detectLogoType, logoFileError } from "@/lib/school-branding";
+import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 
 async function requireAdmin() {
   const session = await auth();
@@ -185,6 +187,48 @@ export async function addPresetGradeScale(presetKey: string, makeActive = true):
   }, "addPresetGradeScale");
   revalidatePath("/app/settings");
   return result.ok === true ? {} : { error: result.error };
+}
+
+/** Uploads the school logo shown in the portal header (replacing any earlier one). */
+export async function uploadSchoolLogo(formData: FormData): Promise<{ error?: string }> {
+  await requireAdmin();
+  const session = await auth();
+  const schoolId = session!.user.schoolId!;
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image file to upload." };
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const problem = logoFileError(bytes);
+  if (problem) return { error: problem };
+
+  const result = await runAction(async () => {
+    const current = await db.school.findUniqueOrThrow({ where: { id: schoolId }, select: { logoPath: true } });
+    // The stored name ends in the type read from the bytes, not whatever the upload was called.
+    const { storagePath } = await saveUploadedFile(`${LOGO_DIR}/${schoolId}`, `logo.${detectLogoType(bytes)!.ext}`, bytes);
+    await db.school.update({ where: { id: schoolId }, data: { logoPath: storagePath } });
+    if (current.logoPath) await deleteUploadedFile(current.logoPath);
+    return {};
+  }, "uploadSchoolLogo");
+  if (result.ok !== true) return { error: result.error };
+
+  revalidatePath("/app", "layout");
+  return {};
+}
+
+/** Removes the school logo; the header goes back to showing the school's initials. */
+export async function removeSchoolLogo(): Promise<{ error?: string }> {
+  await requireAdmin();
+  const session = await auth();
+  const schoolId = session!.user.schoolId!;
+  const result = await runAction(async () => {
+    const current = await db.school.findUniqueOrThrow({ where: { id: schoolId }, select: { logoPath: true } });
+    await db.school.update({ where: { id: schoolId }, data: { logoPath: null } });
+    if (current.logoPath) await deleteUploadedFile(current.logoPath);
+    return {};
+  }, "removeSchoolLogo");
+  if (result.ok !== true) return { error: result.error };
+
+  revalidatePath("/app", "layout");
+  return {};
 }
 
 /** The overall result shown when a student fails a subject (default "Needs improvement"). */

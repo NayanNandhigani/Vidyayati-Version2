@@ -4,7 +4,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { scopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { moduleLabelForPath } from "@/components/sidebar-config";
-import Sidebar from "@/components/Sidebar";
+import AppShell from "@/components/AppShell";
+import { logoUrl, roleLabel, schoolInitials, schoolSubtitle } from "@/lib/school-branding";
 import { signOutAction } from "./actions";
 import { hasFeature } from "@/lib/feature-flags";
 import { getStaffPermissionRows } from "@/lib/permissions";
@@ -18,7 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Independent reads run together rather than one after another (QA BUG-28).
   const [school, inventoryEnabled, staffPermissions] = await Promise.all([
-    db.school.findUniqueOrThrow({ where: { id: session.user.schoolId }, select: { name: true, disabledModules: true } }),
+    db.school.findUniqueOrThrow({ where: { id: session.user.schoolId }, select: { name: true, disabledModules: true, logoPath: true, city: true, state: true, affiliationBoard: true } }),
     hasFeature(session.user.schoolId, "inventory.module"),
     session.user.role === "STAFF" ? getStaffPermissionRows(session.user.id) : Promise.resolve(null),
   ]);
@@ -42,17 +43,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const visibleModules = staffPermissions ? new Set(staffPermissions.filter((p) => p.accessLevel !== "NONE").map((p) => p.moduleName)) : null;
 
+  const role = session.user.role as "SCHOOL_ADMIN" | "STAFF" | "PARENT";
   return (
-    <div className="app-shell">
-      <Sidebar
-        role={session.user.role as "SCHOOL_ADMIN" | "STAFF" | "PARENT"}
-        visibleModules={visibleModules}
-        disabledSchoolModules={disabledSchoolModules}
-        schoolName={school.name}
-        userName={session.user.name ?? "User"}
-        onSignOut={signOutAction}
-      />
-      <div style={{ flex: 1, minWidth: 0, background: "var(--paper)" }}>{children}</div>
-    </div>
+    <AppShell
+      role={role}
+      roleLabel={roleLabel(role)}
+      visibleModules={visibleModules}
+      disabledSchoolModules={disabledSchoolModules}
+      school={{ name: school.name, subtitle: schoolSubtitle(school), logoUrl: logoUrl(school.logoPath), initials: schoolInitials(school.name) }}
+      userName={session.user.name ?? "User"}
+      onSignOut={signOutAction}
+    >
+      {children}
+    </AppShell>
   );
 }

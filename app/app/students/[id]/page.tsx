@@ -122,7 +122,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const feeStyle = FEE_STATUS_STYLE[feeStatus];
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box", overflowY: "auto" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box", overflowY: "auto" }}>
       <div>
         <Link href="/app/students" style={{ fontSize: 12.5, color: "var(--muted)", textDecoration: "none" }}>
           ← Back to Students

@@ -230,41 +230,247 @@ body {
   }
 }
 
-/* ---- App shell on small screens (QA BUG-23) ------------------------------
-   Below 860px the sidebar slides in from the left (opened from the top
-   bar) instead of permanently taking 236px of a phone-width screen. */
+/* ---- App shell -----------------------------------------------------------
+   School portal frame (components/AppShell.tsx): the school's header on
+   top, the menu below it on the left, the page on the right. Pages that
+   fill the screen use height: var(--page-h) — the viewport minus the
+   header. Below 860px the menu slides in from the left. */
+:root {
+  --header-h: 84px;
+  --page-h: calc(100dvh - var(--header-h));
+}
 .app-shell {
   display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
-.app-topbar,
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: var(--header-h);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px 0 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.app-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+}
+.app-school-logo {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-school-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.app-school-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: var(--sidebar);
+  color: #fff;
+  border: 2px solid var(--marigold);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 700;
+  font-size: 18px;
+}
+.app-school-text {
+  min-width: 0;
+}
+.app-school-name {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-school-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.app-user {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px 6px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+}
+.app-user-text {
+  text-align: right;
+}
+.app-user-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-user-role {
+  font-size: 11px;
+  color: var(--muted);
+}
+.app-user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--marigold);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex: none;
+}
+.app-user-actions {
+  display: flex;
+  gap: 2px;
+}
+.app-user-actions a,
+.app-user-actions button {
+  display: flex;
+  padding: 6px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.app-user-actions a:hover,
+.app-user-actions button:hover {
+  color: var(--ink);
+  background: var(--line);
+}
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.app-sidebar {
+  width: 236px;
+  flex: none;
+  background: var(--sidebar);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  height: var(--page-h);
+  position: sticky;
+  top: var(--header-h);
+}
+.app-sidebar-account {
+  display: none;
+}
+.app-powered {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #7f8bb0;
+  font-size: 11px;
+}
+.app-powered-name {
+  color: #fff;
+  font-size: 13.5px;
+}
+.app-main {
+  flex: 1;
+  min-width: 0;
+  background: var(--paper);
+}
 .app-backdrop {
   display: none;
 }
 @media (max-width: 860px) {
-  .app-shell {
-    flex-direction: column;
+  :root {
+    --header-h: 60px;
   }
-  .app-topbar {
-    display: flex;
-    align-items: center;
+  .app-header {
     gap: 10px;
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    padding: 10px 16px;
-    background: var(--sidebar);
-    color: #fff;
+    padding: 0 12px;
+  }
+  .app-menu-btn {
+    display: block;
+  }
+  .app-school-logo {
+    width: 40px;
+    height: 40px;
+  }
+  .app-school-initials {
+    font-size: 14px;
+    border-radius: 10px;
+  }
+  /* Long names wrap onto two lines rather than being cut off. */
+  .app-school-name {
+    font-size: 17px;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .app-school-sub,
+  .app-user-text,
+  .app-user-actions {
+    display: none;
+  }
+  .app-user {
+    padding: 0;
+    border: none;
+    background: none;
+  }
+  .app-user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
   }
   .app-sidebar {
     position: fixed !important;
     left: 0;
     top: 0;
+    height: 100dvh;
     z-index: 50;
     transform: translateX(-100%);
     transition: transform 0.2s ease;
   }
   .app-sidebar.is-open {
     transform: translateX(0);
+  }
+  .app-sidebar-account {
+    display: block;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px 16px;
   }
   .app-backdrop.is-open {
     display: block;

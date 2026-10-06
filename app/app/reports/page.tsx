@@ -69,7 +69,7 @@ export default async function ReportsPage() {
   ];
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, boxSizing: "border-box", ...(showBuilder ? { minHeight: "100dvh", overflowY: "auto" } : { height: "100dvh" }) }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, boxSizing: "border-box", ...(showBuilder ? { minHeight: "var(--page-h)", overflowY: "auto" } : { height: "var(--page-h)" }) }}>
       <div className="disp" style={{ fontSize: 21 }}>
         Reports &amp; analytics
       </div>

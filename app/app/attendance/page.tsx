@@ -42,7 +42,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     for (const a of existingStaffAttendance) initialStaffMarks[a.staffId] = a.status;
 
     return (
-      <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
+      <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <AttendanceViewToggle view="staff" date={date} />
         </div>
@@ -131,7 +131,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         {isAdmin ? <AttendanceViewToggle view="students" date={date} /> : <div />}
         <AttendanceFilters classes={classes} classId={classId} date={date} today={today} />

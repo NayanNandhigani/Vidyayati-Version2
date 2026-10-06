@@ -146,7 +146,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
   const tabHref = (t: Tab) => `/app/exams?tab=${t}${selectedExam ? `&exam=${selectedExam.id}&classId=${selectedExam.classId}` : ""}`;
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 14, height: "100dvh", boxSizing: "border-box", overflowY: "auto" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 14, height: "var(--page-h)", boxSizing: "border-box", overflowY: "auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div className="disp" style={{ fontSize: 21 }}>
           Exams {currentYear && <span style={{ fontSize: 14, fontWeight: 500, color: "var(--faint)" }}>· {currentYear.label}</span>}

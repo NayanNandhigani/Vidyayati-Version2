@@ -61,7 +61,7 @@ export default async function HostelPage({ searchParams }: { searchParams: Promi
   const selected = rooms.find((r) => r.id === params.room) ?? rooms[0];
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div className="disp" style={{ fontSize: 21 }}>
         Hostel
       </div>

@@ -63,7 +63,7 @@ export default async function AccountsPage() {
   const yTicks = [maxFlow, (maxFlow * 3) / 4, maxFlow / 2, maxFlow / 4, 0];
 
   return (
-    <div className="app-page acc-page" style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
+    <div className="app-page acc-page" style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div>
         <div className="disp" style={{ fontSize: 21 }}>
           Accounts

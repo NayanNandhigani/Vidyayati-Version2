@@ -6,6 +6,8 @@ import { getScopedDb } from "@/lib/tenant-db";
 import { hasFeature } from "@/lib/feature-flags";
 import GeneralForm from "./GeneralForm";
 import { matchIndianState } from "@/lib/school-fields";
+import SchoolLogoPanel from "./SchoolLogoPanel";
+import { logoUrl, schoolInitials } from "@/lib/school-branding";
 import AcademicYearsPanel from "./AcademicYearsPanel";
 import IdCardPanel from "./IdCardPanel";
 import GradingPanel from "./GradingPanel";
@@ -35,7 +37,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const school = await db.school.findUniqueOrThrow({ where: { id: session!.user.schoolId! } });
 
   return (
-    <div className="settings-page" style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 18, height: "100dvh", boxSizing: "border-box" }}>
+    <div className="settings-page" style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 18, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div className="disp" style={{ fontSize: 21 }}>
         Settings
       </div>
@@ -58,7 +60,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </div>
 
         {panel === "general" && (
-          <div className="card" style={{ flex: 1, padding: 26, overflowY: "auto" }}>
+          <div className="card" style={{ flex: 1, padding: 26, overflowY: "auto", display: "flex", flexDirection: "column", gap: 22 }}>
+            <SchoolLogoPanel logoUrl={logoUrl(school.logoPath)} initials={schoolInitials(school.name)} />
             <GeneralForm
               admissionNoPrefix={school.admissionNoPrefix}
               school={{

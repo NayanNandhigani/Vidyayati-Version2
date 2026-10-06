@@ -37,7 +37,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const selected = events.find((e) => e.id === params.event) ?? nextEvent ?? events[0];
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div className="disp" style={{ fontSize: 21 }}>
           School events

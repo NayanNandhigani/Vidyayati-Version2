@@ -66,7 +66,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
   };
 
   return (
-    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "100dvh", boxSizing: "border-box", overflowY: "auto" }}>
+    <div style={{ padding: "26px 34px", display: "flex", flexDirection: "column", gap: 16, height: "var(--page-h)", boxSizing: "border-box", overflowY: "auto" }}>
       <div>
         <Link href="/app/employees" style={{ fontSize: 12.5, color: "var(--muted)", textDecoration: "none" }}>
           ← Back to Employees

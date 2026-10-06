@@ -83,6 +83,7 @@ model School {
   postalCode         String? @map("postal_code")
   phone              String? // school office phone: a 10-digit mobile, or a landline with its STD code (lib/school-fields.ts)
   email              String?
+  logoPath           String? @map("logo_path") // storage path of the logo in the portal header (app/api/school-logo)
 
   // Multi-branch tagging (Batch 16) — purely a Super Admin grouping label
   // for the cross-school rollup report; deliberately NOT a new login role
