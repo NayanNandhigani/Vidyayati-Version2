@@ -51,7 +51,7 @@ export default async function BlankAdmissionFormPrintPage() {
         </div>
 
         <SectionHeading>Student</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Full name" />
           <Field label="Class/grade applying for" />
           <Field label="Date of birth" />
@@ -65,7 +65,7 @@ export default async function BlankAdmissionFormPrintPage() {
         </div>
 
         <SectionHeading>Parent / Guardian</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Father's name" />
           <Field label="Mother's name" />
           <Field label="Guardian's name" />
@@ -79,14 +79,14 @@ export default async function BlankAdmissionFormPrintPage() {
         </div>
 
         <SectionHeading>Address</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Permanent address" />
           <Field label="Current/correspondence address" />
           <Field label="Pincode" />
         </div>
 
         <SectionHeading>Health / Emergency</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Known allergies/medical conditions" />
           <Field label="Family doctor contact" />
           <Field label="Emergency contact name" />
@@ -94,12 +94,12 @@ export default async function BlankAdmissionFormPrintPage() {
         </div>
 
         <SectionHeading>Academic Reference Details</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="UDISE Number" />
           <Field label="PEN Number" />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 40, marginTop: 64 }}>
+        <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 40, marginTop: 64 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ borderTop: "1px solid #111", paddingTop: 6, fontSize: 11.5, color: "#333" }}>Parent's Signature</div>
           </div>

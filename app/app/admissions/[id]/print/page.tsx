@@ -55,7 +55,7 @@ export default async function ApplicationPrintPage({ params }: { params: Promise
         </div>
 
         <SectionHeading>Student</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Full name" value={e.applicantName} />
           <Field label="Class/grade applying for" value={e.classApplied} />
           <Field label="Date of birth" value={fmt(e.dob)} />
@@ -69,7 +69,7 @@ export default async function ApplicationPrintPage({ params }: { params: Promise
         </div>
 
         <SectionHeading>Parent / Guardian</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Father's name" value={e.fatherName} />
           <Field label="Mother's name" value={e.motherName} />
           <Field label="Guardian's name" value={e.guardianName} />
@@ -83,14 +83,14 @@ export default async function ApplicationPrintPage({ params }: { params: Promise
         </div>
 
         <SectionHeading>Address</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Permanent address" value={e.permanentAddress} />
           <Field label="Current/correspondence address" value={e.currentAddress} />
           <Field label="Pincode" value={e.pincode} />
         </div>
 
         <SectionHeading>Health / Emergency</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="Known allergies/medical conditions" value={e.allergiesConditions} />
           <Field label="Family doctor contact" value={e.familyDoctorContact} />
           <Field label="Emergency contact name" value={e.emergencyContactName} />
@@ -98,12 +98,12 @@ export default async function ApplicationPrintPage({ params }: { params: Promise
         </div>
 
         <SectionHeading>Academic Reference Details</SectionHeading>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <Field label="UDISE Number" value={e.udiseNumber} />
           <Field label="PEN Number" value={e.penNumber} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 40, marginTop: 64 }}>
+        <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 40, marginTop: 64 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ borderTop: "1px solid #111", paddingTop: 6, fontSize: 11.5, color: "#333" }}>Parent's Signature</div>
           </div>

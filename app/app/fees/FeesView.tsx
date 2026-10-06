@@ -133,7 +133,7 @@ export default function FeesView({
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
           <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--line)" }}>
@@ -155,7 +155,7 @@ export default function FeesView({
             Export CSV ↓
           </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div>Student</div>
           <div>Class</div>
           <div>Total</div>
@@ -172,7 +172,7 @@ export default function FeesView({
               <div
                 key={r.id}
                 onClick={() => canEdit && setSelectedId(r.id)}
-                style={{
+                className="m-row" style={{
                   display: "grid",
                   gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr",
                   alignItems: "center",

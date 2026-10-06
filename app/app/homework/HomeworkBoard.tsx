@@ -124,7 +124,7 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr) 300px", gap: 13, flex: 1, minHeight: 0 }}>
+      <div className="m-2col m-last-full" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr) 300px", gap: 13, flex: 1, minHeight: 0 }}>
       {viewMode === "date" ? (
         <div style={{ gridColumn: "1 / 6", overflowY: "auto", display: "flex", flexDirection: "column", gap: 16, paddingRight: 4 }}>
           {dateGroups.length === 0 && <div style={{ color: "var(--muted)", fontSize: 13 }}>No homework assigned yet.</div>}
@@ -136,7 +136,7 @@ export default function HomeworkBoard({ assignments, initialSelectedId, canEdit,
                   {items.length}
                 </span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 9 }}>
+              <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 9 }}>
                 {items.map((a) => {
                   const total = a.submissions.length;
                   const submitted = a.submissions.filter((s) => s.status === "SUBMITTED" || s.status === "LATE").length;
@@ -404,7 +404,7 @@ function EditAssignmentForm({ assignment, onDone }: { assignment: Assignment; on
         Title
         <input className="in" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 12 }} />
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <label className="field">
           Due date
           <input className="in mono" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={{ fontSize: 12 }} />

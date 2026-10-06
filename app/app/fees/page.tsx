@@ -110,7 +110,7 @@ export default async function FeesPage() {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         <Stat label="Total billed" value={formatINR(totalBilled)} />
         <Stat label="Collected" value={formatINR(totalCollected)} color="var(--good)" />
         <Stat label="Pending" value={formatINR(totalPending)} color="var(--warn)" />
@@ -243,7 +243,7 @@ async function ParentFeesView() {
                   const overdue = !paidThis && fs.dueDate < todayISTDate();
                   const style = FEE_STATUS_STYLE[paidThis ? "PAID" : overdue ? "OVERDUE" : "PENDING"];
                   return (
-                    <div key={fs.id} style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
+                    <div key={fs.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
                       <div>
                         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{fs.term}</div>
                         <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{paidThis ? "Paid" : `Due ${formatIST(fs.dueDate, { day: "2-digit", month: "short" })}`}</div>

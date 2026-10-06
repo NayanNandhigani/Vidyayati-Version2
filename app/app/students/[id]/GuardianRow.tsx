@@ -19,7 +19,7 @@ export default function GuardianRow({ studentId, link }: { studentId: string; li
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto auto", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--paper)", borderRadius: 8 }}>
+    <div className="m-row" style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto auto auto", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--paper)", borderRadius: 8 }}>
       <span className="pill" style={{ background: "var(--paper)", border: "1px solid var(--line)", fontSize: 10.5 }}>
         {link.relation[0] + link.relation.slice(1).toLowerCase()}
       </span>

@@ -54,7 +54,7 @@ export default function NewBookForm({ showIsbnLookup }: { showIsbnLookup: boolea
         Author
         <input className="in" name="author" placeholder="A.P.J. Abdul Kalam" value={author} onChange={(e) => setAuthor(e.target.value)} />
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Accession no.
           <input className="in mono" name="accessionNo" required placeholder="ACC-01123" />

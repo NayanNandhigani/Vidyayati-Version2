@@ -30,7 +30,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 function Row({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>{children}</div>;
+  return <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>{children}</div>;
 }
 
 const STATUS_STYLE: Record<string, { bg: string; fg: string }> = {

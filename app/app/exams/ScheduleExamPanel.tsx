@@ -113,7 +113,7 @@ export default function ScheduleExamPanel({
           Exam name
           <input className="in" value={name} onChange={(e) => setName(e.target.value)} />
         </label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <label className="field">
             Start date
             <input className="in" type="date" value={start} onChange={(e) => setStart(e.target.value)} />

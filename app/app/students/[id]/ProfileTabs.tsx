@@ -143,7 +143,7 @@ export default function ProfileTabs({
 
   return (
     <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+      <div className="m-tabs" style={{ display: "flex", gap: 4, marginBottom: 20 }}>
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -217,7 +217,7 @@ export default function ProfileTabs({
 
         {tab === "Attendance" && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+            <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
               <StatBox label="Present" value={attendanceTotals.PRESENT} color="var(--good)" />
               <StatBox label="Half day" value={attendanceTotals.HALF_DAY} color="var(--warn)" />
               <StatBox label="Absent" value={attendanceTotals.ABSENT} color="var(--critical)" />
@@ -255,7 +255,7 @@ export default function ProfileTabs({
 
         {tab === "Academics" && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+            <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
               <StatBox label="Latest score" value={latestExamPct === null ? "—" : `${latestExamPct}%`} color="var(--teal)" />
               <StatBox label="Latest grade" value={latestExamGrade ?? "—"} />
               <StatBox label="Exams recorded" value={examResults.filter((e) => e.pct !== null).length} />
@@ -266,7 +266,7 @@ export default function ProfileTabs({
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {examResults.map((e) => (
-                  <div key={e.examName + e.date.toISOString()} style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.6fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
+                  <div key={e.examName + e.date.toISOString()} className="m-row" style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.6fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600 }}>{e.examName}</div>
                       <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 1 }}>
@@ -301,7 +301,7 @@ export default function ProfileTabs({
         {tab === "Fees" && (
           <>
             <StudentFeeAllocationPanel studentId={student.id} actualFee={actualFee} chargedFee={chargedFee} isAdmin={isAdmin} />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+            <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
               <StatBox label="Total fee" value={formatINR(totalDue)} />
               <StatBox label="Paid" value={formatINR(totalPaid)} color="var(--good)" />
               <StatBox label="Due" value={formatINR(totalDueRemaining)} color="var(--warn)" />
@@ -319,7 +319,7 @@ export default function ProfileTabs({
                   return (
                     <div
                       key={fs.id}
-                      style={{
+                      className="m-row" style={{
                         display: "grid",
                         gridTemplateColumns: "1.6fr 0.9fr auto",
                         alignItems: "center",

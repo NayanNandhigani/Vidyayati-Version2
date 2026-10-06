@@ -120,7 +120,7 @@ export default function AttendanceRoster({ classId, date, today, students, initi
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div className="m-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div className="disp" style={{ fontSize: 21 }}>
           Mark Attendance
         </div>
@@ -150,7 +150,7 @@ export default function AttendanceRoster({ classId, date, today, students, initi
       <FormError message={error} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         <CountTile label="Present" value={counts.present} color="var(--good)" />
         <CountTile label="Absent" value={counts.absent} color="var(--critical)" />
         <CountTile label="Half-day" value={counts.half} color="var(--warn)" />
@@ -158,7 +158,7 @@ export default function AttendanceRoster({ classId, date, today, students, initi
       </div>
 
       <div className="card" style={{ padding: 0, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr 1fr", padding: "13px 22px", borderBottom: "1px solid var(--line)", fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr 1fr", padding: "13px 22px", borderBottom: "1px solid var(--line)", fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div onClick={() => toggleSort("name")} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: sortField === "name" ? "var(--marigold-deep)" : undefined }}>
             Student <span style={{ fontSize: 9, opacity: sortField === "name" ? 1 : 0.35 }}>{sortField === "name" && sortDir === "desc" ? "▼" : "▲"}</span>
           </div>
@@ -173,7 +173,7 @@ export default function AttendanceRoster({ classId, date, today, students, initi
             <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13.5 }}>No students in this class.</div>
           )}
           {sortedStudents.map((s) => (
-            <div key={s.id} style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr 1fr", alignItems: "center", padding: "11px 22px", borderBottom: "1px solid var(--line)" }}>
+            <div key={s.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr 1fr", alignItems: "center", padding: "11px 22px", borderBottom: "1px solid var(--line)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 32, height: 32, borderRadius: "50%", background: avatarColorFor(s.id), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, fontWeight: 700, color: "#fff", flex: "none" }}>
                   {initials(studentName(s))}

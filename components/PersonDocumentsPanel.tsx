@@ -101,7 +101,7 @@ export default function PersonDocumentsPanel({
           {documents.map((d) => (
             <div
               key={d.id}
-              style={{
+              className="m-row" style={{
                 display: "grid",
                 gridTemplateColumns: "auto 1fr auto auto",
                 alignItems: "center",

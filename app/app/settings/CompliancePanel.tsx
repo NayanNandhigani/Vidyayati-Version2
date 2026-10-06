@@ -82,7 +82,7 @@ export default function CompliancePanel({
         <div className="mono" style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 10 }}>
           UDISE+ &amp; affiliation
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <label className="field">
             UDISE+ code
             <input className="in mono" value={udise} onChange={(e) => setUdise(e.target.value)} onBlur={() => saveUdise(udise, board, affNo)} placeholder="29260100109" />
@@ -142,11 +142,11 @@ export default function CompliancePanel({
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid var(--line)", borderRadius: 10, padding: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <input className="in" placeholder="Document type (e.g. Affiliation Certificate)" value={form.documentType} onChange={(e) => setForm({ ...form, documentType: e.target.value })} style={{ fontSize: 12.5 }} />
             <input className="in mono" placeholder="Document no." value={form.documentNo} onChange={(e) => setForm({ ...form, documentNo: e.target.value })} style={{ fontSize: 12.5 }} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--muted)" }}>
               Issued
               <input className="in mono" type="date" value={form.issuedDate} onChange={(e) => setForm({ ...form, issuedDate: e.target.value })} style={{ flex: 1, fontSize: 11.5 }} />

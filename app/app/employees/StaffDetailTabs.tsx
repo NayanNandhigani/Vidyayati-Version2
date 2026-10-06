@@ -232,7 +232,7 @@ export default function StaffDetailTabs({
 
   return (
     <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ display: "flex", gap: 4, background: "var(--paper)", borderRadius: 8, padding: 4, marginBottom: 16 }}>
+      <div className="m-tabs" style={{ display: "flex", gap: 4, background: "var(--paper)", borderRadius: 8, padding: 4, marginBottom: 16 }}>
         {TABS.map((t) => (
           <span
             key={t}
@@ -284,7 +284,7 @@ export default function StaffDetailTabs({
         {tab === "Attendance" && (
           <>
             <SectionTitle>All-time</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 4 }}>
+            <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 4 }}>
               <StatTile label="Present Days" value={attendanceTotals.PRESENT} color="var(--good)" />
               <StatTile label="Absent" value={attendanceTotals.ABSENT} color="var(--critical)" />
               <StatTile label="Half day" value={attendanceTotals.HALF_DAY} color="var(--warn)" />
@@ -321,7 +321,7 @@ export default function StaffDetailTabs({
             {leaveTypes.length === 0 ? (
               <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 14 }}>No leave types configured yet.</div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
+              <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 18 }}>
                 {leaveTypes.map((t) => (
                   <div key={t.id} style={{ background: "var(--paper)", borderRadius: 8, padding: 10 }}>
                     <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 3 }}>{t.name}</div>
@@ -646,7 +646,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "18px 0 10px" }}>{children}</div>;
 }
 function FieldGrid({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>{children}</div>;
+  return <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 18px" }}>{children}</div>;
 }
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (

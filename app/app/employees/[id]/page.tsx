@@ -106,7 +106,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
       </div>
 
       <div className="card" style={{ padding: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
+        <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
           <QuickStat label="Attendance" value={attendancePct === null ? "—" : `${attendancePct}%`} color="var(--teal)" />
           <QuickStat
             label="Status"
@@ -115,7 +115,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
           />
           <QuickStat label="Years of service" value={yearsOfService ?? "—"} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, fontSize: 12.5 }}>
+        <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, fontSize: 12.5 }}>
           <BasicRow label="Designation" value={selected.designation ?? "—"} />
           <BasicRow label="Department" value={selected.department ?? "—"} />
           <BasicRow label="Date joined" value={selected.dateJoined ? formatIST(selected.dateJoined, { day: "2-digit", month: "short", year: "numeric" }) : "—"} />

@@ -68,7 +68,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
       </div>
 
       {canEdit && (
-        <div style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
+        <div className="m-tabs" style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
           {TABS.map((t) => (
             <Link
               key={t}
@@ -89,16 +89,16 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
         <EditBookPanel books={books.map((b) => ({ id: b.id, title: b.title, author: b.author, accessionNo: b.accessionNo, category: b.category, copiesTotal: b.copiesTotal, copiesAvailable: b.copiesAvailable, isbn: b.isbn }))} showIsbn={showIsbnLookup} />
       ) : (
         <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         <Stat label="Titles in catalogue" value={books.length} />
         <Stat label="Total copies" value={totalCopies} />
         <Stat label="Currently issued" value={issuedCirc.length} color="var(--teal)" />
         <Stat label="Overdue" value={overdueCount} color="var(--critical)" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
         <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: showBarcodes ? "1.8fr 1.3fr 1fr 0.9fr 1fr 1fr 0.7fr" : "2fr 1.4fr 1.1fr 1fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <div className="m-thead" style={{ display: "grid", gridTemplateColumns: showBarcodes ? "1.8fr 1.3fr 1fr 0.9fr 1fr 1fr 0.7fr" : "2fr 1.4fr 1.1fr 1fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             <div>Title</div>
             <div>Author</div>
             <div>Accession no.</div>
@@ -113,7 +113,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
               const allIssued = b.copiesAvailable === 0;
               const holders = holdersByBook.get(b.id) ?? [];
               return (
-                <div key={b.id} style={{ display: "grid", gridTemplateColumns: showBarcodes ? "1.8fr 1.3fr 1fr 0.9fr 1fr 1fr 0.7fr" : "2fr 1.4fr 1.1fr 1fr 1fr 1fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+                <div key={b.id} className="m-row" style={{ display: "grid", gridTemplateColumns: showBarcodes ? "1.8fr 1.3fr 1fr 0.9fr 1fr 1fr 0.7fr" : "2fr 1.4fr 1.1fr 1fr 1fr 1fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
                   <div>
                     <div style={{ fontWeight: 600 }}>{b.title}</div>
                     {showBarcodes && b.isbn && <div className="mono" style={{ fontSize: 10.5, color: "var(--faint)" }}>ISBN {b.isbn}</div>}

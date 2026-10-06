@@ -40,7 +40,7 @@ export default function NewHomeworkForm({
         <input className="in" name="title" required placeholder="Chapter 4 — Algebra basics" />
       </label>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Class
           <select className="in" name="classId" required value={classId} onChange={(e) => onClassChange(e.target.value)}>
@@ -85,7 +85,7 @@ export default function NewHomeworkForm({
         </label>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Due date
           <input className="in" type="date" name="dueDate" min={todayIST()} required />

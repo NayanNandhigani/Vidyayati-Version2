@@ -72,7 +72,7 @@ export default function PromoteStudentsPanel({ years, currentYearId, currentClas
         Move every active student in a class to the next grade for a new academic year. Pick students to hold back — they repeat the current grade instead. Pending fees travel with the student regardless of class, so nothing needs to be carried forward manually.
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16, maxWidth: 560 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16, maxWidth: 560 }}>
         <label className="field">
           From class (this year)
           <select className="in" value={sourceClassId} onChange={(e) => setSourceClassId(e.target.value)}>
@@ -124,7 +124,7 @@ export default function PromoteStudentsPanel({ years, currentYearId, currentClas
           <div style={{ fontSize: 11.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
             {students.length} active student{students.length === 1 ? "" : "s"} — check any to hold back
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, maxHeight: 260, overflowY: "auto" }}>
+          <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, maxHeight: 260, overflowY: "auto" }}>
             {students.map((s) => (
               <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, background: heldBack.has(s.id) ? "var(--warn-tint)" : "var(--paper)", borderRadius: 6, padding: "5px 8px", cursor: "pointer" }}>
                 <input type="checkbox" checked={heldBack.has(s.id)} onChange={() => toggleHeldBack(s.id)} />

@@ -86,7 +86,7 @@ export default async function CertificatesPage({ searchParams }: { searchParams:
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "298px 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "298px 1fr", gap: 16, flex: 1, minHeight: 0 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 11, overflowY: "auto" }}>
           <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{templateData.length} templates</div>
           {templateData.map((t) => {

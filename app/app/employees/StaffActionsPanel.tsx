@@ -104,7 +104,7 @@ export default function StaffActionsPanel({ staffId, fields: initialFields, user
 
       {editing && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <label className="field">
               Name
               <input className="in" value={fields.name} onChange={(e) => set("name", e.target.value)} style={{ fontSize: 12 }} />

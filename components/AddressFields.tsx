@@ -25,7 +25,7 @@ export default function AddressFields({ prefix = "", defaults }: Props) {
         Street address
         <input className="in" name={name("AddressLine")} defaultValue={defaults?.addressLine ?? ""} placeholder="e.g. 14 MG Road" />
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <label className="field">
           Mandal
           <input className="in" name={name("Mandal")} defaultValue={defaults?.mandal ?? ""} placeholder="e.g. Serilingampally" />
@@ -35,7 +35,7 @@ export default function AddressFields({ prefix = "", defaults }: Props) {
           <input className="in" name={name("District")} defaultValue={defaults?.district ?? ""} placeholder="e.g. Rangareddy" />
         </label>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <label className="field">
           State
           <input className="in" name={name("State")} defaultValue={defaults?.state ?? ""} placeholder="e.g. Telangana" />

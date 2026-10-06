@@ -139,7 +139,7 @@ function DetailsSection({ vehicle, pending, startTransition }: { vehicle: Vehicl
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       {vehicle.routeNames.length > 0 && <div style={{ fontSize: 12, color: "var(--teal)" }}>Serving: {vehicle.routeNames.join(", ")}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
         <MiniStat label="Type" value={vehicle.vehicleType ?? "—"} sub={[vehicle.make, vehicle.model].filter(Boolean).join(" ") || undefined} />
         <MiniStat label="Capacity" value={vehicle.capacity ? `${vehicle.capacity} seats` : "—"} />
         <MiniStat label="Driver" value={vehicle.driverName ?? "—"} sub={vehicle.driverPhone ?? undefined} />
@@ -222,7 +222,7 @@ function ServiceLogSection({ vehicleId, logs, pending, startTransition }: { vehi
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {logs.map((l) => (
-            <div key={l.id} style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto", gap: 10, alignItems: "center", fontSize: 12, padding: "6px 10px", background: "var(--paper)", borderRadius: 6 }}>
+            <div key={l.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto", gap: 10, alignItems: "center", fontSize: 12, padding: "6px 10px", background: "var(--paper)", borderRadius: 6 }}>
               <span className="pill" style={{ background: "var(--card)", border: "1px solid var(--line)", fontSize: 10 }}>
                 {LOG_TYPE_LABEL[l.type]}
               </span>
@@ -258,7 +258,7 @@ function InsuranceSection({ vehicle }: { vehicle: VehicleRow }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ fontSize: 11.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Compliance status</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 }}>
         <ComplianceRow label="Insurance" policyNo={vehicle.insurancePolicyNo} expiry={vehicle.insuranceExpiry} style={insuranceStyle} />
         <ComplianceRow label="Fitness certificate" expiry={vehicle.fitnessExpiry} style={fitnessStyle} />
         <ComplianceRow label="Pollution certificate" expiry={vehicle.pollutionCertExpiry} style={pollutionStyle} />

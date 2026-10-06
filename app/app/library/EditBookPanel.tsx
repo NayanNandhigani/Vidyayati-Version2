@@ -96,7 +96,7 @@ export default function EditBookPanel({ books, showIsbn }: { books: Book[]; show
             Author
             <input className="in" value={author} onChange={(e) => setAuthor(e.target.value)} />
           </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <label className="field">
               Accession no.
               <input className="in mono" value={accessionNo} onChange={(e) => setAccessionNo(e.target.value)} required />

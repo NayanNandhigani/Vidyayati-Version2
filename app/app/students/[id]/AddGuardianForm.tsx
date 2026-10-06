@@ -54,7 +54,7 @@ export default function AddGuardianForm({ studentId }: { studentId: string }) {
 
   return (
     <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8, background: "var(--paper)", borderRadius: 8, padding: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <input className="in" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ fontSize: 12 }} />
         <select className="in" value={relation} onChange={(e) => setRelation(e.target.value as ParentRelation)} style={{ fontSize: 12 }}>
           <option value="FATHER">Father</option>

@@ -147,7 +147,7 @@ export default function GradingPanel({ scales, failLabel: initialFailLabel }: { 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
             {activeScale.bands.length === 0 && <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No bands defined yet.</div>}
             {[...activeScale.bands].sort((a, b) => b.minPercent - a.minPercent).map((b) => (
-              <div key={b.id} style={{ display: "grid", gridTemplateColumns: "0.7fr 1fr 1.4fr auto", alignItems: "center", gap: 10, padding: "9px 12px", background: "var(--paper)", borderRadius: 8, fontSize: 12.5 }}>
+              <div key={b.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "0.7fr 1fr 1.4fr auto", alignItems: "center", gap: 10, padding: "9px 12px", background: "var(--paper)", borderRadius: 8, fontSize: 12.5 }}>
                 <span style={{ fontWeight: 700 }}>{b.label}</span>
                 <span className="mono" style={{ color: "var(--muted)" }}>
                   {b.minPercent}–{b.maxPercent}%
@@ -163,7 +163,7 @@ export default function GradingPanel({ scales, failLabel: initialFailLabel }: { 
           {showBandForm ? (
             <form ref={keep2.ref} onSubmit={keep2.capture} action={bandAction} style={{ display: "flex", flexDirection: "column", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
               <input type="hidden" name="scaleId" value={activeScale.id} />
-              <div style={{ display: "grid", gridTemplateColumns: "0.7fr 1fr 1fr 1.5fr", gap: 10 }}>
+              <div className="m-row" style={{ display: "grid", gridTemplateColumns: "0.7fr 1fr 1fr 1.5fr", gap: 10 }}>
                 <label className="field">
                   Label
                   <input className="in" name="label" placeholder="A1" required />

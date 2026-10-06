@@ -56,7 +56,7 @@ export default function HallTicketPanel({ examId, examApproved, rows }: { examId
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1.8fr 1fr auto", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "auto 1.8fr 1fr auto", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
         <input type="checkbox" checked={rows.length > 0 && selected.size === rows.length} onChange={toggleAll} />
         <div>Student</div>
         <div>Admission no.</div>
@@ -66,7 +66,7 @@ export default function HallTicketPanel({ examId, examApproved, rows }: { examId
       {rows.length === 0 && <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>No students in this class.</div>}
 
       {rows.map((r) => (
-        <div key={r.id} style={{ display: "grid", gridTemplateColumns: "auto 1.8fr 1fr auto", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+        <div key={r.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "auto 1.8fr 1fr auto", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
           <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} />
           <div style={{ fontWeight: 600 }}>{r.name}</div>
           <div className="mono" style={{ color: "var(--muted)" }}>{r.admissionNo}</div>

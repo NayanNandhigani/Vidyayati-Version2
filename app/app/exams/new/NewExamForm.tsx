@@ -64,7 +64,7 @@ export default function NewExamForm({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Start date
           <input className="in" type="date" name="startDate" required />

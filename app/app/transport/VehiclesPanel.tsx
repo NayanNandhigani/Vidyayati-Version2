@@ -98,7 +98,7 @@ export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Vehicle</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field>
           Vehicle no. (registration)
           <input className="in mono" value={form.vehicleNo} onChange={(e) => set("vehicleNo", e.target.value as never)} placeholder="TS 11 EF 1029" />
@@ -108,7 +108,7 @@ export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; 
           <input className="in" value={form.vehicleType ?? ""} onChange={(e) => set("vehicleType", e.target.value as never)} placeholder="Bus / Van / Mini Bus" />
         </Field>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
         <Field>
           Capacity (seats)
           <input className="in mono" type="number" min={0} value={form.capacity ?? ""} onChange={(e) => set("capacity", (e.target.value ? Number(e.target.value) : null) as never)} placeholder="45" />
@@ -124,7 +124,7 @@ export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; 
       </div>
 
       <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Driver</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
         <Field>
           Driver name
           <input className="in" value={form.driverName ?? ""} onChange={(e) => set("driverName", e.target.value as never)} placeholder="Ramesh Yadav" />
@@ -145,7 +145,7 @@ export function VehicleForm({ vehicle, onSaved }: { vehicle: VehicleRow | null; 
       </Field>
 
       <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Compliance</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field>
           Insurance policy no.
           <input className="in mono" value={form.insurancePolicyNo ?? ""} onChange={(e) => set("insurancePolicyNo", e.target.value as never)} />

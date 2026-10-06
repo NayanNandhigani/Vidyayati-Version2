@@ -99,7 +99,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
           </div>
           <TimetableFilter classes={classes} classId="" teachers={staff.map((s) => ({ id: s.id, name: s.user.name }))} teacherId={teacherId} ownTeacherId={ownStaff?.id ?? null} classTeacherName={null} />
         </div>
-        <div className="card" style={{ padding: 0, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div className="card m-scroll" style={{ padding: 0, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <DayHeader />
           <TimetableGrid key={teacherId} classId="" grid={teacherGrid} subjects={subjects} staff={[]} todayCol={todayColumn()} canEdit={false} rooms={[]} showRooms={false} />
         </div>
@@ -166,7 +166,7 @@ export default async function TimetablePage({ searchParams }: { searchParams: Pr
           No subjects are assigned to this class yet. Assign them in Academic Management → Subjects, then they can be added to the timetable.
         </div>
       )}
-      <div className="card" style={{ padding: 0, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="card m-scroll" style={{ padding: 0, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "84px repeat(6,1fr)", borderBottom: "1px solid var(--line)", flex: "none" }}>
           <div style={{ padding: "9px 12px", fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em", borderRight: "1px solid var(--line)" }}>Period</div>
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => (
@@ -247,7 +247,7 @@ async function ParentTimetableView() {
       <div className="disp" style={{ fontSize: 21 }}>
         Timetable · {studentName(student)} · Class {student.class.grade}-{student.class.section}
       </div>
-      <div className="card" style={{ padding: 0, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="card m-scroll" style={{ padding: 0, flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "84px repeat(6,1fr)", borderBottom: "1px solid var(--line)", flex: "none" }}>
           <div style={{ padding: "9px 12px", fontSize: 10, color: "var(--faint)", textTransform: "uppercase" }}>Period</div>
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (

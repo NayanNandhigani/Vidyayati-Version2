@@ -259,7 +259,7 @@ async function AdminStaffDashboard() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 13 }}>
         <StatTile label="Students present today" value={`${attendancePresent} / ${totalStudents}`} color="var(--teal)" />
         <StaffAvailabilityTile label="Teaching staff today" staff={teachingAvailability} />
         <StaffAvailabilityTile label="Non-teaching staff today" staff={nonTeachingAvailability} />
@@ -279,7 +279,7 @@ async function AdminStaffDashboard() {
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "0.34fr 0.66fr", gridTemplateRows: "repeat(3, minmax(320px, 1fr))", gap: 16 }}>
+      <div className="m-1col m-rows-auto" style={{ display: "grid", gridTemplateColumns: "0.34fr 0.66fr", gridTemplateRows: "repeat(3, minmax(320px, 1fr))", gap: 16 }}>
         <RemindersPanel reminders={reminders} />
         <AttendanceByClassChart data={attendanceByClass} />
 
@@ -337,7 +337,7 @@ async function ParentDashboard() {
               {student.class.section} · {student.admissionNo}
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 13 }}>
+          <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 13 }}>
             <StatTile
               label="Today's attendance"
               value={

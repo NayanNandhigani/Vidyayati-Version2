@@ -67,7 +67,7 @@ export default function AuditLogTable({ rows, showSchool }: { rows: AuditLogRow[
   return (
     <div>
       <div
-        style={{
+        className="m-thead" style={{
           display: "grid",
           gridTemplateColumns: showSchool ? "1fr 1.3fr 1fr 1.4fr 1.3fr" : "1fr 1.3fr 1.6fr 1.3fr",
           fontSize: 11,
@@ -95,7 +95,7 @@ export default function AuditLogTable({ rows, showSchool }: { rows: AuditLogRow[
           <div key={r.id} style={{ borderBottom: "1px solid var(--line)" }}>
             <div
               onClick={() => setExpanded(isOpen ? null : r.id)}
-              style={{
+              className="m-row" style={{
                 display: "grid",
                 gridTemplateColumns: showSchool ? "1fr 1.3fr 1fr 1.4fr 1.3fr" : "1fr 1.3fr 1.6fr 1.3fr",
                 alignItems: "center",

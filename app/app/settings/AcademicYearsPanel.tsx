@@ -60,7 +60,7 @@ export default function AcademicYearsPanel({ years }: { years: Year[] }) {
 
       {showForm ? (
         <form ref={keep.ref} onSubmit={keep.capture} action={formAction} style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
             <label className="field">
               Label
               <input className="in" name="label" placeholder="2027–28" required />

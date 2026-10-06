@@ -18,7 +18,7 @@ export default function NewEventForm() {
         Title
         <input className="in" name="title" required placeholder="Sports Day" />
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Type
           <input className="in" name="type" placeholder="Sports / Academic / Cultural" />
@@ -32,7 +32,7 @@ export default function NewEventForm() {
         Venue
         <input className="in" name="venue" placeholder="Main Ground" />
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Expected attendance
           <input className="in mono" type="number" name="expectedAttendance" placeholder="480" />

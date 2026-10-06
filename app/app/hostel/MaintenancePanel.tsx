@@ -55,9 +55,9 @@ export function MaintenancePanel({ targets, logs }: { targets: MaintenanceTarget
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.3fr 1.6fr 0.9fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.3fr 1.6fr 0.9fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div>Type</div>
           <div>Target</div>
           <div>Description</div>
@@ -69,7 +69,7 @@ export function MaintenancePanel({ targets, logs }: { targets: MaintenanceTarget
           {logs.map((l) => {
             const style = STATUS_STYLE[l.status];
             return (
-              <div key={l.id} style={{ display: "grid", gridTemplateColumns: "0.8fr 1.3fr 1.6fr 0.9fr 1fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
+              <div key={l.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.3fr 1.6fr 0.9fr 1fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
                 <div>
                   <span className="pill" style={{ background: "var(--paper)", border: "1px solid var(--line)", fontSize: 10.5 }}>
                     {TYPE_LABEL[l.type]}
@@ -112,7 +112,7 @@ export function MaintenancePanel({ targets, logs }: { targets: MaintenanceTarget
             ))}
           </select>
         </label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <label className="field">
             Type
             <select className="in" value={type} onChange={(e) => setType(e.target.value as HostelLogType)}>

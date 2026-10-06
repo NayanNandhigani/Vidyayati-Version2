@@ -183,12 +183,12 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
 
       {/* Quick info band — basic details, attendance, academic performance at a glance */}
       <div className="card" style={{ padding: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
+        <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
           <QuickStat label="Attendance" value={attendancePct === null ? "—" : `${attendancePct}%`} color="var(--teal)" />
           <QuickStat label="Latest exam" value={latestExamGrade ?? "—"} sub={latestExamPct !== null ? `${latestExamPct}%` : undefined} />
           <QuickStat label="Fee status" value={feeStyle.label} color={feeStyle.fg} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, fontSize: 12.5 }}>
+        <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, fontSize: 12.5 }}>
           <BasicRow label="Date of birth" value={student.dob ? formatDateIST(student.dob) : "—"} />
           <BasicRow label="Gender" value={student.gender ? student.gender[0] + student.gender.slice(1).toLowerCase() : "—"} />
           <BasicRow label="Parent / guardian" value={student.parentLinks[0]?.parent.name ?? "—"} />

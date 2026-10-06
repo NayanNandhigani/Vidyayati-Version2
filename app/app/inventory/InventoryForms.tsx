@@ -71,7 +71,7 @@ export function AssetForm() {
         Name
         <input className="in" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Projector — Room 4B" />
       </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field>
           Category
           <input className="in" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Electronics" />
@@ -85,7 +85,7 @@ export function AssetForm() {
         Location
         <input className="in" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Block A, Room 4B" />
       </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
         <Field>
           Purchase date
           <input className="in mono" type="date" value={form.purchaseDate} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} />
@@ -112,7 +112,7 @@ export function AssetRow({ asset }: { asset: { id: string; name: string; categor
   const value = currentAssetValue(asset.purchaseCost, asset.usefulLifeYears, asset.purchaseDate);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr 1.1fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+    <div className="m-row" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr 1.1fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
       <div>
         <div style={{ fontWeight: 600 }}>{asset.name}</div>
         <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{[asset.category, asset.serialNo].filter(Boolean).join(" · ") || "—"}</div>
@@ -158,7 +158,7 @@ export function ConsumableForm() {
         Name
         <input className="in" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="A4 paper (ream)" />
       </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
         <Field>
           Category
           <input className="in" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Stationery" />
@@ -198,7 +198,7 @@ export function ConsumableRow({ item }: { item: { id: string; name: string; cate
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr 1fr 1fr 1.3fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+    <div className="m-row" style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr 1fr 1fr 1.3fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
       <div>
         <div style={{ fontWeight: 600 }}>{item.name}</div>
         <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{item.category ?? "—"}</div>
@@ -266,7 +266,7 @@ export function StockItemForm() {
         Name
         <input className="in" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="School diary" />
       </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field>
           Item type
           <input className="in" value={form.itemType} onChange={(e) => setForm({ ...form, itemType: e.target.value })} placeholder="Stationery" />
@@ -276,7 +276,7 @@ export function StockItemForm() {
           <input className="in mono" value={form.itemCode} onChange={(e) => setForm({ ...form, itemCode: e.target.value })} placeholder="SKU-1001" />
         </Field>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
         <Field>
           Cost price (₹)
           <input className="in mono" type="number" min={0} value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} placeholder="60" />
@@ -338,7 +338,7 @@ export function StockItemRow({ item }: { item: { id: string; name: string; itemT
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 0.6fr 0.6fr 0.5fr 2.1fr", gap: 8, alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+    <div className="m-row" style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 0.6fr 0.6fr 0.5fr 2.1fr", gap: 8, alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
       <div>
         <div style={{ fontWeight: 600 }}>{item.name}</div>
         <div className="mono" style={{ fontSize: 10.5, color: "var(--faint)" }}>{item.itemCode ?? "—"}</div>
@@ -498,7 +498,7 @@ export function VendorForm() {
         Name
         <input className="in" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Sharma Stationers" />
       </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field>
           Category
           <input className="in" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Stationery" />
@@ -508,7 +508,7 @@ export function VendorForm() {
           <input className="in" value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} placeholder="Ramesh Sharma" />
         </Field>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field>
           Phone
           <input className="in mono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="98765xxxxx" />
@@ -528,7 +528,7 @@ export function VendorForm() {
 export function VendorRow({ vendor }: { vendor: { id: string; name: string; category: string | null; contactName: string | null; phone: string | null; email: string | null; isActive: boolean } }) {
   const [pending, startTransition] = useTransition();
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 0.8fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+    <div className="m-row" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 0.8fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
       <div style={{ fontWeight: 600 }}>{vendor.name}</div>
       <div style={{ color: "var(--muted)" }}>{vendor.category ?? "—"}</div>
       <div style={{ color: "var(--muted)" }}>{vendor.contactName ?? "—"}</div>
@@ -578,7 +578,7 @@ export function PurchaseOrderForm({ vendors, consumables }: { vendors: { id: str
   return (
     <div className="card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: 13.5, fontWeight: 700 }}>New purchase order</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field>
           PO number
           <input className="in mono" value={form.poNumber} onChange={(e) => setForm({ ...form, poNumber: e.target.value })} placeholder="PO-2026-014" />
@@ -610,7 +610,7 @@ export function PurchaseOrderForm({ vendors, consumables }: { vendors: { id: str
           ))}
         </select>
       </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
         <Field>
           Quantity
           <input className="in mono" type="number" min={0} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="20" />
@@ -639,7 +639,7 @@ export function PurchaseOrderRow({ po }: { po: { id: string; poNumber: string; v
   const total = po.quantity * po.unitCost;
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 1fr 1.3fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+    <div className="m-row" style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 1fr 1.3fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
       <div className="mono" style={{ fontWeight: 600 }}>{po.poNumber}</div>
       <div>
         <div>{po.itemDescription}</div>

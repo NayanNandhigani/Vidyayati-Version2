@@ -20,7 +20,7 @@ export function NewRoomInlineForm() {
         Room number / name
         <input className="in" name="roomNo" required placeholder="Room 204" />
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <label className="field">
           Room size
           <input className="in" name="roomSize" placeholder="12ft x 10ft" />
@@ -100,7 +100,7 @@ export function RoomDetailEditor({
         Room number / name
         <input className="in" value={roomNo} onChange={(e) => setRoomNo(e.target.value)} onBlur={save} />
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <label className="field">
           Room size
           <input className="in" value={roomSize} onChange={(e) => setRoomSize(e.target.value)} onBlur={save} placeholder="12ft x 10ft" />

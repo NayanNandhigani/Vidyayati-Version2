@@ -77,7 +77,7 @@ export default async function CommunicationPage() {
         isAdmin={isAdmin}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.28fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.28fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
         <div className="card" style={{ padding: "20px 22px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
             <div style={{ fontSize: 14.5, fontWeight: 700 }}>Past announcements</div>

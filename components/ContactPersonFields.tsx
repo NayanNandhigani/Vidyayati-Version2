@@ -28,7 +28,7 @@ export default function ContactPersonFields({
             Contact name
             <input className="in" name="contactName" defaultValue={defaults?.name ?? ""} placeholder="e.g. Anil Kumar" />
           </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <label className="field">
               Phone
               <input className="in mono" name="contactPhone" defaultValue={defaults?.phone ?? ""} placeholder="+91 90000 00000" />
@@ -40,7 +40,7 @@ export default function ContactPersonFields({
           </div>
         </>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <label className="field">
           Alternate phone
           <input className="in mono" name="contactAlternatePhone" defaultValue={defaults?.alternatePhone ?? ""} placeholder="Optional" />

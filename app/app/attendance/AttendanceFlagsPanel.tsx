@@ -52,7 +52,7 @@ export default function AttendanceFlagsPanel({
           {isAdmin ? "Set a threshold above to start flagging students." : "No thresholds configured yet."}
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div>
             <div style={{ fontSize: 11, color: "var(--faint)", marginBottom: 6 }}>Below {defaulterPct ?? "—"}% attendance</div>
             {defaulters.length === 0 ? (

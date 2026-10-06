@@ -137,7 +137,7 @@ export default function ExamDepthPanel({
           {seating.length === 0 ? (
             <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No seating generated yet.</div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, maxHeight: 160, overflowY: "auto" }}>
+            <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, maxHeight: 160, overflowY: "auto" }}>
               {seating.map((s) => (
                 <div key={s.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, padding: "4px 8px", background: "var(--paper)", borderRadius: 5 }}>
                   <span>{s.studentName}</span>

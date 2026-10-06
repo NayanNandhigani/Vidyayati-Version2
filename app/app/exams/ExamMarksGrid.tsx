@@ -178,7 +178,7 @@ export default function ExamMarksGrid({
   }, [previewId, marks, students, examSubjects]);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.9fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.9fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>

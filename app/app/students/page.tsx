@@ -83,11 +83,11 @@ export default async function StudentsPage({
 
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line)", background: "var(--paper)" }}>
-          <form method="GET" style={{ display: "flex", gap: 10 }}>
+          <form method="GET" className="m-wrap" style={{ display: "flex", gap: 10 }}>
             <input type="hidden" name="sortBy" value={params.sortBy ?? ""} />
             <input type="hidden" name="sortDir" value={params.sortDir ?? ""} />
             <input
-              className="in"
+              className="in m-search"
               name="q"
               defaultValue={params.q}
               placeholder="Search students…"
@@ -116,7 +116,7 @@ export default async function StudentsPage({
         </div>
 
         <div
-          style={{
+          className="m-thead" style={{
             display: "grid",
             gridTemplateColumns: showReshuffle ? "auto 1.9fr 1.3fr 0.7fr 0.7fr 1.2fr 0.8fr" : "1.9fr 1.3fr 0.7fr 0.7fr 1.2fr 0.8fr",
             padding: "12px 20px",

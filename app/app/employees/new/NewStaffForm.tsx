@@ -18,7 +18,7 @@ export default function NewStaffForm() {
         Full name
         <input className="in" name="name" required placeholder="Priya Kapoor" />
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Username
           <input className="in" type="text" name="username" required placeholder="e.g. priya.kapoor" />
@@ -28,7 +28,7 @@ export default function NewStaffForm() {
           <input className="in mono" name="phone" placeholder="+91 98XXX XXXXX" />
         </label>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <label className="field">
           Designation
           <input className="in" name="designation" placeholder="Class Teacher — 6B" />

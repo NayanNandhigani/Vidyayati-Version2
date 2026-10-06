@@ -36,8 +36,8 @@ export default async function InstitutePage({ searchParams }: { searchParams: Pr
         Academic Management
       </div>
 
-      <div style={{ display: "flex", gap: 20, flex: 1, minHeight: 0 }}>
-        <div className="card" style={{ width: 196, flex: "none", padding: 10, display: "flex", flexDirection: "column", gap: 2, height: "fit-content" }}>
+      <div className="settings-layout" style={{ display: "flex", gap: 20, flex: 1, minHeight: 0 }}>
+        <div className="card settings-nav" style={{ width: 196, flex: "none", padding: 10, display: "flex", flexDirection: "column", gap: 2, height: "fit-content" }}>
           {PANELS.map((p) => (
             <Link
               key={p.key}

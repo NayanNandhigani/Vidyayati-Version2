@@ -46,7 +46,7 @@ function GradeCard({ gradeRow }: { gradeRow: GradeFeeRow }) {
 
   return (
     <div style={{ background: "var(--paper)", borderRadius: 10, padding: 14 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "0.7fr 1fr auto", gap: 10, alignItems: "center" }}>
+      <div className="m-row" style={{ display: "grid", gridTemplateColumns: "0.7fr 1fr auto", gap: 10, alignItems: "center" }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 13 }}>Class {gradeRow.grade}</div>
           <div style={{ fontSize: 10.5, color: "var(--faint)" }}>
@@ -144,7 +144,7 @@ function InstalmentPlanEditor({ grade, initialPlan }: { grade: string; initialPl
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {terms.map((t, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 8 }}>
+          <div key={i} className="m-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 8 }}>
             <input className="in" value={t.term} onChange={(e) => updateTerm(i, { term: e.target.value })} placeholder="Term name" style={{ fontSize: 12 }} />
             <input className="in mono" type="number" min={0} step={1} value={t.amount || ""} onChange={(e) => updateTerm(i, { amount: Number(e.target.value) })} placeholder="Amount ₹" style={{ fontSize: 12 }} />
             <input className="in mono" type="date" value={t.dueDate} onChange={(e) => updateTerm(i, { dueDate: e.target.value })} style={{ fontSize: 12 }} />

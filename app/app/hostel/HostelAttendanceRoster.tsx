@@ -120,7 +120,7 @@ export default function HostelAttendanceRoster({ date, session, residents, initi
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         <CountTile label="Present" value={counts.present} color="var(--good)" />
         <CountTile label="Absent" value={counts.absent} color="var(--critical)" />
         <CountTile label="Late" value={counts.late} color="var(--warn)" />
@@ -128,7 +128,7 @@ export default function HostelAttendanceRoster({ date, session, residents, initi
       </div>
 
       <div className="card" style={{ padding: 0, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 0.8fr 0.8fr 1fr", padding: "13px 22px", borderBottom: "1px solid var(--line)", fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "2fr 0.8fr 0.8fr 1fr", padding: "13px 22px", borderBottom: "1px solid var(--line)", fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div>Student</div>
           <div>Room</div>
           <div>Bed</div>
@@ -137,7 +137,7 @@ export default function HostelAttendanceRoster({ date, session, residents, initi
         <div style={{ overflowY: "auto" }}>
           {residents.length === 0 && <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13.5 }}>No students allocated to the hostel yet.</div>}
           {residents.map((r) => (
-            <div key={r.id} style={{ display: "grid", gridTemplateColumns: "2fr 0.8fr 0.8fr 1fr", alignItems: "center", padding: "11px 22px", borderBottom: "1px solid var(--line)" }}>
+            <div key={r.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "2fr 0.8fr 0.8fr 1fr", alignItems: "center", padding: "11px 22px", borderBottom: "1px solid var(--line)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 32, height: 32, borderRadius: "50%", background: avatarColorFor(r.id), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, fontWeight: 700, color: "#fff", flex: "none" }}>
                   {initials(studentName(r))}

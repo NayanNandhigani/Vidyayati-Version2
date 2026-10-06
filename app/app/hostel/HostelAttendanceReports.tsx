@@ -17,7 +17,7 @@ export function HostelAttendanceReports({
       <div className="mono" style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 10 }}>
         Attendance reports
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div>
           <div style={{ fontSize: 11, color: "var(--faint)", marginBottom: 6 }}>Absent today</div>
           {absentToday.length === 0 ? (

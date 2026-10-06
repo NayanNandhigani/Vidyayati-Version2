@@ -111,7 +111,7 @@ export default function EventDetail({ event, canEdit }: { event: EventData; canE
         {editing ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <input className="in" value={fields.title} onChange={(e) => setFields((f) => ({ ...f, title: e.target.value }))} placeholder="Title" style={{ fontSize: 12.5 }} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <input className="in" value={fields.type} onChange={(e) => setFields((f) => ({ ...f, type: e.target.value }))} placeholder="Type" style={{ fontSize: 12.5 }} />
               <input className="in mono" type="date" value={fields.date} onChange={(e) => setFields((f) => ({ ...f, date: e.target.value }))} style={{ fontSize: 12.5 }} />
               <input className="in" value={fields.venue} onChange={(e) => setFields((f) => ({ ...f, venue: e.target.value }))} placeholder="Venue" style={{ fontSize: 12.5 }} />

@@ -55,7 +55,7 @@ export default function StudentFeeAllocationPanel({
       </div>
 
       {!editing ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginTop: 10 }}>
+        <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginTop: 10 }}>
           <StatBox label="Actual fee" value={actualFee != null ? `₹${actualFee.toLocaleString("en-IN")}` : "Not set in Fee Structure"} />
           <StatBox label="Charged fee" value={chargedFee != null ? `₹${chargedFee.toLocaleString("en-IN")}` : "—"} />
           <StatBox label="Scholarship" value={scholarship != null ? `₹${scholarship.toLocaleString("en-IN")}` : "—"} color="var(--good)" />

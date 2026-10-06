@@ -530,8 +530,162 @@ body {
 .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 640px) { .settings-grid { grid-template-columns: 1fr; } }
 /* Settings menu above the panel on phones, instead of squeezing the form. */
-@media (max-width: 760px) {
+@media (max-width: 860px) {
   .settings-page { height: auto !important; padding: 18px 16px !important; }
   .settings-layout { flex-direction: column; }
   .settings-nav { width: auto !important; flex-direction: row !important; flex-wrap: wrap; }
+}
+
+/* Shown only on phones (see the phone layouts below). */
+.m-only {
+  display: none;
+}
+
+/* ---- Phone layouts ---------------------------------------------------------
+   Every school-portal page on a phone (≤ 860px). Pages are laid out with
+   inline styles for the desktop; these classes (added where a page's grid
+   needs to change shape) and a few page-level rules reflow them:
+     m-1col   two-column forms and panels → one column
+     m-2col   rows of 3–6 stat cards → two per row
+     m-row    a table row → a compact card: first cell on its own line,
+              the rest wrapping after it
+     m-thead  a table's column-heading row → hidden (the cells speak for
+              themselves once stacked)
+     m-fullw  a fixed-width side panel → full width, below the main pane
+     m-scroll a wide grid that must keep its shape (timetable) → scrolls
+              sideways inside its card */
+@media (max-width: 860px) {
+  /* The page itself: phone margins, and it grows with its content instead
+     of filling the screen with its own scroll areas. */
+  .app-main > div {
+    padding: 18px 14px 28px !important;
+    height: auto !important;
+    min-height: var(--page-h);
+    gap: 14px !important;
+  }
+  /* A page's title row and toolbars wrap instead of squeezing. */
+  .app-main > div > div:first-child,
+  .m-wrap {
+    flex-wrap: wrap !important;
+    row-gap: 10px !important;
+  }
+  /* Panes that scrolled inside a fixed-height desktop page now just flow. */
+  .app-main [class*="m-"] {
+    min-width: 0;
+  }
+  .m-only {
+    display: inline;
+  }
+  .m-hide {
+    display: none !important;
+  }
+  /* Groups inside a page's title row (settings inputs, button pairs) wrap too. */
+  .app-main > div > div:first-child div {
+    flex-wrap: wrap;
+  }
+  /* The last panel of a grid (e.g. the selected homework) spans the full width. */
+  .m-last-full > :last-child {
+    grid-column: 1 / -1;
+  }
+  /* Header buttons keep their label on one line. */
+  .app-main > div > div:first-child a,
+  .app-main > div > div:first-child button,
+  .m-wrap a,
+  .m-wrap button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .m-1col {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  /* Stacked panes size to their content instead of sharing the screen height. */
+  .m-1col,
+  .m-2col {
+    align-content: start;
+  }
+  /* A board of columns (admissions pipeline) swipes sideways, one column at a time. */
+  .m-kanban {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 6px;
+  }
+  .m-kanban > * {
+    flex: 0 0 78% !important;
+    scroll-snap-align: start;
+    min-height: 220px;
+  }
+  .m-2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .m-thead {
+    display: none !important;
+  }
+  .m-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+  }
+  .m-row > :first-child {
+    flex: 1 1 100%;
+  }
+  .m-row > * {
+    min-width: 0;
+  }
+  /* A leading checkbox stays beside the name rather than on a line of its own. */
+  .m-row > :first-child:has(input[type="checkbox"]),
+  .m-row > input[type="checkbox"]:first-child {
+    flex: none;
+  }
+  .m-row > :first-child:has(input[type="checkbox"]) + *,
+  .m-row > input[type="checkbox"]:first-child + * {
+    flex: 1 1 calc(100% - 40px);
+  }
+  /* Dashboard panels: as tall as their content; charts keep a usable height. */
+  .m-rows-auto {
+    grid-template-rows: none !important;
+    grid-auto-rows: auto;
+  }
+  .m-rows-auto > * {
+    min-height: 0;
+  }
+  .m-rows-auto .card:has(svg, canvas) {
+    min-height: 300px;
+  }
+  .m-search {
+    flex: 1 1 100% !important;
+  }
+  /* Form controls shrink with their row instead of pushing past the screen edge. */
+  .app-main .in,
+  .app-main input,
+  .app-main select,
+  .app-main textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .m-fullw {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
+  }
+  :has(> .m-fullw) {
+    flex-wrap: wrap !important;
+  }
+  .m-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .m-scroll > * {
+    min-width: 560px;
+  }
+  /* Tab bars scroll sideways rather than wrapping into a tall block. */
+  .m-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .m-tabs > * {
+    flex: none !important;
+    white-space: nowrap;
+  }
 }

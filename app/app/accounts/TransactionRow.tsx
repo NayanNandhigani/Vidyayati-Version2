@@ -51,7 +51,7 @@ export default function TransactionRow({ t, canEdit }: { t: Txn; canEdit: boolea
   if (editing) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 20px", borderBottom: "1px solid var(--line)", background: "var(--paper)" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 6 }}>
+        <div className="m-row" style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 6 }}>
           <input className="in mono" type="date" value={fields.date} onChange={(e) => setFields((f) => ({ ...f, date: e.target.value }))} style={{ fontSize: 11.5 }} />
           <input className="in" value={fields.description} onChange={(e) => setFields((f) => ({ ...f, description: e.target.value }))} style={{ fontSize: 11.5 }} />
           <input className="in" value={fields.category} onChange={(e) => setFields((f) => ({ ...f, category: e.target.value }))} style={{ fontSize: 11.5 }} />

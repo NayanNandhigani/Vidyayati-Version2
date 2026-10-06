@@ -74,7 +74,7 @@ export default async function ReportsPage() {
         Reports &amp; analytics
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "repeat(2,1fr)", gap: 14, flex: 1, minHeight: 0 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "repeat(2,1fr)", gap: 14, flex: 1, minHeight: 0 }}>
         {reportCards.map((r) => (
           <Link key={r.key} href={r.href} className="card" style={{ padding: "16px 18px", display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 6 }}>

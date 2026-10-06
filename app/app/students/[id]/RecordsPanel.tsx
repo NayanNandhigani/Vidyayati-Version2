@@ -69,7 +69,7 @@ export default function RecordsPanel({
           <div className="mono" style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 10 }}>
             Medical & address
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
+          <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
             <div className="field">
               <label>Address</label>
               <textarea className="in" value={address} onChange={(e) => setAddress(e.target.value)} onBlur={saveMedical} rows={2} />
@@ -92,7 +92,7 @@ export default function RecordsPanel({
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
               {[...contacts].sort((a, b) => a.priority - b.priority).map((c) => (
-                <div key={c.id} style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr auto", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--paper)", borderRadius: 8 }}>
+                <div key={c.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr auto", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--paper)", borderRadius: 8 }}>
                   <span className="pill" style={{ background: "var(--marigold-tint)", color: "var(--marigold-deep)" }}>
                     #{c.priority}
                   </span>
@@ -136,7 +136,7 @@ export default function RecordsPanel({
           <div className="mono" style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--faint)", marginBottom: 10 }}>
             Prior school & academic history
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 10 }}>
+          <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 10 }}>
             <div className="field">
               <label>Previous school</label>
               <input className="in" value={prevSchool} onChange={(e) => setPrevSchool(e.target.value)} onBlur={savePriorSchool} />

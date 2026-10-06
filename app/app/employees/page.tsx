@@ -69,7 +69,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         <Stat label="Total staff" value={totalStaff} />
         <Stat label="Teaching staff" value={teachingStaff} color="var(--teal)" />
         <Stat label="Non-teaching staff" value={counts.nonTeaching} />
@@ -88,7 +88,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
           </form>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1.9fr 1.6fr 1.1fr 1.3fr 0.9fr 0.8fr", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.9fr 1.6fr 1.1fr 1.3fr 0.9fr 0.8fr", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 11, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div><SortableHeader label="Staff" field="name" basePath="/app/employees" currentParams={params} /></div>
           <div><SortableHeader label="Designation" field="designation" basePath="/app/employees" currentParams={params} /></div>
           <div><SortableHeader label="Department" field="department" basePath="/app/employees" currentParams={params} /></div>
@@ -102,7 +102,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
           {staffList.map((s) => (
             <div
               key={s.id}
-              style={{ display: "grid", gridTemplateColumns: "1.9fr 1.6fr 1.1fr 1.3fr 0.9fr 0.8fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)" }}
+              className="m-row" style={{ display: "grid", gridTemplateColumns: "1.9fr 1.6fr 1.1fr 1.3fr 0.9fr 0.8fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Avatar photoPath={s.photoPath} seed={s.id} name={s.user.name} size={34} fontSize={12} />

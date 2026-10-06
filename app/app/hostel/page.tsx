@@ -66,14 +66,14 @@ export default async function HostelPage({ searchParams }: { searchParams: Promi
         Hostel
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         <Stat label="Total rooms" value={rooms.length} />
         <Stat label="Occupied beds" value={occupied} color="var(--teal)" />
         <Stat label="Available beds" value={available} color="var(--good)" />
         <Stat label="Occupancy %" value={`${occupancyPct}%`} color="var(--marigold-deep)" />
       </div>
 
-      <div style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
+      <div className="m-tabs" style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
         {TABS.map((t) => (
           <Link
             key={t}
@@ -108,9 +108,9 @@ function RoomsTab({ rooms, selectedId, canEdit }: { rooms: RoomsList; selectedId
   const selected = rooms.find((r) => r.id === selectedId) ?? rooms[0];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 0.8fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 0.8fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div>Room</div>
           <div>Size</div>
           <div>Capacity</div>
@@ -122,7 +122,7 @@ function RoomsTab({ rooms, selectedId, canEdit }: { rooms: RoomsList; selectedId
           {rooms.map((r) => {
             const isSelected = r.id === selected?.id;
             return (
-              <Link key={r.id} href={`/app/hostel?tab=rooms&room=${r.id}`} style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 0.8fr 1fr 1fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13, background: isSelected ? "var(--marigold-tint)" : "transparent", textDecoration: "none", color: "inherit" }}>
+              <Link key={r.id} href={`/app/hostel?tab=rooms&room=${r.id}`} className="m-row" style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 0.8fr 1fr 1fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13, background: isSelected ? "var(--marigold-tint)" : "transparent", textDecoration: "none", color: "inherit" }}>
                 <div style={{ fontWeight: isSelected ? 700 : 600 }}>{r.roomNo}</div>
                 <div style={{ color: "var(--muted)" }}>{r.roomSize ?? "—"}</div>
                 <div className="mono">{r.capacity}</div>
@@ -178,9 +178,9 @@ async function AllocationTab({ rooms, selectedId, canEdit, sdb }: { rooms: Rooms
   ]);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 0.8fr 0.9fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 0.8fr 0.9fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div>Room No.</div>
           <div>Warden</div>
           <div>Capacity</div>
@@ -194,7 +194,7 @@ async function AllocationTab({ rooms, selectedId, canEdit, sdb }: { rooms: Rooms
             const full = r.allocations.length >= r.capacity;
             const status = full ? { label: "Full", bg: "var(--teal-tint)", fg: "var(--teal)" } : { label: "Available", bg: "var(--good-tint)", fg: "var(--good)" };
             return (
-              <Link key={r.id} href={`/app/hostel?tab=allocation&room=${r.id}`} style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 0.8fr 0.9fr 1fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13, background: isSelected ? "var(--marigold-tint)" : "transparent", textDecoration: "none", color: "inherit" }}>
+              <Link key={r.id} href={`/app/hostel?tab=allocation&room=${r.id}`} className="m-row" style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 0.8fr 0.9fr 1fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13, background: isSelected ? "var(--marigold-tint)" : "transparent", textDecoration: "none", color: "inherit" }}>
                 <div style={{ fontWeight: isSelected ? 700 : 600 }}>{r.roomNo}</div>
                 <div style={{ color: "var(--muted)" }}>{r.warden?.user.name ?? "—"}</div>
                 <div className="mono">{r.capacity}</div>
@@ -300,7 +300,7 @@ async function VisitorsTab({ rooms, sdb }: { rooms: RoomsList; sdb: Awaited<Retu
   const residents = rooms.flatMap((r) => r.allocations.map((a) => ({ id: a.studentId, name: studentName(a.student) })));
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, flex: 1, minHeight: 0, overflowY: "auto" }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, flex: 1, minHeight: 0, overflowY: "auto" }}>
       <VisitorLogPanel
         students={residents}
         logs={visitorLogs.map((l) => ({ id: l.id, studentName: studentName(l.student), visitorName: l.visitorName, relation: l.relation, purpose: l.purpose, checkInAt: l.checkInAt.toISOString(), checkOutAt: l.checkOutAt?.toISOString() ?? null }))}
@@ -319,7 +319,7 @@ async function CanteenTab({ sdb }: { sdb: Awaited<ReturnType<typeof getScopedDb>
   ]);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, flex: 1, minHeight: 0, overflowY: "auto" }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, flex: 1, minHeight: 0, overflowY: "auto" }}>
       <MessMenuEditor menus={menus.map((m) => ({ dayOfWeek: m.dayOfWeek, mealType: m.mealType, menuText: m.menuText }))} />
       <MealsServedLog logs={mealsServed.map((m) => ({ id: m.id, date: m.date.toISOString(), mealType: m.mealType, description: m.description, headcount: m.headcount }))} />
     </div>

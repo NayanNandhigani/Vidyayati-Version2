@@ -65,14 +65,14 @@ export default async function TransportPage({
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         <Stat label="Active vehicles" value={<>{activeVehicleCount}<span style={{ fontSize: 13, color: "var(--faint)", fontWeight: 500 }}> / {vehiclesRaw.length}</span></>} color="var(--teal)" />
         <Stat label="Active routes" value={routesRaw.length} />
         <Stat label="Students commuting" value={totalCommuting} />
         <Stat label="Avg. seat utilisation" value={`${avgUtilisation}%`} color="var(--marigold-deep)" />
       </div>
 
-      <div style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
+      <div className="m-tabs" style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
         {TABS.map((t) => (
           <Link
             key={t}
@@ -100,7 +100,7 @@ export default async function TransportPage({
 function VehiclesTab({ vehicles }: { vehicles: VehicleWithRoutes[] }) {
   return (
     <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden", flex: 1, minHeight: 0 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 0.7fr 1.2fr 1.2fr 0.8fr auto", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 0.7fr 1.2fr 1.2fr 0.8fr auto", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
         <div>Vehicle no.</div>
         <div>Type</div>
         <div>Capacity</div>
@@ -115,7 +115,7 @@ function VehiclesTab({ vehicles }: { vehicles: VehicleWithRoutes[] }) {
           <Link
             key={v.id}
             href={`/app/transport/vehicles/${v.id}`}
-            style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 0.7fr 1.2fr 1.2fr 0.8fr auto", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13, textDecoration: "none", color: "inherit" }}
+            className="m-row" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 0.7fr 1.2fr 1.2fr 0.8fr auto", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13, textDecoration: "none", color: "inherit" }}
           >
             <div className="mono" style={{ fontWeight: 600 }}>{v.vehicleNo}</div>
             <div style={{ color: "var(--muted)" }}>{v.vehicleType ?? "—"}</div>
@@ -149,9 +149,9 @@ function RoutesTab({
   const selected = routes.find((r) => r.id === selectedId) ?? routes[0];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, flex: 1, minHeight: 0 }}>
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1.3fr 0.9fr 0.9fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.8fr 1.3fr 0.9fr 0.9fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div>Route</div>
           <div>Vehicle</div>
           <div>Stops</div>
@@ -162,7 +162,7 @@ function RoutesTab({
           {routes.map((r) => {
             const isSelected = r.id === selected?.id;
             return (
-              <Link key={r.id} href={`/app/transport?tab=routes&route=${r.id}`} style={{ display: "grid", gridTemplateColumns: "1.8fr 1.3fr 0.9fr 0.9fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13, background: isSelected ? "var(--marigold-tint)" : "transparent", textDecoration: "none", color: "inherit" }}>
+              <Link key={r.id} href={`/app/transport?tab=routes&route=${r.id}`} className="m-row" style={{ display: "grid", gridTemplateColumns: "1.8fr 1.3fr 0.9fr 0.9fr", alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--line)", fontSize: 13, background: isSelected ? "var(--marigold-tint)" : "transparent", textDecoration: "none", color: "inherit" }}>
                 <div style={{ fontWeight: isSelected ? 700 : 600 }}>{r.name}</div>
                 <div className="mono" style={{ color: "var(--muted)" }}>{r.vehicle?.vehicleNo ?? "—"}</div>
                 <div className="mono">{r.stops.length}</div>

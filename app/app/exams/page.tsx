@@ -158,7 +158,7 @@ export default async function ExamsPage({ searchParams }: { searchParams: Promis
         )}
       </div>
 
-      <div style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
+      <div className="m-tabs" style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
         {TABS.map((t) => (
           <Link
             key={t}
@@ -383,7 +383,7 @@ async function ParentExamsView() {
                   );
                 }
                 return (
-                  <div key={r.name + r.date.toISOString()} style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.6fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
+                  <div key={r.name + r.date.toISOString()} className="m-row" style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.6fr auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600 }}>{r.name}</div>
                       <div style={{ fontSize: 10.5, color: "var(--faint)" }}>{r.result}</div>

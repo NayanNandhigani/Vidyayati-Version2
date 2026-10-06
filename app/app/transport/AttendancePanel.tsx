@@ -32,7 +32,7 @@ export function AttendanceRosterPanel({ routeId, date, students, canEdit }: { ro
 
   return (
     <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
         <div>Student</div>
         <div>Pickup</div>
         <div>Drop</div>
@@ -40,7 +40,7 @@ export function AttendanceRosterPanel({ routeId, date, students, canEdit }: { ro
       <div style={{ overflowY: "auto" }}>
         {students.length === 0 && <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>No students assigned to this route.</div>}
         {students.map((s) => (
-          <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr 1fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+          <div key={s.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr 1fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
             <div>
               <div style={{ fontWeight: 600 }}>{studentName(s)}</div>
               <div style={{ fontSize: 10.5, color: "var(--faint)" }}>Class {s.className}</div>

@@ -27,7 +27,7 @@ export default function ReportCardPanel({ examId, examApproved, rows }: { examId
         </a>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 0.8fr 0.7fr 0.9fr", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 0.8fr 0.7fr 0.9fr", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
         <div>Student</div>
         <div style={{ textAlign: "right" }}>Total</div>
         <div style={{ textAlign: "right" }}>%</div>
@@ -40,7 +40,7 @@ export default function ReportCardPanel({ examId, examApproved, rows }: { examId
       {rows.length === 0 && <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>No students in this class.</div>}
 
       {rows.map((r) => (
-        <div key={r.id} style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 0.8fr 0.7fr 0.9fr auto", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+        <div key={r.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 0.8fr 0.7fr 0.9fr auto", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
           <div style={{ fontWeight: 600 }}>{r.name}</div>
           <div className="mono" style={{ textAlign: "right" }}>
             {r.total === null ? <span style={{ color: "var(--faint)", fontFamily: "inherit", fontSize: 12 }}>{r.status ?? "—"}</span> : (

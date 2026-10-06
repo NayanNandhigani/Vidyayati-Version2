@@ -74,7 +74,7 @@ export default function StudentListBody({ students, classes, showReshuffle }: { 
         {students.map((s) => (
           <div
             key={s.id}
-            style={{
+            className="m-row" style={{
               display: "grid",
               gridTemplateColumns: showReshuffle ? "auto 1.9fr 1.3fr 0.7fr 0.7fr 1.2fr 0.8fr" : "1.9fr 1.3fr 0.7fr 0.7fr 1.2fr 0.8fr",
               alignItems: "center",
@@ -87,9 +87,12 @@ export default function StudentListBody({ students, classes, showReshuffle }: { 
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <Avatar photoPath={s.photoPath} seed={s.id} name={`${s.firstName} ${s.surname}`} size={32} fontSize={11.5} />
-              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{s.firstName}</div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>
+                {s.firstName}
+                <span className="m-only"> {s.surname}</span>
+              </div>
             </div>
-            <div style={{ fontSize: 13.5 }}>{s.surname}</div>
+            <div className="m-hide" style={{ fontSize: 13.5 }}>{s.surname}</div>
             <div className="mono" style={{ fontSize: 12.5 }}>{s.class.grade}</div>
             <div className="mono" style={{ fontSize: 12.5 }}>{s.class.section}</div>
             <div className="mono" style={{ fontSize: 12.5, color: "var(--muted)" }}>

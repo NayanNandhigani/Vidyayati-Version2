@@ -73,7 +73,7 @@ export default function LaundryPanel({ students, tickets, canEdit }: { students:
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 16, flex: 1, minHeight: 0 }}>
+    <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 16, flex: 1, minHeight: 0 }}>
       <div className="card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
         <div style={{ fontSize: 13.5, fontWeight: 700 }}>Register laundry</div>
 
@@ -154,7 +154,7 @@ export default function LaundryPanel({ students, tickets, canEdit }: { students:
       </div>
 
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr 1.4fr 0.9fr 0.9fr 0.9fr auto", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr 1.4fr 0.9fr 0.9fr 0.9fr auto", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           <div>Token</div>
           <div>Student</div>
           <div>Items</div>
@@ -166,7 +166,7 @@ export default function LaundryPanel({ students, tickets, canEdit }: { students:
         <div style={{ overflowY: "auto" }}>
           {tickets.length === 0 && <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>No laundry submissions logged yet.</div>}
           {tickets.map((t) => (
-            <div key={t.id} style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr 1.4fr 0.9fr 0.9fr 0.9fr auto", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
+            <div key={t.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr 1.4fr 0.9fr 0.9fr 0.9fr auto", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 12.5 }}>
               <div className="mono" style={{ fontWeight: 700 }}>{t.tokenNo}</div>
               <div>
                 {t.studentName}

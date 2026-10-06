@@ -67,7 +67,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
         Inventory &amp; Assets
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 13 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 13 }}>
         <Stat label="Assets — current value" value={formatINR(totalAssetValue)} />
         <Stat label="Consumables to reorder" value={lowStockCount} color={lowStockCount > 0 ? "var(--critical)" : undefined} />
         <Stat label="Stock value (at cost)" value={formatINR(stockValue)} color="var(--marigold-deep)" />
@@ -76,7 +76,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
         <Stat label="Open purchase orders" value={openPoCount} color="var(--warn)" />
       </div>
 
-      <div style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
+      <div className="m-tabs" style={{ display: "flex", borderBottom: "1px solid var(--line)" }}>
         {TABS.map((t) => (
           <Link
             key={t}
@@ -89,9 +89,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       </div>
 
       {tab === "assets" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
           <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr 1.1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr 1.1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               <div>Asset</div>
               <div>Location</div>
               <div>Cost</div>
@@ -114,9 +114,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       )}
 
       {tab === "consumables" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
           <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr 1fr 1fr 1.3fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr 1fr 1fr 1.3fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               <div>Item</div>
               <div>Unit</div>
               <div>On hand</div>
@@ -135,9 +135,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       )}
 
       {tab === "stock" && (
-        <div style={{ display: "grid", gridTemplateColumns: "2.6fr 1fr", gap: 16 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "2.6fr 1fr", gap: 16 }}>
           <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 0.6fr 0.6fr 0.5fr 2.1fr", gap: 8, padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 0.6fr 0.6fr 0.5fr 2.1fr", gap: 8, padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               <div>Item</div>
               <div>Type</div>
               <div>Cost (₹)</div>
@@ -157,9 +157,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       )}
 
       {tab === "billing" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 16 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 16 }}>
           <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1.7fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.3fr 1.7fr 1fr 1fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               <div>Consumer</div>
               <div>Items</div>
               <div>Total</div>
@@ -168,7 +168,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
             <div style={{ overflowY: "auto" }}>
               {sales.length === 0 && <div style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>No sales recorded yet.</div>}
               {sales.map((s) => (
-                <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 1.7fr 1fr 1fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
+                <div key={s.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "1.3fr 1.7fr 1fr 1fr", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid var(--line)", fontSize: 13 }}>
                   <div style={{ fontWeight: 600 }}>{s.consumerName}</div>
                   <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{s.items.length} item{s.items.length === 1 ? "" : "s"}</div>
                   <div className="mono" style={{ fontWeight: 700 }}>{formatINR(Number(s.totalAmount))}</div>
@@ -182,9 +182,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       )}
 
       {tab === "vendors" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
           <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 0.8fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 0.8fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               <div>Vendor</div>
               <div>Category</div>
               <div>Contact</div>
@@ -203,9 +203,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       )}
 
       {tab === "orders" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
+        <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16 }}>
           <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 1.3fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div className="m-thead" style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 1.3fr", padding: "13px 20px", borderBottom: "1px solid var(--line)", fontSize: 10.5, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               <div>PO no.</div>
               <div>Item</div>
               <div>Total</div>

@@ -71,7 +71,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.12fr 0.88fr", gap: 16, flex: 1, minHeight: 0 }}>
+      <div className="m-1col" style={{ display: "grid", gridTemplateColumns: "1.12fr 0.88fr", gap: 16, flex: 1, minHeight: 0 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", paddingRight: 2 }}>
           {events.length === 0 && (
             <div className="card" style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>

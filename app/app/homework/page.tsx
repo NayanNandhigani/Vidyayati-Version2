@@ -107,7 +107,7 @@ export default async function HomeworkPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12 }}>
+      <div className="m-2col" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12 }}>
         <StatCard label="Active assignments" value={activeCount} />
         <StatCard label="Overdue" value={overdueCount} color="var(--critical)" />
         <StatCard label="Due this week" value={dueThisWeekCount} color="var(--warn)" />
@@ -199,7 +199,7 @@ async function ParentHomeworkView() {
                       ? { bg: "var(--critical-tint)", fg: "var(--critical)" }
                       : { bg: "var(--warn-tint)", fg: "var(--warn)" };
                 return (
-                  <div key={sub.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
+                  <div key={sub.id} className="m-row" style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--paper)", borderRadius: 8 }}>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600 }}>{sub.assignment.title}</div>
                       <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 1 }}>

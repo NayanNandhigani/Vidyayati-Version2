@@ -89,7 +89,7 @@ export default function AdmissionsBoard({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 16, flex: 1, minHeight: 0 }}>
+      <div className="m-kanban" style={{ display: "flex", gap: 16, flex: 1, minHeight: 0 }}>
         {COLS.map((col) => {
           const items = enquiries.filter((e) => columnFor(e) === col.key);
           return (
