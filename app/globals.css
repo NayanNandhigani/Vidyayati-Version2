@@ -237,12 +237,39 @@ body {
    header. Below 860px the menu slides in from the left. */
 :root {
   --header-h: 84px;
-  --page-h: calc(100dvh - var(--header-h));
+  --ribbon-h: 0px;
+  --page-h: calc(100dvh - var(--header-h) - var(--ribbon-h));
+}
+/* "Preview site" ribbon — preview deployments only (components/PreviewRibbon.tsx). */
+.is-preview {
+  --ribbon-h: 30px;
+}
+.preview-ribbon {
+  height: var(--ribbon-h);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 12px;
+  background: repeating-linear-gradient(-45deg, #b42318, #b42318 14px, #c4320a 14px, #c4320a 28px);
+  color: #fff;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.preview-ribbon strong {
+  letter-spacing: 0.08em;
+}
+.preview-ribbon-meta {
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 11px;
+  opacity: 0.85;
 }
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--ribbon-h));
 }
 .app-header {
   position: sticky;
@@ -454,6 +481,10 @@ body {
     width: 32px;
     height: 32px;
     font-size: 12px;
+  }
+  .preview-ribbon-detail,
+  .preview-ribbon-meta {
+    display: none;
   }
   .app-sidebar {
     position: fixed !important;

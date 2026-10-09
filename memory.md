@@ -598,3 +598,19 @@ Deferred: phone layouts for Dashboard, Employees, Homework, Timetable,
 Fees, Transport, Hostel, Library, Inventory and Certificates (they
 scroll sideways at 390px; Accounts and Settings were fixed). Also the
 earlier on-hold list above.
+
+## 2026-10-09 — Branches, preview database, preview ribbon
+
+- Git branches: `Production-Branch` (live site, Vercel production) and
+  `Preview-Branch` (test site). Work goes to `Preview-Branch`; nothing is
+  pushed to `Production-Branch` unless the user explicitly says so.
+- Preview deployments must use their own Neon branch (`preview`, a copy of
+  `production`) via a Preview-only `DATABASE_URL` plus
+  `ALLOW_PREVIEW_MIGRATIONS=1`. Never point Preview at the production
+  database with that flag on.
+- "PREVIEW SITE" ribbon (user requirement: always on the preview site,
+  never on the live site): shown by app/layout.tsx only when
+  `VERCEL_ENV === "preview"` (lib/deploy-env.ts). Production deployments
+  have `VERCEL_ENV=production`, so the ribbon can't appear on the live
+  site even when this code is merged into `Production-Branch`. Do not
+  change it to depend on the branch name or a hard-coded flag.

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NAV_GROUPS } from "./sidebar-config";
 import { IconSchool, IconLogOut, IconLock } from "./icons";
 
@@ -38,6 +38,14 @@ export default function AppShell({ role, roleLabel, visibleModules, disabledScho
   // Small screens: the menu is a slide-in panel (see .app-sidebar in
   // globals.css). It closes whenever the page changes.
   const [open, setOpen] = useState(false);
+  // If the logo file can't be loaded (e.g. missing from storage), show the initials instead of a broken image.
+  const [logoFailed, setLogoFailed] = useState(false);
+  const logoRef = useRef<HTMLImageElement>(null);
+  // An image that failed before React attached onError (during page load) is caught here.
+  useEffect(() => {
+    const img = logoRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setLogoFailed(true);
+  }, []);
   useEffect(() => setOpen(false), [pathname]);
 
   return (
@@ -47,9 +55,9 @@ export default function AppShell({ role, roleLabel, visibleModules, disabledScho
           ☰
         </button>
         <div className="app-school-logo">
-          {school.logoUrl ? (
+          {school.logoUrl && !logoFailed ? (
             // eslint-disable-next-line @next/next/no-img-element -- a school's uploaded logo, served by app/api/school-logo
-            <img src={school.logoUrl} alt={`${school.name} logo`} />
+            <img ref={logoRef} src={school.logoUrl} alt={`${school.name} logo`} onError={() => setLogoFailed(true)} />
           ) : (
             <span className="app-school-initials" aria-hidden="true">
               {school.initials}

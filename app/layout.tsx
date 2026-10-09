@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Fraunces, Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import Toaster from "@/components/Toaster";
+import PreviewRibbon from "@/components/PreviewRibbon";
+import { previewRibbonInfo } from "@/lib/deploy-env";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -29,9 +31,12 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Preview deployments only (see lib/deploy-env.ts); null on the live site.
+  const preview = previewRibbonInfo();
   return (
-    <html lang="en" className={`${fraunces.variable} ${jakarta.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${fraunces.variable} ${jakarta.variable} ${plexMono.variable}${preview ? " is-preview" : ""}`}>
       <body>
+        {preview && <PreviewRibbon info={preview} />}
         {children}
         <Toaster />
       </body>
