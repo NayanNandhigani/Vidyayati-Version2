@@ -6,7 +6,9 @@ import { IconUsers, IconCheckSquare, IconEdit, IconReceipt, IconTruck, IconFileT
 import type { AttendanceStatus } from "@prisma/client";
 import RecordsPanel from "./RecordsPanel";
 import PersonDocumentsPanel, { type PersonDocumentRow } from "@/components/PersonDocumentsPanel";
-import { addStudentDocument } from "../depth-actions";
+import { addStudentDocument, resetGuardianPassword } from "../depth-actions";
+import LoginCredentials from "@/components/LoginCredentials";
+import type { PasswordStatus } from "@/lib/initial-password-value";
 import GuardianRow from "./GuardianRow";
 import AddGuardianForm from "./AddGuardianForm";
 import StudentFeeAllocationPanel from "./StudentFeeAllocationPanel";
@@ -19,7 +21,7 @@ type StudentDetail = {
   gender: string | null;
   admissionNo: string;
   class: { grade: string; section: string };
-  parentLinks: { id: string; relation: string; isPrimary: boolean; parent: { id: string; name: string; phone: string | null; preferredContactMethod: string | null } }[];
+  parentLinks: { id: string; relation: string; isPrimary: boolean; parent: { id: string; name: string; phone: string | null; preferredContactMethod: string | null; login: { username: string; status: PasswordStatus } | null } }[];
   transportAssignment: {
     route: { name: string; vehicle: { driverName: string | null; vehicleNo: string | null } | null };
     stop: { stopName: string; pickupTime: Date | null };
@@ -206,7 +208,14 @@ export default function ProfileTabs({
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {student.parentLinks.map((link) => (
-                    <GuardianRow key={link.id} studentId={student.id} link={link} />
+                    <div key={link.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <GuardianRow studentId={student.id} link={link} />
+                      {link.parent.login && (
+                        <div style={{ padding: "8px 12px", border: "1px dashed var(--line)", borderRadius: 8 }}>
+                          <LoginCredentials title="Parent login" username={link.parent.login.username} status={link.parent.login.status} onReset={() => resetGuardianPassword(student.id, link.parent.id)} />
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}

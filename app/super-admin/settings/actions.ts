@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { auth, unstable_update } from "@/auth";
 import { db } from "@/lib/db";
 import { newPasswordSchema } from "@/lib/validation";
+import { ownPasswordFields } from "@/lib/initial-password";
 
 export type FormState = { error?: string; success?: boolean };
 
@@ -34,8 +35,7 @@ export async function changePassword(_prevState: FormState, formData: FormData):
   const parsed = newPasswordSchema.safeParse({ newPassword, username: user.username });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid password." };
 
-  const passwordHash = await bcrypt.hash(newPassword, 10);
-  await db.user.update({ where: { id: user.id }, data: { passwordHash, mustChangePassword: false } });
+  await db.user.update({ where: { id: user.id }, data: await ownPasswordFields(newPassword) });
 
   await unstable_update({ user: { mustChangePassword: false } });
 

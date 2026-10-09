@@ -6,8 +6,7 @@ import { AccessLevel } from "@prisma/client";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { PLATFORM_MODULES } from "@/lib/platform-modules";
-import { createPendingAccount } from "@/lib/account-setup";
-import { setSetupTokenFlash } from "@/lib/setup-token-flash";
+import { initialPasswordFields, resetToInitialPassword } from "@/lib/initial-password";
 
 export type StaffFormState = { error?: string };
 export type FormState = { error?: string; success?: boolean };
@@ -38,7 +37,7 @@ export async function createPlatformStaff(_prevState: StaffFormState, formData: 
   const existing = await db.user.findUnique({ where: { username: normalizedUsername } });
   if (existing) return { error: "A user with this username already exists." };
 
-  const { token, setupTokenHash, setupTokenExpiresAt, placeholderHash } = await createPendingAccount();
+  const initialPassword = await initialPasswordFields();
 
   const user = await db.user.create({
     data: {
@@ -46,9 +45,7 @@ export async function createPlatformStaff(_prevState: StaffFormState, formData: 
       username: normalizedUsername,
       phone: typeof phone === "string" && phone ? phone : null,
       role: "PLATFORM_STAFF",
-      passwordHash: placeholderHash,
-      setupTokenHash,
-      setupTokenExpiresAt,
+      ...initialPassword,
       platformStaffProfile: {
         create: {
           title: typeof title === "string" && title ? title : null,
@@ -61,7 +58,6 @@ export async function createPlatformStaff(_prevState: StaffFormState, formData: 
   });
 
   revalidatePath("/super-admin/staff");
-  await setSetupTokenFlash(token);
   redirect(`/super-admin/staff?staff=${user.id}`);
 }
 
@@ -95,4 +91,15 @@ export async function togglePlatformStaffStatus(userId: string): Promise<FormSta
 
   revalidatePath("/super-admin/staff");
   return { success: true };
+}
+
+/** Puts a platform staff login back on the initial password (Super Admin only; not for Super Admin accounts). */
+export async function resetPlatformStaffPassword(userId: string): Promise<{ error?: string }> {
+  const session = await auth();
+  if (session?.user.role !== "SUPER_ADMIN") return { error: "Only a Super Admin can reset passwords." };
+  const user = await db.user.findFirst({ where: { id: userId, schoolId: null, role: "PLATFORM_STAFF" }, select: { id: true } });
+  if (!user) return { error: "That platform staff account wasn't found." };
+  await resetToInitialPassword(user.id);
+  revalidatePath("/super-admin/staff");
+  return {};
 }

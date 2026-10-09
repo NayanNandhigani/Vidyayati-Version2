@@ -1,7 +1,7 @@
 import type { Prisma, ParentRelation } from "@prisma/client";
 import type { ScopedDb } from "@/lib/tenant-db";
 import { scopedCreateData } from "@/lib/tenant-db";
-import { createPendingAccount } from "@/lib/account-setup";
+import { initialPasswordFields } from "@/lib/initial-password";
 
 /**
  * Creates (or reuses, for a returning family — e.g. a sibling already
@@ -21,7 +21,7 @@ export async function findOrLinkGuardian(
   sdb: ScopedDb,
   studentId: string,
   guardian: { name: string; phone: string; email: string | null; relation: ParentRelation }
-): Promise<{ setupToken: string; guardianName: string } | null> {
+): Promise<{ username: string; guardianName: string } | null> {
   const name = guardian.name.trim();
   const phone = guardian.phone.trim();
 
@@ -43,7 +43,7 @@ export async function findOrLinkGuardian(
     username = `${digits}${suffix}`;
   }
 
-  const { token, setupTokenHash, setupTokenExpiresAt, placeholderHash } = await createPendingAccount();
+  const initialPassword = await initialPasswordFields();
 
   const user = await sdb.user.create({
     data: scopedCreateData<Prisma.UserUncheckedCreateInput>({
@@ -52,10 +52,7 @@ export async function findOrLinkGuardian(
       phone,
       email: guardian.email?.trim() || null,
       role: "PARENT",
-      passwordHash: placeholderHash,
-      setupTokenHash,
-      setupTokenExpiresAt,
-      mustChangePassword: true,
+      ...initialPassword,
     }),
   });
 
@@ -67,5 +64,5 @@ export async function findOrLinkGuardian(
     data: scopedCreateData<Prisma.StudentParentLinkUncheckedCreateInput>({ studentId, parentId: parent.id, relation: guardian.relation, isPrimary: true }),
   });
 
-  return { setupToken: token, guardianName: name };
+  return { username, guardianName: name };
 }

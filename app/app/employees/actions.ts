@@ -8,8 +8,7 @@ import { db } from "@/lib/db";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { auth } from "@/auth";
-import { createPendingAccount } from "@/lib/account-setup";
-import { setSetupTokenFlash } from "@/lib/setup-token-flash";
+import { initialPasswordFields } from "@/lib/initial-password";
 import { resetPasswordToDefault } from "@/lib/account-reset";
 import { validatePhone, validateOptionalPhone, normalizeIndianMobile, parseMoney } from "@/lib/validation";
 import { runAction, UserError } from "@/lib/action-result";
@@ -50,7 +49,7 @@ export async function createStaff(_prevState: StaffFormState, formData: FormData
     }
   }
 
-  const { token, setupTokenHash, setupTokenExpiresAt, placeholderHash } = await createPendingAccount();
+  const initialPassword = await initialPasswordFields();
 
   const user = await sdb.user.create({
     data: scopedCreateData<Prisma.UserUncheckedCreateInput>({
@@ -58,9 +57,7 @@ export async function createStaff(_prevState: StaffFormState, formData: FormData
       username: normalizedUsername,
       phone: typeof phone === "string" && phone ? normalizeIndianMobile(phone) : null,
       role: "STAFF",
-      passwordHash: placeholderHash,
-      setupTokenHash,
-      setupTokenExpiresAt,
+      ...initialPassword,
     }),
   });
 
@@ -75,7 +72,6 @@ export async function createStaff(_prevState: StaffFormState, formData: FormData
   });
 
   revalidatePath("/app/employees");
-  await setSetupTokenFlash(token);
   redirect(`/app/employees/${staff.id}`);
 }
 
@@ -286,17 +282,6 @@ export async function resetStaffPassword(staffId: string) {
   const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
   await resetPasswordToDefault(staff.userId);
   revalidatePath(`/app/employees/${staffId}`);
-}
-
-/** Issues a fresh one-time setup link (invalidating any old one) — the alternative to a temporary password when the staffer would rather set their own. Returns the token for the admin to hand over inline, never in a URL. */
-export async function regenerateStaffSetupLink(staffId: string): Promise<{ setupToken: string }> {
-  await requireModuleAccess("Employees", "EDIT");
-  const sdb = await getScopedDb();
-  const staff = await sdb.staffProfile.findUniqueOrThrow({ where: { id: staffId }, select: { userId: true } });
-  const { token, setupTokenHash, setupTokenExpiresAt } = await createPendingAccount();
-  await sdb.user.update({ where: { id: staff.userId }, data: { setupTokenHash, setupTokenExpiresAt, mustChangePassword: true } });
-  revalidatePath(`/app/employees/${staffId}`);
-  return { setupToken: token };
 }
 
 /** Soft delete — StaffProfile.deletedAt, distinct from deactivation: hides the staffer from Employees listings entirely rather than just blocking their login, but keeps every history table (payroll, attendance, permissions) intact. Also deactivates the login, since a deleted staffer shouldn't still be able to sign in. */

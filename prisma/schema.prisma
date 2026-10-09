@@ -728,6 +728,10 @@ model User {
   role               UserRole
   status             UserStatus @default(ACTIVE)
   mustChangePassword Boolean    @default(true) @map("must_change_password")
+  // True while the account still has the initial password (lib/initial-password.ts),
+  // which an admin may see and share; false once the user sets their own.
+  usesInitialPassword Boolean   @default(false) @map("uses_initial_password")
+  passwordChangedAt   DateTime? @map("password_changed_at") // when the user last set their own password
   // Account-setup invitation (Architecture V1, Milestone 1) — replaces the
   // old "every account defaults to password 12345" pattern. A freshly
   // created account's passwordHash is an unusable random placeholder;

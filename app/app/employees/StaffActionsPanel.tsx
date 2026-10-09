@@ -4,15 +4,16 @@ import DepartmentSelect from "@/components/form/DepartmentSelect";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { StaffCategory, UserStatus } from "@prisma/client";
-import { updateStaffCore, deactivateStaff, reactivateStaff, resetStaffPassword, regenerateStaffSetupLink, deleteStaff, type StaffCoreFields } from "./actions";
+import { updateStaffCore, deactivateStaff, reactivateStaff, resetStaffPassword, deleteStaff, type StaffCoreFields } from "./actions";
+import LoginCredentials from "@/components/LoginCredentials";
+import type { PasswordStatus } from "@/lib/initial-password-value";
 
-export default function StaffActionsPanel({ staffId, fields: initialFields, userStatus }: { staffId: string; fields: StaffCoreFields; userStatus: UserStatus }) {
+export default function StaffActionsPanel({ staffId, fields: initialFields, userStatus, username, passwordStatus }: { staffId: string; fields: StaffCoreFields; userStatus: UserStatus; username: string; passwordStatus: PasswordStatus }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState<StaffCoreFields>(initialFields);
   const [error, setError] = useState<string | null>(null);
-  const [setupToken, setSetupToken] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDeactivate, setConfirmingDeactivate] = useState(false);
 
@@ -45,21 +46,6 @@ export default function StaffActionsPanel({ staffId, fields: initialFields, user
     });
   }
 
-  function doResetPassword() {
-    startTransition(async () => {
-      await resetStaffPassword(staffId);
-      setSetupToken(null);
-      router.refresh();
-    });
-  }
-
-  function doRegenerateLink() {
-    startTransition(async () => {
-      const res = await regenerateStaffSetupLink(staffId);
-      setSetupToken(res.setupToken);
-    });
-  }
-
   function doDelete() {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
@@ -85,22 +71,15 @@ export default function StaffActionsPanel({ staffId, fields: initialFields, user
             onClick={toggleActive}
             danger={userStatus === "ACTIVE"}
           />
-          <SmallButton label="Reset password" onClick={doResetPassword} />
-          <SmallButton label="Regenerate setup link" onClick={doRegenerateLink} />
           <SmallButton label={confirmingDelete ? "Confirm delete" : "Delete"} onClick={doDelete} danger />
         </div>
       </div>
 
       {error && <div style={{ fontSize: 12, color: "var(--critical)" }}>{error}</div>}
 
-      {setupToken && (
-        <div style={{ background: "var(--good-tint)", border: "1px solid var(--good)", borderRadius: 8, padding: 12, fontSize: 12 }}>
-          New one-time setup link — share it now, it won&apos;t be shown again:
-          <div className="mono" style={{ marginTop: 6, padding: "8px 10px", background: "var(--card)", borderRadius: 6, wordBreak: "break-all", fontSize: 11.5 }}>
-            {typeof window !== "undefined" ? window.location.origin : ""}/setup-account?token={setupToken}
-          </div>
-        </div>
-      )}
+      <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+        <LoginCredentials username={username} status={passwordStatus} onReset={() => resetStaffPassword(staffId)} />
+      </div>
 
       {editing && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 10 }}>

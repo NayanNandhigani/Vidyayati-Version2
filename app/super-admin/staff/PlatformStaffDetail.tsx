@@ -7,7 +7,9 @@ import { initials } from "@/lib/format";
 import { avatarColorFor } from "@/lib/academic";
 import type { AccessLevel } from "@prisma/client";
 import { PLATFORM_MODULES } from "@/lib/platform-modules";
-import { cyclePlatformPermission, togglePlatformStaffStatus } from "./actions";
+import { cyclePlatformPermission, togglePlatformStaffStatus, resetPlatformStaffPassword } from "./actions";
+import LoginCredentials from "@/components/LoginCredentials";
+import type { PasswordStatus } from "@/lib/initial-password-value";
 
 const LEVEL_STYLE: Record<AccessLevel, { bg: string; fg: string; label: string }> = {
   NONE: { bg: "var(--line)", fg: "var(--faint)", label: "No access" },
@@ -26,6 +28,7 @@ export type PlatformStaffRow = {
   title: string | null;
   department: string | null;
   dateJoined: string | null;
+  passwordStatus: PasswordStatus;
   permissions: Record<string, AccessLevel>;
 };
 
@@ -79,6 +82,12 @@ export default function PlatformStaffDetail({ staff, canManage }: { staff: Platf
           <Field label="Phone" value={staff.phone ?? "—"} mono />
           <Field label="Date joined" value={staff.dateJoined ? formatIST(staff.dateJoined, { day: "2-digit", month: "short", year: "numeric" }) : "—"} />
         </div>
+
+        {staff.role === "PLATFORM_STAFF" && (
+          <div style={{ margin: "16px 0 4px" }}>
+            <LoginCredentials username={staff.username} status={staff.passwordStatus} onReset={canManage ? () => resetPlatformStaffPassword(staff.userId) : undefined} />
+          </div>
+        )}
 
         <SectionTitle>Access &amp; permissions</SectionTitle>
         {staff.role === "SUPER_ADMIN" ? (

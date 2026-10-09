@@ -9,8 +9,7 @@ import { db } from "@/lib/db";
 import { getScopedDb, scopedCreateData } from "@/lib/tenant-db";
 import { requireModuleAccess } from "@/lib/permissions";
 import { requireFeature } from "@/lib/feature-flags";
-import { createPendingAccount } from "@/lib/account-setup";
-import { setSetupTokenFlash } from "@/lib/setup-token-flash";
+import { initialPasswordFields } from "@/lib/initial-password";
 import { validateOptionalPhone, validateDob, normalizeIndianMobile } from "@/lib/validation";
 import type { StaffFormState } from "./actions";
 
@@ -56,7 +55,7 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
     }
   }
 
-  const { token, setupTokenHash, setupTokenExpiresAt, placeholderHash } = await createPendingAccount();
+  const initialPassword = await initialPasswordFields();
   const gender = str(formData, "gender");
   const dob = str(formData, "dob");
   const yearsOfExperience = str(formData, "yearsOfExperience");
@@ -67,9 +66,7 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
       username: normalizedUsername,
       phone: phoneOrNull(str(formData, "mobilePrimary")),
       role: "STAFF",
-      passwordHash: placeholderHash,
-      setupTokenHash,
-      setupTokenExpiresAt,
+      ...initialPassword,
     }),
   });
 
@@ -116,7 +113,6 @@ export async function createStaffDetailed(_prevState: StaffFormState, formData: 
   });
 
   revalidatePath("/app/employees");
-  await setSetupTokenFlash(token);
   redirect(`/app/employees/${staff.id}`);
 }
 

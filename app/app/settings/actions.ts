@@ -14,6 +14,7 @@ import { runAction } from "@/lib/action-result";
 import { parseSchoolGeneral, type SchoolGeneralValues } from "@/lib/school-fields";
 import { LOGO_DIR, detectLogoType, logoFileError } from "@/lib/school-branding";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
+import { ownPasswordFields } from "@/lib/initial-password";
 
 async function requireAdmin() {
   const session = await auth();
@@ -112,8 +113,7 @@ export async function changePassword(_prevState: FormState, formData: FormData):
   const parsed = newPasswordSchema.safeParse({ newPassword, username: user.username });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid password." };
 
-  const passwordHash = await bcrypt.hash(newPassword, 10);
-  await sdb.user.update({ where: { id: user.id }, data: { passwordHash, mustChangePassword: false } });
+  await sdb.user.update({ where: { id: user.id }, data: await ownPasswordFields(newPassword) });
 
   // Refresh the JWT immediately so the next request's middleware check sees
   // mustChangePassword: false — otherwise it'd bounce them right back here.

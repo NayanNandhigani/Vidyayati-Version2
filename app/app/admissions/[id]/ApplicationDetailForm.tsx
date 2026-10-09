@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { Gender, AdmissionStage, AdmissionApprovalStatus } from "@prisma/client";
 import { updateApplicationDetails, submitForAdmitApproval, approveAdmissionWithFee, rejectAdmission, type ApplicationFields } from "../depth-actions";
 import { unwrap } from "@/lib/unwrap";
+import InitialLoginNotice from "@/components/InitialLoginNotice";
 
 type Enquiry = ApplicationFields & {
   id: string;
@@ -77,7 +78,7 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [admitResult, setAdmitResult] = useState<{ studentId: string; guardianSetupToken: string | null; guardianName: string | null } | null>(null);
+  const [admitResult, setAdmitResult] = useState<{ studentId: string; guardianUsername: string | null; guardianName: string | null } | null>(null);
 
   // Pre-select the section matching what was applied for (e.g. "Class 6"
   // or "6") — falls back to the first class if nothing matches, same as
@@ -414,13 +415,8 @@ export default function ApplicationDetailForm({ enquiry, classes, canEdit, isAdm
       {admitResult && (
         <div style={{ background: "var(--good-tint)", border: "1px solid var(--good)", borderRadius: 8, padding: 14 }}>
           <div style={{ fontWeight: 700, color: "var(--good)", marginBottom: 6 }}>Student admitted.</div>
-          {admitResult.guardianSetupToken ? (
-            <div style={{ fontSize: 12.5 }}>
-              A new login was created for {admitResult.guardianName}. Share this one-time setup link now — it won't be shown again:
-              <div className="mono" style={{ marginTop: 6, padding: "8px 10px", background: "var(--card)", borderRadius: 6, wordBreak: "break-all", fontSize: 11.5 }}>
-                {typeof window !== "undefined" ? window.location.origin : ""}/setup-account?token={admitResult.guardianSetupToken}
-              </div>
-            </div>
+          {admitResult.guardianUsername ? (
+            <InitialLoginNotice name={admitResult.guardianName} username={admitResult.guardianUsername} />
           ) : (
             <div style={{ fontSize: 12.5, color: "var(--muted)" }}>The guardian's login already existed (or none was captured) — nothing new to share.</div>
           )}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 export type ChangePasswordFormState = { error?: string; success?: boolean };
 
@@ -16,11 +15,13 @@ export default function ChangePasswordForm({
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const [mismatch, setMismatch] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
-    if (state.success) router.push(redirectTo);
-  }, [state.success, redirectTo, router]);
+    // A full page load, not a client-side push: after first sign-in the
+    // address bar may already show redirectTo while this form is on screen,
+    // and the refreshed session (password changed) must reach the server.
+    if (state.success) window.location.assign(redirectTo);
+  }, [state.success, redirectTo]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     const form = e.currentTarget;
@@ -38,7 +39,7 @@ export default function ChangePasswordForm({
     <form action={formAction} onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 380 }}>
       {forced && (
         <p style={{ margin: 0, fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
-          For security, you need to set a new password before continuing — this account is still on the one it was created with.
+          Before you can use the portal, choose your own password. Enter the password you just signed in with as your current password, then pick a new one of at least 8 characters.
         </p>
       )}
       <label className="field">

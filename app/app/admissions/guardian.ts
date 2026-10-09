@@ -21,7 +21,7 @@ export async function createGuardianAccountForEnquiry(
   sdb: ScopedDb,
   enquiry: EnquiryLike,
   studentId: string
-): Promise<{ setupToken: string; guardianName: string } | null> {
+): Promise<{ username: string; guardianName: string } | null> {
   const name = enquiry.parentName?.trim() || enquiry.fatherName?.trim() || enquiry.motherName?.trim() || enquiry.guardianName?.trim();
   if (!name) return null;
 

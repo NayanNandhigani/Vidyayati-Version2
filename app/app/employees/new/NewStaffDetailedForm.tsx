@@ -69,7 +69,7 @@ export default function NewStaffDetailedForm({ staff }: { staff: { id: string; n
           <input className="in" name="username" required placeholder="e.g. priya.kapoor" />
         </label>
       </Row>
-      <div style={{ fontSize: 11.5, color: "var(--muted)" }}>A one-time setup link will be shown after saving — share it with the new staff member so they can set their own password. There is no default/shared password.</div>
+      <div style={{ fontSize: 11.5, color: "var(--muted)" }}>Their login starts with the password 12345, shown on their profile after saving. They must choose their own password the first time they sign in.</div>
 
       <Section title="Personal details">
         <Row>

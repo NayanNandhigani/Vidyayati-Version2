@@ -2,7 +2,9 @@
 
 import { useKeepFormValues } from "@/components/form/useKeepFormValues";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { setSchoolLoginBlock, updateSchoolAdminAccount, resetSchoolAdminPassword, type ManageFormState } from "../actions";
+import { setSchoolLoginBlock, updateSchoolAdminAccount, resetSchoolAdminToInitial, type ManageFormState } from "../actions";
+import LoginCredentials from "@/components/LoginCredentials";
+import type { PasswordStatus } from "@/lib/initial-password-value";
 
 const initialState: ManageFormState = {};
 
@@ -13,22 +15,17 @@ export default function AccessControlPanel({
 }: {
   schoolId: string;
   loginBlocked: boolean;
-  admin: { id: string; name: string; username: string } | null;
+  admin: { id: string; name: string; username: string; passwordStatus: PasswordStatus } | null;
 }) {
   const [blockPending, startBlockTransition] = useTransition();
   const [editingAccount, setEditingAccount] = useState(false);
   const [state, formAction, pending] = useActionState(updateSchoolAdminAccount, initialState);
   const keep1 = useKeepFormValues(state);
-  const [resetState, resetAction, resetPending] = useActionState(resetSchoolAdminPassword, initialState);
-  const [resetDone, setResetDone] = useState(false);
 
   useEffect(() => {
     if (state.success) setEditingAccount(false);
   }, [state.success]);
 
-  useEffect(() => {
-    if (resetState.success) setResetDone(true);
-  }, [resetState.success]);
 
   function toggleBlock() {
     startBlockTransition(async () => {
@@ -86,36 +83,13 @@ export default function AccessControlPanel({
               <div>
                 <span style={{ color: "var(--muted)" }}>School Admin:</span> {admin.name} · <span className="mono">{admin.username}</span>
               </div>
-              <div style={{ display: "flex", gap: 14 }}>
-                <span
-                  onClick={() => {
-                    if (resetPending) return;
-                    if (!confirm(`Reset ${admin.name}'s password to "123456"? They'll be required to set a new password the next time they sign in.`)) return;
-                    setResetDone(false);
-                    const fd = new FormData();
-                    fd.set("userId", admin.id);
-                    fd.set("schoolId", schoolId);
-                    resetAction(fd);
-                  }}
-                  style={{ cursor: resetPending ? "default" : "pointer", color: "var(--critical)", fontSize: 12, fontWeight: 600, opacity: resetPending ? 0.6 : 1 }}
-                >
-                  {resetPending ? "Resetting…" : "Reset password"}
-                </span>
-                <span onClick={() => setEditingAccount(true)} style={{ cursor: "pointer", color: "var(--marigold-deep)", fontSize: 12, fontWeight: 600 }}>
-                  Change
-                </span>
-              </div>
+              <span onClick={() => setEditingAccount(true)} style={{ cursor: "pointer", color: "var(--marigold-deep)", fontSize: 12, fontWeight: 600 }}>
+                Change name / username
+              </span>
             </div>
-            {resetDone && (
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--good)", background: "var(--good-tint)", border: "1px solid var(--good)", borderRadius: 8, padding: "7px 10px" }}>
-                Password reset to <span className="mono">123456</span>. They&apos;ll be asked to set a new one the next time they sign in.
-              </p>
-            )}
-            {resetState.error && (
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--critical)", background: "var(--critical-tint)", border: "1px solid var(--critical-border)", borderRadius: 8, padding: "7px 10px" }}>
-                {resetState.error}
-              </p>
-            )}
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+              <LoginCredentials title="School Admin login" username={admin.username} status={admin.passwordStatus} onReset={() => resetSchoolAdminToInitial(schoolId, admin.id)} />
+            </div>
           </div>
         ) : (
           <form ref={keep1.ref} onSubmit={keep1.capture} action={formAction} style={{ display: "flex", flexDirection: "column", gap: 10 }}>

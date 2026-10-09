@@ -10,6 +10,7 @@ import { findOrLinkGuardian } from "@/lib/guardian";
 import { validatePhone, validateOptionalEmail, normalizeIndianMobile } from "@/lib/validation";
 import { nextAdmissionNumber } from "@/lib/admission-number";
 import type { ParentRelation } from "@prisma/client";
+import { resetToInitialPassword } from "@/lib/initial-password";
 
 async function schoolId() {
   const session = await auth();
@@ -85,11 +86,11 @@ export async function updateGuardianContactPreference(parentId: string, preferre
   revalidatePath(`/app/students`);
 }
 
-/** Adds a guardian to a student — reuses an existing Parent by phone (e.g. a sibling's guardian) or creates a new one + login, same as the admissions admit flow. Returns a one-time setup link when a new login was created. */
+/** Adds a guardian to a student — reuses an existing Parent by phone (e.g. a sibling's guardian) or creates a new one + login, same as the admissions admit flow. Returns the new login's username when one was created (initial password, see lib/initial-password.ts). */
 export async function addGuardianToStudent(
   studentId: string,
   fields: { name: string; relation: ParentRelation; phone: string; email: string }
-): Promise<{ error?: string; setupToken?: string }> {
+): Promise<{ error?: string; loginUsername?: string }> {
   const sdb = await getScopedDb();
   const student = await sdb.student.findUniqueOrThrow({ where: { id: studentId } });
   await requireModuleAccess("Students", "EDIT", student.classId);
@@ -102,7 +103,19 @@ export async function addGuardianToStudent(
 
   const result = await findOrLinkGuardian(sdb, studentId, { name: fields.name, phone: normalizeIndianMobile(fields.phone)!, email: fields.email || null, relation: fields.relation });
   revalidatePath(`/app/students/${studentId}`);
-  return { setupToken: result?.setupToken };
+  return { loginUsername: result?.username };
+}
+
+/** Puts a parent's login back on the initial password (School Admin only). */
+export async function resetGuardianPassword(studentId: string, parentId: string): Promise<{ error?: string }> {
+  const session = await auth();
+  if (session?.user.role !== "SCHOOL_ADMIN") return { error: "Only a School Admin can reset a parent's password." };
+  const sdb = await getScopedDb();
+  const link = await sdb.studentParentLink.findFirst({ where: { studentId, parentId }, include: { parent: { select: { userId: true } } } });
+  if (!link) return { error: "That guardian isn't linked to this student." };
+  await resetToInitialPassword(link.parent.userId);
+  revalidatePath(`/app/students/${studentId}`);
+  return {};
 }
 
 /** Unlinks a guardian from this student — doesn't delete the Parent/User account itself (they may be linked to other students, or the school may want to keep the account for re-linking later). */

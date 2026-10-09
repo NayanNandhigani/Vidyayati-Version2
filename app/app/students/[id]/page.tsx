@@ -16,6 +16,7 @@ import StudentActionsPanel from "./StudentActionsPanel";
 import Avatar from "@/components/Avatar";
 import ProfilePhotoUpload from "@/components/ProfilePhotoUpload";
 import { setStudentPhoto } from "../../settings/id-card-actions";
+import { passwordStatus } from "@/lib/initial-password-value";
 
 export default async function StudentProfilePage({ params }: { params: Promise<{ id: string }> }) {
   await requireModuleAccess("Students", "VIEW");
@@ -31,7 +32,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
     where: { id, ...classWhere },
     include: {
       class: true,
-      parentLinks: { include: { parent: true } },
+      parentLinks: { include: { parent: { include: { user: { select: { username: true, usesInitialPassword: true, passwordChangedAt: true } } } } } },
       transportAssignment: { include: { route: { include: { vehicle: true } }, stop: true } },
       attendance: { orderBy: { date: "desc" }, take: 15 },
       feePayments: { include: { feeInstalment: { include: { feeStructure: true } } }, orderBy: { paidOn: "desc" } },
@@ -203,7 +204,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
           gender: student.gender,
           admissionNo: student.admissionNo,
           class: { grade: student.class.grade, section: student.class.section },
-          parentLinks: student.parentLinks.map((l) => ({ id: l.id, relation: l.relation, isPrimary: l.isPrimary, parent: { id: l.parent.id, name: l.parent.name, phone: l.parent.phone, preferredContactMethod: l.parent.preferredContactMethod } })),
+          parentLinks: student.parentLinks.map((l) => ({ id: l.id, relation: l.relation, isPrimary: l.isPrimary, parent: { id: l.parent.id, name: l.parent.name, phone: l.parent.phone, preferredContactMethod: l.parent.preferredContactMethod, login: session!.user.role === "SCHOOL_ADMIN" ? { username: l.parent.user.username, status: passwordStatus(l.parent.user) } : null } })),
           transportAssignment: student.transportAssignment
             ? {
                 route: { name: student.transportAssignment.route.name, vehicle: student.transportAssignment.route.vehicle ? { driverName: student.transportAssignment.route.vehicle.driverName, vehicleNo: student.transportAssignment.route.vehicle.vehicleNo } : null },

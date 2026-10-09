@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { ParentRelation } from "@prisma/client";
 import { addGuardianToStudent } from "../depth-actions";
+import InitialLoginNotice from "@/components/InitialLoginNotice";
 
 export default function AddGuardianForm({ studentId }: { studentId: string }) {
   const [open, setOpen] = useState(false);
@@ -11,7 +12,7 @@ export default function AddGuardianForm({ studentId }: { studentId: string }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [setupToken, setSetupToken] = useState<string | null>(null);
+  const [newLogin, setNewLogin] = useState<{ username: string; name: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function save() {
@@ -22,22 +23,19 @@ export default function AddGuardianForm({ studentId }: { studentId: string }) {
         return;
       }
       setError(null);
-      if (res.setupToken) setSetupToken(res.setupToken);
+      if (res.loginUsername) setNewLogin({ username: res.loginUsername, name });
       setName("");
       setPhone("");
       setEmail("");
-      if (!res.setupToken) setOpen(false);
+      if (!res.loginUsername) setOpen(false);
     });
   }
 
-  if (setupToken) {
+  if (newLogin) {
     return (
-      <div style={{ marginTop: 10, background: "var(--good-tint)", border: "1px solid var(--good)", borderRadius: 8, padding: 12, fontSize: 12 }}>
-        Guardian added. Share this one-time setup link now — it won&apos;t be shown again:
-        <div className="mono" style={{ marginTop: 6, padding: "8px 10px", background: "var(--card)", borderRadius: 6, wordBreak: "break-all", fontSize: 11.5 }}>
-          {typeof window !== "undefined" ? window.location.origin : ""}/setup-account?token={setupToken}
-        </div>
-        <span onClick={() => { setSetupToken(null); setOpen(false); }} style={{ display: "inline-block", marginTop: 8, fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
+      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        <InitialLoginNotice name={newLogin.name} username={newLogin.username} />
+        <span onClick={() => { setNewLogin(null); setOpen(false); }} style={{ fontSize: 12, fontWeight: 700, color: "var(--marigold-deep)", cursor: "pointer" }}>
           Done
         </span>
       </div>

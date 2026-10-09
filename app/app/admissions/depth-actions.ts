@@ -161,7 +161,7 @@ export async function approveAdmissionWithFee(
     revalidatePath("/app/admissions");
     revalidatePath("/app/students");
     revalidatePath("/app/fees");
-    return { studentId: student.id, guardianSetupToken: guardian?.setupToken ?? null, guardianName: guardian?.guardianName ?? null };
+    return { studentId: student.id, guardianUsername: guardian?.username ?? null, guardianName: guardian?.guardianName ?? null };
   }, "approveAdmissionWithFee");
 }
 

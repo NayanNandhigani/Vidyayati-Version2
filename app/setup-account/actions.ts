@@ -1,8 +1,8 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { hashSetupToken } from "@/lib/account-setup";
+import { ownPasswordFields } from "@/lib/initial-password";
 
 export type SetupAccountState = { error?: string; success?: boolean };
 
@@ -22,10 +22,9 @@ export async function completeAccountSetup(_prevState: SetupAccountState, formDa
     return { error: "This setup link has expired. Ask whoever created your account to generate a new one." };
   }
 
-  const passwordHash = await bcrypt.hash(newPassword, 10);
   await db.user.update({
     where: { id: user.id },
-    data: { passwordHash, setupTokenHash: null, setupTokenExpiresAt: null, mustChangePassword: false },
+    data: await ownPasswordFields(newPassword),
   });
 
   return { success: true };

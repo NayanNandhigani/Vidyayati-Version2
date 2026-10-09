@@ -9,9 +9,8 @@ import { requirePlatformModuleAccess } from "@/lib/permissions";
 import { saveUploadedFile, deleteUploadedFile } from "@/lib/storage";
 import { readAddress, readContactAddress } from "@/lib/address";
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/feature-flags";
-import { createPendingAccount } from "@/lib/account-setup";
+import { initialPasswordFields } from "@/lib/initial-password";
 import { resetPasswordToDefault } from "@/lib/account-reset";
-import { setSetupTokenFlash } from "@/lib/setup-token-flash";
 
 const AADHAR_PATTERN = /^\d{12}$/;
 
@@ -79,7 +78,7 @@ export async function onboardSchool(_prevState: SchoolFormState, formData: FormD
   const sameAsSchoolAddress = formData.get("sameAsSchoolAddress") === "on";
   const contactAddress = sameAsSchoolAddress ? address : readContactAddress(formData);
 
-  const { token, setupTokenHash, setupTokenExpiresAt, placeholderHash } = await createPendingAccount();
+  const initialPassword = await initialPasswordFields();
   const code = await generateSchoolCode(name.trim());
 
   let school;
@@ -101,9 +100,7 @@ export async function onboardSchool(_prevState: SchoolFormState, formData: FormD
           create: {
             name: adminName.trim(),
             username,
-            passwordHash: placeholderHash,
-            setupTokenHash,
-            setupTokenExpiresAt,
+            ...initialPassword,
             role: "SCHOOL_ADMIN",
           },
         },
@@ -134,8 +131,7 @@ export async function onboardSchool(_prevState: SchoolFormState, formData: FormD
   }
 
   revalidatePath("/super-admin/schools");
-  await setSetupTokenFlash(token);
-  redirect(`/super-admin/schools/${school.id}`);
+  redirect(`/super-admin/schools/${school.id}?tab=access`);
 }
 
 export async function updateSchool(_prevState: ManageFormState, formData: FormData): Promise<ManageFormState> {
@@ -281,6 +277,17 @@ export async function updateSchoolAdminAccount(_prevState: ManageFormState, form
 
   revalidatePath(`/super-admin/schools/${schoolId}`);
   return { success: true };
+}
+
+/** Puts a school's admin login back on the initial password (Super Admin only). */
+export async function resetSchoolAdminToInitial(schoolId: string, userId: string): Promise<{ error?: string }> {
+  const session = await auth();
+  if (session?.user.role !== "SUPER_ADMIN") return { error: "Only a Super Admin can reset passwords." };
+  const user = await db.user.findFirst({ where: { id: userId, schoolId, role: "SCHOOL_ADMIN" }, select: { id: true } });
+  if (!user) return { error: "That School Admin account wasn't found." };
+  await resetPasswordToDefault(user.id);
+  revalidatePath(`/super-admin/schools/${schoolId}`);
+  return {};
 }
 
 export async function resetSchoolAdminPassword(_prevState: ManageFormState, formData: FormData): Promise<ManageFormState> {
